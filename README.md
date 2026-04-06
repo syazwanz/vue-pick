@@ -8,6 +8,13 @@ Accessible Vue select/combobox component for Vue 2.7 and Vue 3.
 - Customizable via CSS custom properties and slots
 - ~4KB minified (ESM)
 
+### Components
+
+| Component | Status | Description |
+|-----------|--------|-------------|
+| `VPickNative` | Available | Native `<select>` wrapper with styling, slots, and accessibility |
+| `VPick` | Planned | Custom dropdown with search, keyboard navigation, tree select, and custom rendering |
+
 ## Install
 
 ```bash
