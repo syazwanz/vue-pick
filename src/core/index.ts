@@ -8,3 +8,15 @@ export interface OptionItem {
   disabled?: boolean
   children?: OptionItem[]
 }
+
+export interface OptionGroup {
+  label: string
+  disabled?: boolean
+  options: OptionItem[]
+}
+
+export type OptionOrGroup = OptionItem | OptionGroup
+
+export function isOptionGroup(item: OptionOrGroup): item is OptionGroup {
+  return "options" in item && Array.isArray(item.options)
+}

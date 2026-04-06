@@ -1,6 +1,8 @@
 import { defineConfig } from "vite"
+import vue from "@vitejs/plugin-vue"
 import dts from "vite-plugin-dts"
 import { resolve } from "path"
+import { copyFileSync } from "fs"
 
 export default defineConfig({
   build: {
@@ -20,9 +22,20 @@ export default defineConfig({
     },
   },
   plugins: [
+    vue(),
     dts({
       rollupTypes: true,
       tsconfigPath: resolve(__dirname, "tsconfig.json"),
+      exclude: ["sandbox/**"],
     }),
+    {
+      name: "copy-css",
+      closeBundle() {
+        copyFileSync(
+          resolve(__dirname, "src/style.css"),
+          resolve(__dirname, "dist/style.css"),
+        )
+      },
+    },
   ],
 })
