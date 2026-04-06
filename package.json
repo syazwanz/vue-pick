@@ -1,0 +1,62 @@
+{
+  "name": "vue-pick",
+  "version": "0.0.1",
+  "description": "Accessible Vue select/combobox component for Vue 2.7 and Vue 3",
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./vue2": {
+      "types": "./dist/vue2.d.ts",
+      "import": "./dist/vue2.mjs",
+      "require": "./dist/vue2.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "vue",
+    "vue3",
+    "vue2",
+    "select",
+    "combobox",
+    "dropdown",
+    "accessible",
+    "a11y",
+    "aria"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
+  },
+  "peerDependencies": {
+    "vue": "^2.7.0 || ^3.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.5.2",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.58.0",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^1.6.0",
+    "vue": "^3.5.32"
+  }
+}
