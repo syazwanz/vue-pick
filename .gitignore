@@ -5,5 +5,4 @@ dist
 *.tgz
 .DS_Store
 .env
-.vscode/
 coverage/

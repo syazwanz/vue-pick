@@ -1,0 +1,129 @@
+/* vue-pick base theme */
+/* Override CSS custom properties to customize */
+
+:root {
+  --vpick-font-family: inherit;
+  --vpick-font-size: 0.875rem;
+  --vpick-line-height: 1.25rem;
+  --vpick-border-color: #e5e5e5;
+  --vpick-border-radius: 0.375rem;
+  --vpick-bg: transparent;
+  --vpick-text-color: inherit;
+  --vpick-placeholder-color: #a3a3a3;
+  --vpick-icon-color: rgb(24, 24, 24);
+  --vpick-focus-border-color: #b4b4b4;
+  --vpick-focus-ring-color: rgba(180, 180, 180, 0.5);
+  --vpick-error-border-color: #dc2626;
+  --vpick-error-bg: rgba(220, 38, 38, 0.05);
+  --vpick-error-ring-color: rgba(220, 38, 38, 0.2);
+  --vpick-disabled-opacity: 0.5;
+  --vpick-height-default: 2.25rem;
+  --vpick-height-sm: 2rem;
+  --vpick-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ---- VPickNative ---- */
+
+.vpick-native-wrapper {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+}
+
+.vpick-native-wrapper.vpick-native--disabled,
+.vpick-native-wrapper.vpick-native--loading {
+  opacity: var(--vpick-disabled-opacity);
+  pointer-events: none;
+}
+
+.vpick-native {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--vpick-height-default);
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  font-family: var(--vpick-font-family);
+  font-size: var(--vpick-font-size);
+  line-height: var(--vpick-line-height);
+  color: var(--vpick-text-color);
+  background-color: var(--vpick-bg);
+  border: 1px solid var(--vpick-border-color);
+  border-radius: var(--vpick-border-radius);
+  box-shadow: var(--vpick-shadow);
+  outline: none;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.vpick-native--sm {
+  height: var(--vpick-height-sm);
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.vpick-native:focus-visible {
+  border-color: var(--vpick-focus-border-color);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-focus-ring-color);
+}
+
+.vpick-native--error {
+  border-color: var(--vpick-error-border-color);
+  background-color: var(--vpick-error-bg);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-error-ring-color);
+}
+
+.vpick-native--error:focus-visible {
+  border-color: var(--vpick-error-border-color);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-error-ring-color);
+}
+
+.vpick-native:disabled {
+  cursor: not-allowed;
+}
+
+.vpick-native--readonly {
+  cursor: default;
+  pointer-events: none;
+}
+
+.vpick-native-option,
+.vpick-native-optgroup {
+  background-color: Canvas;
+  color: CanvasText;
+}
+
+.vpick-native-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.875rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  color: var(--vpick-icon-color);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+.vpick-native-spinner {
+  animation: vpick-spin 0.6s linear infinite;
+}
+
+@keyframes vpick-spin {
+  from {
+    transform: translateY(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}

@@ -1,0 +1,149 @@
+<script setup lang="ts">
+import { type OptionItem, type OptionOrGroup, isOptionGroup } from "../core"
+
+defineOptions({ name: "VPickNative" })
+
+const props = defineProps<{
+  modelValue?: OptionItem["value"]
+  options: OptionOrGroup[]
+  id?: string
+  name?: string
+  placeholder?: string
+  disabled?: boolean
+  readonly?: boolean
+  required?: boolean
+  loading?: boolean
+  error?: string
+  size?: "sm" | "default"
+  ariaLabel?: string
+  ariaDescribedby?: string
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: OptionItem["value"]]
+}>()
+
+function findOption(val: string): OptionItem | undefined {
+  for (const item of props.options) {
+    if (isOptionGroup(item)) {
+      const found = item.options.find((o) => String(o.value) === val)
+      if (found) return found
+    } else {
+      if (String(item.value) === val) return item
+    }
+  }
+}
+
+function onChange(event: Event) {
+  if (props.readonly) {
+    const target = event.target as HTMLSelectElement
+    target.value = String(props.modelValue ?? "")
+    return
+  }
+  const target = event.target as HTMLSelectElement
+  const option = findOption(target.value)
+  if (option) {
+    emit("update:modelValue", option.value)
+  }
+}
+</script>
+
+<template>
+  <div
+    class="vpick-native-wrapper"
+    :class="{
+      'vpick-native--disabled': disabled,
+      'vpick-native--loading': loading,
+    }"
+  >
+    <select
+      :id="id"
+      :name="name"
+      class="vpick-native"
+      :class="[
+        `vpick-native--${size ?? 'default'}`,
+        { 'vpick-native--error': error, 'vpick-native--readonly': readonly },
+      ]"
+      :value="String(modelValue ?? '')"
+      :disabled="disabled || loading"
+      :required="required"
+      :aria-invalid="error ? true : undefined"
+      :aria-busy="loading || undefined"
+      :aria-describedby="ariaDescribedby"
+      :aria-label="ariaLabel"
+      @change="onChange"
+    >
+      <option v-if="placeholder" value="" disabled selected>
+        {{ placeholder }}
+      </option>
+      <template v-for="item in options" :key="item.label">
+        <!-- Option group -->
+        <optgroup
+          v-if="isOptionGroup(item)"
+          :label="item.label"
+          :disabled="item.disabled"
+          class="vpick-native-optgroup"
+        >
+          <option
+            v-for="option in item.options"
+            :key="String(option.value)"
+            :value="String(option.value)"
+            :disabled="option.disabled"
+            class="vpick-native-option"
+          >
+            {{ option.label }}
+          </option>
+        </optgroup>
+        <!-- Flat option -->
+        <option
+          v-else
+          :value="String(item.value)"
+          :disabled="item.disabled"
+          class="vpick-native-option"
+        >
+          {{ item.label }}
+        </option>
+      </template>
+    </select>
+    <!-- Spinner (loading) -->
+    <span
+      v-if="loading"
+      class="vpick-native-icon vpick-native-spinner"
+      aria-hidden="true"
+    >
+      <slot name="loading">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
+      </slot>
+    </span>
+    <!-- Custom or default chevron -->
+    <span v-else class="vpick-native-icon" aria-hidden="true">
+      <slot name="icon">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </slot>
+    </span>
+  </div>
+</template>
