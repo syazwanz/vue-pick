@@ -24,7 +24,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "keywords": [
     "vue",
     "vue3",
