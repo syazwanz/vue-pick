@@ -27,6 +27,14 @@
   "sideEffects": [
     "**/*.css"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syazwanz/vue-pick.git"
+  },
+  "homepage": "https://github.com/syazwanz/vue-pick#readme",
+  "bugs": {
+    "url": "https://github.com/syazwanz/vue-pick/issues"
+  },
   "keywords": [
     "vue",
     "vue3",
