@@ -8,7 +8,6 @@ import "../style.css"
 const selected = ref(null)
 const selectedGroup = ref(null)
 const selectedError = ref(null)
-const selectedReadonly = ref("done")
 const selectedForm = ref(null)
 const formSubmitted = ref<string | null>(null)
 
@@ -51,19 +50,17 @@ function onSubmit(e: Event) {
     <section>
       <h2 class="subject">Sizes</h2>
       <div class="wrapper">
-        <label for="status" class="label">Default:</label><br />
+        <label for="default" class="label">Default:</label><br />
         <VPickNative
-          id="status"
-          v-model="selected"
+          id="default"
           :options="status"
           placeholder="Default"
         />
       </div>
       <div class="wrapper" style="margin-top: 10px">
-        <label for="status" class="label">Small:</label><br />
+        <label for="small" class="label">Small:</label><br />
         <VPickNative
-          id="status"
-          v-model="selected"
+          id="small"
           :options="status"
           placeholder="Small"
           size="sm"
@@ -89,11 +86,6 @@ function onSubmit(e: Event) {
     <section>
       <h2 class="subject">Disabled</h2>
       <VPickNative :options="status" disabled placeholder="Not available" />
-    </section>
-
-    <section>
-      <h2 class="subject">Readonly</h2>
-      <VPickNative v-model="selectedReadonly" :options="status" readonly />
     </section>
 
     <section>
