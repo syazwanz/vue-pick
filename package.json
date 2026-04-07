@@ -1,6 +1,6 @@
 {
   "name": "vue-pick",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Accessible Vue select/combobox component for Vue 2.7 and Vue 3",
   "license": "MIT",
   "packageManager": "pnpm@10.32.1",
