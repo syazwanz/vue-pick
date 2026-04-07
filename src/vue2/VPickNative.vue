@@ -12,7 +12,6 @@ const props = defineProps<{
   name?: string
   placeholder?: string
   disabled?: boolean
-  readonly?: boolean
   required?: boolean
   loading?: boolean
   error?: string
@@ -37,11 +36,6 @@ function findOption(val: string): OptionItem | undefined {
 }
 
 function onChange(event: Event) {
-  if (props.readonly) {
-    const target = event.target as HTMLSelectElement
-    target.value = String(props.value ?? "")
-    return
-  }
   const target = event.target as HTMLSelectElement
   const option = findOption(target.value)
   if (option) {
@@ -64,7 +58,7 @@ function onChange(event: Event) {
       class="vpick-native"
       :class="[
         `vpick-native--${size ?? 'default'}`,
-        { 'vpick-native--error': error, 'vpick-native--readonly': readonly },
+        { 'vpick-native--error': error },
       ]"
       :value="String(value ?? '')"
       :disabled="disabled || loading"
