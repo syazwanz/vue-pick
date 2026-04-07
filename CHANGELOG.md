@@ -1,5 +1,11 @@
 # vue-pick
 
+## 0.1.2
+
+### Patch Changes
+
+- Update README formatting and add repository metadata to package.json
+
 ## 0.1.1
 
 ### Patch Changes
