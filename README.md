@@ -183,9 +183,9 @@ if (isOptionGroup(item)) {
 
 ### Importing the CSS
 
-Choose the import method that matches your project structure:
+Choose the import method that matches your project structure.
 
-#### Global Import (Recommended)
+#### 1. Global Import
 
 Import the CSS once in your main entry file (like main.js or main.ts). This is the best approach for consistency, ensuring styles are loaded before any component renders.
 
@@ -197,7 +197,7 @@ import "vue-pick/style.css"
 createApp(App).mount("#app")
 ```
 
-#### Main Stylesheet Import
+#### 2. Main Stylesheet Import
 
 If you manage a central CSS file, you can import it there. This keeps all your third party style imports organized in one place.
 
@@ -210,7 +210,7 @@ body {
 }
 ```
 
-#### Component Level Import
+#### 3. Component Level Import
 
 Import the CSS inside the specific .vue file. Use this if you prefer co-locating the import with the component that uses it.
 
@@ -221,51 +221,43 @@ import "vue-pick/style.css"
 </script>
 ```
 
-### CSS Variables Reference
-
-These are the default variables you can override in your app.
-
-```css
-:root {
-  --vpick-font-family: inherit;
-  --vpick-font-size: 0.875rem;
-  --vpick-line-height: 1.25rem;
-  --vpick-border-color: #e5e5e5;
-  --vpick-border-radius: 0.375rem;
-  --vpick-bg: transparent;
-  --vpick-text-color: inherit;
-  --vpick-placeholder-color: #a3a3a3;
-  --vpick-icon-color: rgb(24, 24, 24);
-  --vpick-focus-border-color: #b4b4b4;
-  --vpick-focus-ring-color: rgba(180, 180, 180, 0.5);
-  --vpick-error-border-color: #dc2626;
-  --vpick-error-bg: rgba(220, 38, 38, 0.05);
-  --vpick-error-ring-color: rgba(220, 38, 38, 0.2);
-  --vpick-disabled-opacity: 0.5;
-  --vpick-height-default: 2.25rem;
-  --vpick-height-sm: 2rem;
-  --vpick-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-```
-
 ### Customizing the Theme
 
-You can override the default appearance by modifying the CSS variables.
+Override these CSS variables to customize the appearance.
 
-**Global Override:** Add this to your main CSS file to change the appearance app-wide
+| Variable | Default |
+| --- | --- |
+| `--vpick-font-family` | `inherit` |
+| `--vpick-font-size` | `0.875rem` |
+| `--vpick-line-height` | `1.25rem` |
+| `--vpick-border-color` | `#e5e5e5` |
+| `--vpick-border-radius` | `0.375rem` |
+| `--vpick-bg` | `transparent` |
+| `--vpick-text-color` | `inherit` |
+| `--vpick-placeholder-color` | `#a3a3a3` |
+| `--vpick-icon-color` | `rgb(24, 24, 24)` |
+| `--vpick-focus-border-color` | `#b4b4b4` |
+| `--vpick-focus-ring-color` | `rgba(180, 180, 180, 0.5)` |
+| `--vpick-error-border-color` | `#dc2626` |
+| `--vpick-error-bg` | `rgba(220, 38, 38, 0.05)` |
+| `--vpick-error-ring-color` | `rgba(220, 38, 38, 0.2)` |
+| `--vpick-disabled-opacity` | `0.5` |
+| `--vpick-height-default` | `2.25rem` |
+| `--vpick-height-sm` | `2rem` |
+| `--vpick-shadow` | `0 1px 2px 0 rgba(0, 0, 0, 0.05)` |
+
+You can override variables at different scopes:
 
 ```css
+/* Global — in your main CSS file */
 :root {
-  --vpick-border-radius: 0.375rem;
-  --vpick-border-color: #e5e5e5;
-  --vpick-focus-ring-color: rgba(180, 180, 180, 0.5);
-  /* Add other variables here */
+  --vpick-border-radius: 0;
+  --vpick-border-color: #d1d5db;
 }
 ```
 
-**Scoped Override:** Use `<style scoped>` in your Vue component to change the appearance without affecting other instances.
-
 ```vue
+<!-- Scoped — affects only instances inside this container -->
 <style scoped>
 .my-container {
   --vpick-border-radius: 0px;
@@ -280,9 +272,8 @@ You can override the default appearance by modifying the CSS variables.
 </template>
 ```
 
-**Inline Override:** Apply styles directly to the component for isolated, single instance changes.
-
 ```vue
+<!-- Inline — single instance -->
 <VPickNative
   :options="options"
   style="--vpick-border-radius: 9999px; --vpick-border-color: #6366f1;"
