@@ -12,6 +12,14 @@ export default tseslint.config(
     ignores: ["dist/", "node_modules/", "coverage/"],
   },
   {
+    rules: {
+      "vue/first-attribute-linebreak": "off",
+      "vue/max-attributes-per-line": "off",
+      "vue/html-closing-bracket-newline": "off",
+      "vue/html-indent": "off",
+    },
+  },
+  {
     files: ["**/*.vue"],
     languageOptions: {
       globals: {
