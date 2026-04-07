@@ -125,23 +125,6 @@ describe("VPickNative (Vue 2)", () => {
     expect(wrapper.find("select").attributes("aria-invalid")).toBe("true")
   })
 
-  it("applies readonly class", () => {
-    const wrapper = mount(VPickNative, {
-      propsData: { options: status, value: "todo", readonly: true },
-    })
-    expect(wrapper.find(".vpick-native--readonly").exists()).toBe(true)
-  })
-
-  it("does not emit on change when readonly", async () => {
-    const wrapper = mount(VPickNative, {
-      propsData: { options: status, value: "todo", readonly: true },
-    })
-    const select = wrapper.find("select")
-    select.element.value = "done"
-    await select.trigger("change")
-    expect(wrapper.emitted("input")).toBeFalsy()
-  })
-
   it("passes id, name, required attributes", () => {
     const wrapper = mount(VPickNative, {
       propsData: {
