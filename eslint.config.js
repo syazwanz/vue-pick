@@ -9,7 +9,7 @@ export default tseslint.config(
   ...pluginVue.configs["flat/recommended"],
   prettier,
   {
-    ignores: ["dist/", "node_modules/", "coverage/"],
+    ignores: ["dist/", "node_modules/", "coverage/", "ref.local/"],
   },
   {
     rules: {
@@ -27,6 +27,13 @@ export default tseslint.config(
         FormData: "readonly",
         HTMLSelectElement: "readonly",
         HTMLFormElement: "readonly",
+        HTMLButtonElement: "readonly",
+        HTMLDivElement: "readonly",
+        HTMLInputElement: "readonly",
+        KeyboardEvent: "readonly",
+        MouseEvent: "readonly",
+        Node: "readonly",
+        document: "readonly",
       },
       parserOptions: {
         parser: tseslint.parser,
