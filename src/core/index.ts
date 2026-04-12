@@ -20,3 +20,8 @@ export type OptionOrGroup = OptionItem | OptionGroup
 export function isOptionGroup(item: OptionOrGroup): item is OptionGroup {
   return "options" in item && Array.isArray(item.options)
 }
+
+export { generateId, resetIdCounter } from "./id"
+export { flattenOptions } from "./flatten"
+export type { FlatOption } from "./flatten"
+export { filterFlat } from "./filter"
