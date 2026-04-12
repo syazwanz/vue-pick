@@ -9,11 +9,9 @@ export default defineConfig({
   base: "/",
   cleanUrls: true,
   lastUpdated: true,
-
   head: [
     ["link", { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }],
   ],
-
   themeConfig: {
     nav: [
       { text: "Docs", link: "/guide/introduction" },
@@ -29,7 +27,6 @@ export default defineConfig({
         ],
       },
     ],
-
     sidebar: [
       {
         text: "Getting Started",
@@ -47,26 +44,26 @@ export default defineConfig({
         ],
       },
     ],
-
     socialLinks: [
       { icon: "github", link: "https://github.com/syazwanz/vue-pick" },
     ],
-
     search: {
-      provider: "local",
+      provider: "algolia",
+      options: {
+        appId: "2T7JT1OEUY",
+        apiKey: "89abee0032df711bcc4f74da958034b9",
+        indexName: "VuePick Docs Crawler",
+      },
     },
-
     footer: {
       message: "Released under the MIT License.",
       copyright: `Copyright © ${year}`,
     },
-
     editLink: {
       pattern: "https://github.com/syazwanz/vue-pick/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
   },
-
   vite: {
     resolve: {
       alias: {
