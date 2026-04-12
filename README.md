@@ -2,7 +2,7 @@
 
 ![NPM Version](https://img.shields.io/npm/v/vue-pick) ![npm downloads](https://img.shields.io/npm/dm/vue-pick) ![GitHub stars](https://img.shields.io/github/stars/syazwanz/vue-pick)
 
-**Accessible select components for Vue 2.7 and Vue 3. Zero dependencies.**
+**Accessible select components for Vue 2.7 and Vue 3.**
 
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vue-pick-demo?file=src%2FApp.vue)
 
@@ -59,7 +59,11 @@ const options = [
 </script>
 
 <template>
-  <VPickNative v-model="selected" :options="options" placeholder="Select status" />
+  <VPickNative
+    v-model="selected"
+    :options="options"
+    placeholder="Select status"
+  />
 </template>
 ```
 
