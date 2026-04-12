@@ -6,7 +6,7 @@ const year = new Date().getFullYear()
 export default defineConfig({
   title: "VuePick",
   description: "Accessible select components for Vue 2.7 and Vue 3.",
-  base: "/vue-pick/",
+  base: "/",
   cleanUrls: true,
   lastUpdated: true,
 
