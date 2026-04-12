@@ -5,21 +5,25 @@
   --vpick-font-family: inherit;
   --vpick-font-size: 0.875rem;
   --vpick-line-height: 1.25rem;
+  --vpick-width: fit-content;
   --vpick-border-color: #e5e5e5;
-  --vpick-border-radius: 0.375rem;
+  --vpick-border-radius: 0.625rem;
+  --vpick-option-radius: 0.5rem;
   --vpick-bg: transparent;
   --vpick-text-color: inherit;
-  --vpick-placeholder-color: #a3a3a3;
-  --vpick-icon-color: rgb(24, 24, 24);
-  --vpick-focus-border-color: #b4b4b4;
-  --vpick-focus-ring-color: rgba(180, 180, 180, 0.5);
+  --vpick-placeholder-color: #737373;
+  --vpick-icon-color: #737373;
+  --vpick-focus-border-color: #a1a1a1;
+  --vpick-focus-ring-color: rgba(161, 161, 161, 0.5);
   --vpick-error-border-color: #dc2626;
   --vpick-error-bg: rgba(220, 38, 38, 0.05);
   --vpick-error-ring-color: rgba(220, 38, 38, 0.2);
   --vpick-disabled-opacity: 0.5;
-  --vpick-height-default: 2.25rem;
-  --vpick-height-sm: 2rem;
-  --vpick-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --vpick-height-default: 2rem;
+  --vpick-height-sm: 1.75rem;
+  --vpick-shadow: 0 0 0 0 transparent;
+  /* Native Specific */
+  --vpick-native-width: fit-content;
 }
 
 /* ---- VPickNative ---- */
@@ -27,7 +31,7 @@
 .vpick-native-wrapper {
   position: relative;
   display: inline-flex;
-  width: fit-content;
+  width: var(--vpick-native-width);
 }
 
 .vpick-native-wrapper.vpick-native--disabled,
@@ -51,7 +55,7 @@
   width: 100%;
   min-width: 0;
   height: var(--vpick-height-default);
-  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  padding: 0.25rem 2rem 0.25rem 0.625rem;
   font-family: var(--vpick-font-family);
   font-size: var(--vpick-font-size);
   line-height: var(--vpick-line-height);
@@ -64,14 +68,14 @@
   cursor: pointer;
   transition:
     color 0.15s,
-    border-color 0.15s,
-    box-shadow 0.15s;
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .vpick-native--sm {
   height: var(--vpick-height-sm);
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
 }
 
 .vpick-native:focus-visible {
@@ -109,12 +113,11 @@
 .vpick-native-icon {
   position: absolute;
   top: 50%;
-  right: 0.875rem;
+  right: 0.625rem;
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   color: var(--vpick-icon-color);
-  opacity: 0.5;
   pointer-events: none;
   user-select: none;
 }
@@ -130,4 +133,242 @@
   to {
     transform: translateY(-50%) rotate(360deg);
   }
+}
+
+/* ---- VPick (Custom Dropdown) ---- */
+
+:root {
+  --vpick-listbox-bg: #fff;
+  --vpick-listbox-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --vpick-listbox-ring: rgba(0, 0, 0, 0.06);
+  --vpick-listbox-max-height: 16rem;
+  --vpick-listbox-z-index: 50;
+  --vpick-option-hover-bg: #f5f5f5;
+  --vpick-option-highlight-bg: #f5f5f5;
+  --vpick-option-selected-color: inherit;
+  --vpick-option-check-color: currentColor;
+  --vpick-group-label-color: #737373;
+  --vpick-group-label-size: 0.75rem;
+}
+
+.vpick {
+  position: relative;
+  display: inline-flex;
+  width: var(--vpick-width);
+}
+
+/* Trigger — matches VPickNative sizing exactly */
+
+.vpick-trigger {
+  appearance: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  min-width: 0;
+  height: var(--vpick-height-default);
+  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  font-family: var(--vpick-font-family);
+  font-size: var(--vpick-font-size);
+  line-height: var(--vpick-line-height);
+  color: var(--vpick-text-color);
+  background-color: var(--vpick-bg);
+  border: 1px solid var(--vpick-border-color);
+  border-radius: var(--vpick-border-radius);
+  box-shadow: var(--vpick-shadow);
+  outline: none;
+  white-space: nowrap;
+  position: relative;
+  transition:
+    color 0.15s,
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.vpick-trigger--sm {
+  height: var(--vpick-height-sm);
+}
+
+/* Button trigger */
+button.vpick-trigger {
+  cursor: pointer;
+}
+
+button.vpick-trigger:focus-visible {
+  border-color: var(--vpick-focus-border-color);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-focus-ring-color);
+}
+
+button.vpick-trigger:disabled {
+  cursor: not-allowed;
+  opacity: var(--vpick-disabled-opacity);
+}
+
+button.vpick-trigger--loading:disabled,
+.vpick-trigger--loading {
+  cursor: progress;
+}
+
+.vpick-trigger-spinner {
+  animation: vpick-trigger-spin 0.6s linear infinite;
+}
+
+@keyframes vpick-trigger-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vpick-trigger--error {
+  border-color: var(--vpick-error-border-color);
+  background-color: var(--vpick-error-bg);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-error-ring-color);
+}
+
+.vpick-trigger--error:focus-visible {
+  border-color: var(--vpick-error-border-color);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-error-ring-color);
+}
+
+.vpick-trigger-label {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vpick-trigger-placeholder {
+  color: var(--vpick-placeholder-color);
+}
+
+.vpick-trigger-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--vpick-icon-color);
+  pointer-events: none;
+  user-select: none;
+  transition: transform 0.15s;
+}
+
+.vpick--rotate-icon .vpick-trigger--open .vpick-trigger-icon {
+  transform: rotate(180deg);
+}
+
+/* Listbox / Dropdown */
+
+.vpick-listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: var(--vpick-listbox-z-index);
+  box-sizing: border-box;
+  min-width: 100%;
+  max-height: var(--vpick-listbox-max-height);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background-color: var(--vpick-listbox-bg);
+  border-radius: var(--vpick-border-radius);
+  box-shadow: var(--vpick-listbox-shadow);
+  outline: 1px solid var(--vpick-listbox-ring);
+}
+
+/* Group wrapper — matches shadcn SelectGroup `scroll-my-1 p-1` */
+
+.vpick-group {
+  padding: 0.25rem;
+  scroll-margin-top: 0.25rem;
+  scroll-margin-bottom: 0.25rem;
+}
+
+/* Option */
+
+.vpick-option {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  position: relative;
+  padding: 0.25rem 2rem 0.25rem 0.375rem;
+  font-size: var(--vpick-font-size);
+  line-height: var(--vpick-line-height);
+  border-radius: var(--vpick-option-radius);
+  cursor: default;
+  user-select: none;
+}
+
+.vpick-option--highlighted {
+  background-color: var(--vpick-option-highlight-bg);
+}
+
+.vpick-option--selected {
+  color: var(--vpick-option-selected-color);
+}
+
+.vpick-option--disabled {
+  opacity: var(--vpick-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.vpick-option-check {
+  position: absolute;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--vpick-option-check-color);
+  pointer-events: none;
+}
+
+.vpick-option-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Group label */
+
+.vpick-group-label {
+  padding: 0.25rem 0.375rem;
+  font-size: var(--vpick-group-label-size);
+  color: var(--vpick-group-label-color);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Separator — shadcn SelectSeparator parity (`my-1 h-px bg-border`) */
+
+.vpick-separator {
+  pointer-events: none;
+  height: 1px;
+  margin-block: 0.25rem;
+  background-color: var(--vpick-border-color);
+}
+
+/* Visually hidden select for form submission (matches Radix) */
+
+.vpick-hidden-select {
+  position: absolute;
+  border: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  word-wrap: normal;
 }
