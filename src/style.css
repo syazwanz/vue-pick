@@ -284,7 +284,7 @@ button.vpick-trigger--loading:disabled,
   outline: 1px solid var(--vpick-listbox-ring);
 }
 
-/* Group wrapper — matches shadcn SelectGroup `scroll-my-1 p-1` */
+/* Group wrapper */
 
 .vpick-group {
   padding: 0.25rem;
@@ -349,7 +349,7 @@ button.vpick-trigger--loading:disabled,
   pointer-events: none;
 }
 
-/* Separator — shadcn SelectSeparator parity (`my-1 h-px bg-border`) */
+/* Separator */
 
 .vpick-separator {
   pointer-events: none;
@@ -358,7 +358,7 @@ button.vpick-trigger--loading:disabled,
   background-color: var(--vpick-border-color);
 }
 
-/* Visually hidden select for form submission (matches Radix) */
+/* Visually hidden select for form submission */
 
 .vpick-hidden-select {
   position: absolute;

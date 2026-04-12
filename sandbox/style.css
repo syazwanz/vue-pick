@@ -1,16 +1,13 @@
-/* ---------- tokens ---------- */
 :root {
   --vpick-width: 12rem;
 }
 
-/* ---------- reset (mirrors tailwind preflight) ---------- */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* ---------- layout ---------- */
 .container {
   display: flex;
   flex-direction: column;
@@ -38,7 +35,6 @@
   font-weight: 200;
 }
 
-/* ---------- section ---------- */
 .section {
   width: 100%;
   max-width: 600px;
@@ -59,14 +55,12 @@
   gap: 1.5rem;
 }
 
-/* ---------- form ---------- */
 .form-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-/* ---------- button ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -105,7 +99,6 @@
   border-radius: 0.625rem;
 }
 
-/* ---------- debug ---------- */
 .debug {
   margin: 0;
 }
