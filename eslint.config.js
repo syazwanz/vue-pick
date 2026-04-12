@@ -9,7 +9,7 @@ export default tseslint.config(
   ...pluginVue.configs["flat/recommended"],
   prettier,
   {
-    ignores: ["dist/", "node_modules/", "coverage/", "ref.local/"],
+    ignores: ["dist/", "node_modules/", "coverage/", "ref.local/", "docs/.vitepress/cache/", "docs/.vitepress/dist/"],
   },
   {
     rules: {

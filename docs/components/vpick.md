@@ -1,0 +1,89 @@
+<script setup>
+import BasicExample from '../examples/vpick/basic.vue'
+import BasicCode from '../examples/vpick/basic.vue?raw'
+import GroupedExample from '../examples/vpick/grouped.vue'
+import GroupedCode from '../examples/vpick/grouped.vue?raw'
+import SeparatorsExample from '../examples/vpick/separators.vue'
+import SeparatorsCode from '../examples/vpick/separators.vue?raw'
+</script>
+
+# VPick
+
+A custom dropdown triggered by a button, with full keyboard navigation and group labels. Vue 3 only in the current release.
+
+## Usage
+
+<Preview :code="BasicCode">
+  <BasicExample />
+</Preview>
+
+## Options
+
+Accepts the same `options` shape as `VPickNative` — flat arrays and grouped arrays both work.
+
+## Examples
+
+### Grouped
+
+<Preview :code="GroupedCode">
+  <GroupedExample />
+</Preview>
+
+### Separators + rotate icon
+
+<Preview :code="SeparatorsCode">
+  <SeparatorsExample />
+</Preview>
+
+## Props
+
+These props apply to both `VPickNative` and `VPick`:
+
+| Prop              | Type                | Default      | Description                                              |
+| ----------------- | ------------------- | ------------ | -------------------------------------------------------- |
+| `modelValue`      | `any`               | `undefined`  | Selected value. Use `v-model` for two-way binding.       |
+| `options`         | `OptionOrGroup[]`   | **required** | Array of options or option groups.                       |
+| `placeholder`     | `string`            | `undefined`  | Placeholder text shown when no value is selected.        |
+| `disabled`        | `boolean`           | `false`      | Disables the select.                                     |
+| `loading`         | `boolean`           | `false`      | Shows a spinner and disables interaction.                |
+| `error`           | `string`            | `undefined`  | Error message. Applies error styling and `aria-invalid`. |
+| `size`            | `"default" \| "sm"` | `"default"`  | Size variant.                                            |
+| `id`              | `string`            | `undefined`  | HTML `id` attribute.                                     |
+| `name`            | `string`            | `undefined`  | HTML `name` attribute for form submission.               |
+| `required`        | `boolean`           | `false`      | HTML `required` attribute.                               |
+| `ariaLabel`       | `string`            | `undefined`  | `aria-label` for accessibility.                          |
+| `ariaDescribedby` | `string`            | `undefined`  | `aria-describedby` for accessibility.                    |
+
+### VPick-only props
+
+| Prop         | Type      | Default | Description                                                           |
+| ------------ | --------- | ------- | --------------------------------------------------------------------- |
+| `separators` | `boolean` | `false` | Renders a horizontal divider between adjacent groups in the dropdown. |
+| `rotateIcon` | `boolean` | `false` | Rotates the trigger chevron 180° when the dropdown is open.           |
+
+## Slots
+
+| Slot      | Description                                             |
+| --------- | ------------------------------------------------------- |
+| `icon`    | Custom chevron icon. Shown when not loading.            |
+| `loading` | Custom loading indicator. Shown when `loading` is true. |
+
+## Keyboard navigation
+
+| Key               | Action                                |
+| ----------------- | ------------------------------------- |
+| `Enter` / `Space` | Open dropdown / select focused option |
+| `Escape`          | Close dropdown                        |
+| `↑` / `↓`         | Move focus between options            |
+| `Home`            | Focus first option                    |
+| `End`             | Focus last option                     |
+| `Tab`             | Close dropdown and move focus         |
+
+## Accessibility
+
+- WAI-ARIA listbox pattern (`role="combobox"`, `role="listbox"`, `role="option"`).
+- `aria-expanded` reflects open state on the trigger button.
+- `aria-activedescendant` tracks the focused option.
+- `aria-invalid` is set when the `error` prop is present.
+- `aria-disabled` on individual disabled options.
+- A visually hidden native `<select>` is kept in sync for form submission and Safari autofill.
