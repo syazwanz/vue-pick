@@ -1,5 +1,11 @@
 # vue-pick
 
+## 0.2.1
+
+### Patch Changes
+
+- 0d07c4c: Restructure README and clean up CSS comments
+
 ## 0.2.0
 
 ### Minor Changes
