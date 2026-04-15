@@ -1,6 +1,8 @@
 # Vue Pick
 
-![NPM Version](https://img.shields.io/npm/v/vue-pick) ![npm downloads](https://img.shields.io/npm/dm/vue-pick) ![GitHub stars](https://img.shields.io/github/stars/syazwanz/vue-pick)
+[![NPM Version](https://img.shields.io/npm/v/vue-pick)](https://www.npmjs.com/package/vue-pick) 
+[![npm downloads](https://img.shields.io/npm/dm/vue-pick)](https://www.npmjs.com/package/vue-pick) 
+[![GitHub stars](https://img.shields.io/github/stars/syazwanz/vue-pick)](https://github.com/syazwanz/vue-pick)
 
 **Accessible select components for Vue 2.7 and Vue 3.**
 
