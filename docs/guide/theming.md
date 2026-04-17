@@ -1,3 +1,8 @@
+---
+title: Theming
+description: Style Vue Pick with CSS custom properties. Override colors, spacing, and typography globally, per-scope, or inline — with full light and dark mode support.
+---
+
 # Theming
 
 Vue Pick uses CSS custom properties for all visual styling. Override them at any scope — globally in your root stylesheet, per-container, or inline on a single instance.

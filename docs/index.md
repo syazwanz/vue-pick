@@ -1,5 +1,7 @@
 ---
 layout: home
+title: Vue Pick - Accessible Select Component for Vue 2.7 and Vue 3
+description: Lightweight, zero-dependency select component library for Vue 2.7 and Vue 3. A styled native-select wrapper and a fully custom, fully accessible dropdown with keyboard navigation and ARIA support.
 
 hero:
   name: "Vue-Pick"

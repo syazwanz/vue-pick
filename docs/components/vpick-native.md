@@ -1,3 +1,8 @@
+---
+title: VPickNative
+description: A styled wrapper around the native HTML select element for Vue 2.7 and Vue 3. Native mobile UX, zero JavaScript dropdown, and full form integration.
+---
+
 <script setup>
 import BasicExample from '../examples/vpick-native/basic.vue'
 import BasicCode from '../examples/vpick-native/basic.vue?raw'
