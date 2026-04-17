@@ -117,7 +117,7 @@ export default defineConfig({
       { text: "Docs", link: "/guide/introduction" },
       { text: "Components", link: "/components/vpick-native" },
       {
-        text: "v0.2.1",
+        text: "v0.3.0",
         items: [
           {
             text: "Changelog",
