@@ -1,3 +1,8 @@
+---
+title: VPick
+description: A fully accessible custom dropdown for Vue 2.7 and Vue 3 with keyboard navigation, group labels, slots, and ARIA support.
+---
+
 <script setup>
 import BasicExample from '../examples/vpick/basic.vue'
 import BasicCode from '../examples/vpick/basic.vue?raw'
@@ -19,7 +24,7 @@ import RotateIconCode from '../examples/vpick/rotate-icon.vue?raw'
 
 # VPick
 
-A custom dropdown triggered by a button, with full keyboard navigation and group labels. Vue 3 only in the current release.
+A custom dropdown triggered by a button, with full keyboard navigation and group labels.
 
 ## Usage
 

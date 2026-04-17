@@ -14,10 +14,10 @@ Accessible select components for Vue 2.7 and Vue 3.
 
 ## Components
 
-| Component     | Vue 2.7 | Vue 3 | Description                                                       |
-| ------------- | :-----: | :---: | ----------------------------------------------------------------- |
-| `VPickNative` |   Yes   |  Yes  | Styled wrapper around the native `<select>`                       |
-| `VPick`       |    -    |  Yes  | Custom dropdown with keyboard navigation (Vue 2 port coming soon) |
+| Component     | Vue 2.7 | Vue 3 | Description                                 |
+| ------------- | :-----: | :---: | ------------------------------------------- |
+| `VPickNative` |   Yes   |  Yes  | Styled wrapper around the native `<select>` |
+| `VPick`       |   Yes   |  Yes  | Custom dropdown with keyboard navigation    |
 
 ## Quick start
 

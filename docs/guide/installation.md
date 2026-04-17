@@ -1,3 +1,8 @@
+---
+title: Installation
+description: Install Vue Pick via npm, pnpm, or yarn. Import the stylesheet and register the component in Vue 2.7 or Vue 3 projects.
+---
+
 # Installation
 
 ## Install the package
@@ -51,12 +56,8 @@ Both components are available from separate entry points. The API is identical â
 import { VPickNative, VPick } from "vue-pick"
 
 // Vue 2.7
-import { VPickNative } from "vue-pick/vue2"
+import { VPickNative, VPick } from "vue-pick/vue2"
 ```
-
-::: tip
-`VPick` is Vue 3 only in the current release. Use `VPickNative` for Vue 2.7 projects.
-:::
 
 ## Other CSS import strategies
 
