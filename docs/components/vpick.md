@@ -5,6 +5,16 @@ import GroupedExample from '../examples/vpick/grouped.vue'
 import GroupedCode from '../examples/vpick/grouped.vue?raw'
 import SeparatorsExample from '../examples/vpick/separators.vue'
 import SeparatorsCode from '../examples/vpick/separators.vue?raw'
+import DisabledExample from '../examples/vpick/disabled.vue'
+import DisabledCode from '../examples/vpick/disabled.vue?raw'
+import LoadingExample from '../examples/vpick/loading.vue'
+import LoadingCode from '../examples/vpick/loading.vue?raw'
+import ErrorExample from '../examples/vpick/error.vue'
+import ErrorCode from '../examples/vpick/error.vue?raw'
+import SizesExample from '../examples/vpick/sizes.vue'
+import SizesCode from '../examples/vpick/sizes.vue?raw'
+import RotateIconExample from '../examples/vpick/rotate-icon.vue'
+import RotateIconCode from '../examples/vpick/rotate-icon.vue?raw'
 </script>
 
 # VPick
@@ -19,7 +29,7 @@ A custom dropdown triggered by a button, with full keyboard navigation and group
 
 ## Options
 
-Accepts the same `options` shape as `VPickNative` — flat arrays and grouped arrays both work.
+Accepts the same `options` shape as `VPickNative` -- flat arrays and grouped arrays both work.
 
 ## Examples
 
@@ -29,10 +39,42 @@ Accepts the same `options` shape as `VPickNative` — flat arrays and grouped ar
   <GroupedExample />
 </Preview>
 
-### Separators + rotate icon
+### Separators
+
+Use `separators` to render a horizontal divider between adjacent groups. Combine with `rotate-icon` to rotate the chevron when the dropdown is open.
 
 <Preview :code="SeparatorsCode">
   <SeparatorsExample />
+</Preview>
+
+### Disabled
+
+<Preview :code="DisabledCode">
+  <DisabledExample />
+</Preview>
+
+### Loading
+
+<Preview :code="LoadingCode">
+  <LoadingExample />
+</Preview>
+
+### Error
+
+<Preview :code="ErrorCode">
+  <ErrorExample />
+</Preview>
+
+### Sizes
+
+<Preview :code="SizesCode">
+  <SizesExample />
+</Preview>
+
+### Rotate icon
+
+<Preview :code="RotateIconCode">
+  <RotateIconExample />
 </Preview>
 
 ## Props
@@ -59,7 +101,7 @@ These props apply to both `VPickNative` and `VPick`:
 | Prop         | Type      | Default | Description                                                           |
 | ------------ | --------- | ------- | --------------------------------------------------------------------- |
 | `separators` | `boolean` | `false` | Renders a horizontal divider between adjacent groups in the dropdown. |
-| `rotateIcon` | `boolean` | `false` | Rotates the trigger chevron 180° when the dropdown is open.           |
+| `rotateIcon` | `boolean` | `false` | Rotates the trigger chevron 180 degrees when the dropdown is open.    |
 
 ## Slots
 
@@ -74,7 +116,7 @@ These props apply to both `VPickNative` and `VPick`:
 | ----------------- | ------------------------------------- |
 | `Enter` / `Space` | Open dropdown / select focused option |
 | `Escape`          | Close dropdown                        |
-| `↑` / `↓`         | Move focus between options            |
+| `Arrow Up` / `Arrow Down` | Move focus between options    |
 | `Home`            | Focus first option                    |
 | `End`             | Focus last option                     |
 | `Tab`             | Close dropdown and move focus         |
