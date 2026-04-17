@@ -4,11 +4,20 @@
 
 Accessible select components for Vue 2.7 and Vue 3.
 
-- Zero dependencies
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/edit/vue-pick-demo?file=src%2FApp.vue)
+
+- Zero runtime dependencies
 - Native `<select>` wrapper and custom dropdown
 - Same API across Vue 2.7 and Vue 3
 - CSS custom properties for theming
 - Full keyboard navigation and ARIA support
+
+## Components
+
+| Component     | Vue 2.7 | Vue 3 | Description                                                       |
+| ------------- | :-----: | :---: | ----------------------------------------------------------------- |
+| `VPickNative` |   Yes   |  Yes  | Styled wrapper around the native `<select>`                       |
+| `VPick`       |    -    |  Yes  | Custom dropdown with keyboard navigation (Vue 2 port coming soon) |
 
 ## Quick start
 
@@ -23,7 +32,7 @@ import "vue-pick/style.css"
 ```vue
 <script setup>
 import { ref } from "vue"
-import { VPick } from "vue-pick"
+import { VPickNative } from "vue-pick"
 
 const selected = ref(null)
 const options = [
@@ -34,7 +43,11 @@ const options = [
 </script>
 
 <template>
-  <VPick v-model="selected" :options="options" placeholder="Select status" />
+  <VPickNative
+    v-model="selected"
+    :options="options"
+    placeholder="Select status"
+  />
 </template>
 ```
 
