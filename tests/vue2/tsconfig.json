@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "vue": [
+        "../../node_modules/vue2"
+      ],
+      "@vue/test-utils": [
+        "../../node_modules/test-utils-vue2"
+      ]
+    }
+  },
+  "include": [
+    "./**/*.ts"
+  ]
+}

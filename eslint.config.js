@@ -9,7 +9,14 @@ export default tseslint.config(
   ...pluginVue.configs["flat/recommended"],
   prettier,
   {
-    ignores: ["dist/", "node_modules/", "coverage/", "ref.local/", "docs/.vitepress/cache/", "docs/.vitepress/dist/"],
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "coverage/",
+      "ref.local/",
+      "docs/.vitepress/cache/",
+      "docs/.vitepress/dist/",
+    ],
   },
   {
     rules: {
@@ -25,6 +32,7 @@ export default tseslint.config(
       globals: {
         Event: "readonly",
         FormData: "readonly",
+        HTMLElement: "readonly",
         HTMLSelectElement: "readonly",
         HTMLFormElement: "readonly",
         HTMLButtonElement: "readonly",
