@@ -31,7 +31,7 @@
     "type": "git",
     "url": "git+https://github.com/syazwanz/vue-pick.git"
   },
-  "homepage": "https://vuepick.syazwan.xyz",
+  "homepage": "https://vue-pick.js.org",
   "bugs": {
     "url": "https://github.com/syazwanz/vue-pick/issues"
   },
