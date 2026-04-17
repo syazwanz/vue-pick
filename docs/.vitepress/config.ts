@@ -4,15 +4,41 @@ import { fileURLToPath, URL } from "node:url"
 const year = new Date().getFullYear()
 
 export default defineConfig({
-  title: "VuePick",
+  title: "<Vue-Pick/>",
   description: "Accessible select components for Vue 2.7 and Vue 3.",
   base: "/",
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ["link", { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }],
+    [
+      "link",
+      {
+        rel: "icon",
+        type: "image/webp",
+        sizes: "32x32",
+        href: "/icon.webp",
+      },
+    ],
+    [
+      "link",
+      {
+        rel: "icon",
+        type: "image/webp",
+        sizes: "16x16",
+        href: "/icon.webp",
+      },
+    ],
+    [
+      "link",
+      {
+        rel: "apple-touch-icon",
+        sizes: "180x180",
+        href: "/icon.webp",
+      },
+    ],
   ],
   themeConfig: {
+    logo: "/icon.webp",
     nav: [
       { text: "Docs", link: "/guide/introduction" },
       { text: "Components", link: "/components/vpick-native" },

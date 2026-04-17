@@ -2,8 +2,11 @@
 layout: home
 
 hero:
-  name: "VuePick"
+  name: "Vue-Pick"
   tagline: "Accessible select components for Vue 2.7 and Vue 3."
+  image:
+    src: /hero.webp
+    alt: VuePick
   actions:
     - theme: brand
       text: Get Started
