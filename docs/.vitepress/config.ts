@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress"
 import { fileURLToPath, URL } from "node:url"
+import pkg from "../../package.json" with { type: "json" }
 
 const year = new Date().getFullYear()
 const hostname = "https://vue-pick.js.org"
@@ -117,7 +118,7 @@ export default defineConfig({
       { text: "Docs", link: "/guide/introduction" },
       { text: "Components", link: "/components/vpick-native" },
       {
-        text: "v0.3.0",
+        text: `v${pkg.version}`,
         items: [
           {
             text: "Changelog",
