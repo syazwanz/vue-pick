@@ -78,7 +78,7 @@ describe("VPickNative (Vue 2)", () => {
       propsData: { options: status, value: "todo" },
     })
     const select = wrapper.find("select")
-    select.element.value = "done"
+    ;(select.element as HTMLSelectElement).value = "done"
     await select.trigger("change")
     expect(wrapper.emitted("input")).toBeTruthy()
     expect(wrapper.emitted("input")![0]).toEqual(["done"])
@@ -174,5 +174,75 @@ describe("VPickNative (Vue 2)", () => {
       slots: { loading: "<span class='custom-loader'>...</span>" },
     })
     expect(wrapper.find(".custom-loader").exists()).toBe(true)
+  })
+
+  describe("custom keys", () => {
+    const users = [
+      { id: 1, name: "Alice", inactive: false },
+      { id: 2, name: "Bob", inactive: true },
+    ]
+
+    it("renders labels via labelKey and matches values via valueKey", () => {
+      const wrapper = mount(VPickNative, {
+        propsData: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          value: 2,
+        },
+      })
+      const options = wrapper.findAll("option")
+      expect(options.at(0).text()).toBe("Alice")
+      expect(options.at(1).text()).toBe("Bob")
+      expect((wrapper.find("select").element as HTMLSelectElement).value).toBe(
+        "2",
+      )
+    })
+
+    it("emits value from valueKey on change", async () => {
+      const wrapper = mount(VPickNative, {
+        propsData: { options: users, labelKey: "name", valueKey: "id" },
+      })
+      const select = wrapper.find("select")
+      await select.setValue("1")
+      expect(wrapper.emitted("input")![0]).toEqual([1])
+    })
+
+    it("applies disabledKey to individual options", () => {
+      const wrapper = mount(VPickNative, {
+        propsData: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          disabledKey: "inactive",
+        },
+      })
+      const bob = wrapper.find('option[value="2"]')
+      expect(bob.attributes("disabled")).toBeDefined()
+    })
+
+    it("detects groups via groupOptionsKey", () => {
+      const regions = [
+        {
+          name: "Americas",
+          members: [
+            { id: "us", name: "United States" },
+            { id: "ca", name: "Canada" },
+          ],
+        },
+      ]
+      const wrapper = mount(VPickNative, {
+        propsData: {
+          options: regions,
+          labelKey: "name",
+          valueKey: "id",
+          groupOptionsKey: "members",
+        },
+      })
+      const groups = wrapper.findAll("optgroup")
+      expect(groups).toHaveLength(1)
+      expect(groups.at(0).attributes("label")).toBe("Americas")
+      expect(groups.at(0).findAll("option")).toHaveLength(2)
+    })
   })
 })

@@ -13,6 +13,31 @@ const formSubmitted = ref<string | null>(null)
 const selectedCustom = ref(null)
 const selectedCustomGroup = ref(null)
 const selectedTimezone = ref(null)
+const selectedByKey = ref<number | null>(null)
+const selectedByKeyNative = ref<number | null>(null)
+
+const users = [
+  { id: 1, name: "Alice", inactive: false },
+  { id: 2, name: "Bob", inactive: false },
+  { id: 3, name: "Charlie", inactive: true },
+]
+
+const regions = [
+  {
+    name: "Americas",
+    members: [
+      { id: "us", name: "United States" },
+      { id: "ca", name: "Canada" },
+    ],
+  },
+  {
+    name: "Europe",
+    members: [
+      { id: "uk", name: "United Kingdom" },
+      { id: "de", name: "Germany" },
+    ],
+  },
+]
 
 function onSubmit(e: Event) {
   const data = new FormData(e.target as HTMLFormElement)
@@ -85,6 +110,23 @@ function onSubmit(e: Event) {
         <div class="section__content">
           <v-pick :options="status" placeholder="Default" />
           <v-pick :options="status" placeholder="Small" size="sm" />
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Keys ({id, name, inactive})</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedByKey" :options="users" value-key="id" label-key="name" disabled-key="inactive"
+            placeholder="Select user" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedByKey ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Keys + Groups ({name, members})</h2>
+        <div class="section__content">
+          <v-pick :options="regions" value-key="id" label-key="name" group-options-key="members"
+            placeholder="Select region" />
         </div>
       </section>
 
@@ -196,6 +238,15 @@ function onSubmit(e: Event) {
         <h2 class="section__title">Disabled</h2>
         <div class="section__content">
           <v-pick-native :options="status" disabled placeholder="Not available" />
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Keys ({id, name, inactive})</h2>
+        <div class="section__content">
+          <v-pick-native v-model="selectedByKeyNative" :options="users" value-key="id" label-key="name"
+            disabled-key="inactive" placeholder="Select user" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedByKeyNative ?? 'null' }}</code></pre>
         </div>
       </section>
 

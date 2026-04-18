@@ -508,4 +508,78 @@ describe("VPick — slots", () => {
     })
     expect(wrapper.find(".custom-spin").exists()).toBe(true)
   })
+
+  describe("custom keys", () => {
+    const users = [
+      { id: 1, name: "Alice", inactive: false },
+      { id: 2, name: "Bob", inactive: true },
+    ]
+
+    it("renders labels via labelKey and emits values via valueKey", async () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+        },
+      })
+      await wrapper.find(".vpick-trigger").trigger("click")
+      const optionEls = wrapper.findAll(".vpick-option-label")
+      expect(optionEls.map((o) => o.text())).toEqual(["Alice", "Bob"])
+
+      await optionEls[0].trigger("click")
+      expect(wrapper.emitted("update:modelValue")![0]).toEqual([1])
+    })
+
+    it("shows selected label when modelValue matches a valueKey", () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          modelValue: 2,
+        },
+      })
+      expect(wrapper.find(".vpick-trigger-label").text()).toBe("Bob")
+    })
+
+    it("applies disabledKey to individual options", async () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          disabledKey: "inactive",
+        },
+      })
+      await wrapper.find(".vpick-trigger").trigger("click")
+      const bob = wrapper.findAll(".vpick-option")[1]
+      expect(bob.classes()).toContain("vpick-option--disabled")
+      expect(bob.attributes("aria-disabled")).toBe("true")
+    })
+
+    it("detects groups via groupOptionsKey", async () => {
+      const regions = [
+        {
+          name: "Americas",
+          members: [
+            { id: "us", name: "United States" },
+            { id: "ca", name: "Canada" },
+          ],
+        },
+      ]
+      const wrapper = mount(VPick, {
+        props: {
+          options: regions,
+          labelKey: "name",
+          valueKey: "id",
+          groupOptionsKey: "members",
+        },
+      })
+      await wrapper.find(".vpick-trigger").trigger("click")
+      expect(wrapper.find(".vpick-group-label").text()).toBe("Americas")
+      const opts = wrapper.findAll(".vpick-option-label")
+      expect(opts.map((o) => o.text())).toEqual(["United States", "Canada"])
+    })
+  })
 })

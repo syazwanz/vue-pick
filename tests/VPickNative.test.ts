@@ -176,4 +176,71 @@ describe("VPickNative", () => {
     })
     expect(wrapper.find(".custom-loader").exists()).toBe(true)
   })
+
+  describe("custom keys", () => {
+    const users = [
+      { id: 1, name: "Alice", inactive: false },
+      { id: 2, name: "Bob", inactive: true },
+    ]
+
+    it("renders labels via labelKey and matches values via valueKey", () => {
+      const wrapper = mount(VPickNative, {
+        props: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          modelValue: 2,
+        },
+      })
+      const options = wrapper.findAll("option")
+      expect(options.map((o) => o.text())).toEqual(["Alice", "Bob"])
+      expect(wrapper.find("select").element.value).toBe("2")
+    })
+
+    it("emits value from valueKey on change", async () => {
+      const wrapper = mount(VPickNative, {
+        props: { options: users, labelKey: "name", valueKey: "id" },
+      })
+      const select = wrapper.find("select")
+      await select.setValue("1")
+      expect(wrapper.emitted("update:modelValue")![0]).toEqual([1])
+    })
+
+    it("applies disabledKey to individual options", () => {
+      const wrapper = mount(VPickNative, {
+        props: {
+          options: users,
+          labelKey: "name",
+          valueKey: "id",
+          disabledKey: "inactive",
+        },
+      })
+      const bob = wrapper.find('option[value="2"]')
+      expect(bob.attributes("disabled")).toBeDefined()
+    })
+
+    it("detects groups via groupOptionsKey", () => {
+      const regions = [
+        {
+          name: "Americas",
+          members: [
+            { id: "us", name: "United States" },
+            { id: "ca", name: "Canada" },
+          ],
+        },
+      ]
+      const wrapper = mount(VPickNative, {
+        props: {
+          options: regions,
+          labelKey: "name",
+          valueKey: "id",
+          groupOptionsKey: "members",
+        },
+      })
+      const groups = wrapper.findAll("optgroup")
+      expect(groups).toHaveLength(1)
+      expect(groups[0].attributes("label")).toBe("Americas")
+      expect(groups[0].findAll("option")).toHaveLength(2)
+    })
+  })
 })

@@ -2,17 +2,17 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue"
 import {
   type OptionItem,
-  type OptionOrGroup,
   type FlatOption,
   flattenOptions,
   generateId,
+  normalizeOptions,
 } from "../core"
 
 defineOptions({ name: "VPick" })
 
 const props = defineProps<{
   modelValue?: OptionItem["value"]
-  options: OptionOrGroup[]
+  options: readonly unknown[]
   id?: string
   name?: string
   placeholder?: string
@@ -25,6 +25,11 @@ const props = defineProps<{
   separators?: boolean
   ariaLabel?: string
   ariaDescribedby?: string
+  labelKey?: string
+  valueKey?: string
+  disabledKey?: string
+  childrenKey?: string
+  groupOptionsKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -39,8 +44,18 @@ const isFormControl = ref(true)
 const instanceId = props.id ?? generateId()
 const listboxId = `${instanceId}-listbox`
 
+const normalized = computed(() =>
+  normalizeOptions(props.options, {
+    label: props.labelKey,
+    value: props.valueKey,
+    disabled: props.disabledKey,
+    children: props.childrenKey,
+    groupOptions: props.groupOptionsKey,
+  }),
+)
+
 const flat = computed<FlatOption[]>(() =>
-  flattenOptions(props.options, instanceId),
+  flattenOptions(normalized.value, instanceId),
 )
 
 interface Section {
@@ -243,31 +258,31 @@ onBeforeUnmount(() => {
     <div v-show="isOpen" :id="listboxId" role="listbox" class="vpick-listbox" @mousedown.prevent>
       <template v-for="(section, si) in sections" :key="'s' + si">
         <div v-if="separators && si > 0" role="separator" class="vpick-separator" aria-hidden="true" />
-      <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
-        <div v-if="section.label" :id="section.labelId" class="vpick-group-label">{{ section.label }}</div>
-        <div v-for="item in section.items" :id="item.fo.id" :key="item.fo.id" role="option" :class="[
-          'vpick-option',
-          {
-            'vpick-option--highlighted': item.flatIdx === highlightedIndex,
-            'vpick-option--selected': item.fo.option.value === modelValue,
-            'vpick-option--disabled':
-              item.fo.option.disabled || item.fo.groupDisabled,
-          },
-        ]" :aria-selected="item.fo.option.value === modelValue" :aria-disabled="item.fo.option.disabled || item.fo.groupDisabled || undefined
+        <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
+          <div v-if="section.label" :id="section.labelId" class="vpick-group-label">{{ section.label }}</div>
+          <div v-for="item in section.items" :id="item.fo.id" :key="item.fo.id" role="option" :class="[
+            'vpick-option',
+            {
+              'vpick-option--highlighted': item.flatIdx === highlightedIndex,
+              'vpick-option--selected': item.fo.option.value === modelValue,
+              'vpick-option--disabled':
+                item.fo.option.disabled || item.fo.groupDisabled,
+            },
+          ]" :aria-selected="item.fo.option.value === modelValue" :aria-disabled="item.fo.option.disabled || item.fo.groupDisabled || undefined
           " @click="selectOption(item.fo)" @mouseenter="
             !(item.fo.option.disabled || item.fo.groupDisabled) &&
             (highlightedIndex = item.flatIdx)
             ">
-          <span class="vpick-option-label">{{ item.fo.option.label }}</span>
-          <span class="vpick-option-check" aria-hidden="true">
-            <svg v-if="item.fo.option.value === modelValue" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
-          </span>
+            <span class="vpick-option-label">{{ item.fo.option.label }}</span>
+            <span class="vpick-option-check" aria-hidden="true">
+              <svg v-if="item.fo.option.value === modelValue" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+          </div>
         </div>
-      </div>
       </template>
     </div>
 

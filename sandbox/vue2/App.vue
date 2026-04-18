@@ -13,6 +13,31 @@ const formSubmitted = ref<string | null>(null)
 const selectedCustom = ref(null)
 const selectedCustomGroup = ref(null)
 const selectedTimezone = ref(null)
+const selectedByKey = ref<number | null>(null)
+const selectedByKeyNative = ref<number | null>(null)
+
+const users = [
+  { id: 1, name: "Alice", inactive: false },
+  { id: 2, name: "Bob", inactive: false },
+  { id: 3, name: "Charlie", inactive: true },
+]
+
+const regions = [
+  {
+    name: "Americas",
+    members: [
+      { id: "us", name: "United States" },
+      { id: "ca", name: "Canada" },
+    ],
+  },
+  {
+    name: "Europe",
+    members: [
+      { id: "uk", name: "United Kingdom" },
+      { id: "de", name: "Germany" },
+    ],
+  },
+]
 
 function onSubmit(e: Event) {
   const data = new FormData(e.target as HTMLFormElement)
@@ -25,7 +50,7 @@ function onSubmit(e: Event) {
 
     <div class="container">
       <div class="title-container">
-        <h1 class="title">{{ '<v-pick /> (Vue 2)' }}</h1>
+        <h1 class="title">&lt;v-pick /&gt;</h1>
       </div>
 
       <section class="section">
@@ -89,6 +114,23 @@ function onSubmit(e: Event) {
       </section>
 
       <section class="section">
+        <h2 class="section__title">Custom Keys ({id, name, inactive})</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedByKey" :options="users" value-key="id" label-key="name" disabled-key="inactive"
+            placeholder="Select user" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedByKey ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Keys + Groups ({name, members})</h2>
+        <div class="section__content">
+          <v-pick :options="regions" value-key="id" label-key="name" group-options-key="members"
+            placeholder="Select region" />
+        </div>
+      </section>
+
+      <section class="section">
         <h2 class="section__title">Rotate Icon</h2>
         <div class="section__content">
           <v-pick :options="status" placeholder="Default" rotate-icon />
@@ -125,6 +167,7 @@ function onSubmit(e: Event) {
         </div>
       </section>
 
+
       <section class="section">
         <h2 class="section__title">Required</h2>
         <div class="section__content">
@@ -141,7 +184,7 @@ function onSubmit(e: Event) {
     <div class="container" style="margin-top: 6rem;">
 
       <div class="title-container">
-        <h1 class="title">{{ '<v-pick-native /> (Vue 2)' }}</h1>
+        <h1 class="title">&lt;v-pick-native /&gt;</h1>
       </div>
 
       <section class="section">
@@ -157,6 +200,14 @@ function onSubmit(e: Event) {
         <div class="section__content">
           <v-pick-native id="dept" v-model="selectedGroup" :options="departments" placeholder="Select department" />
           <pre class="debug">v-model: <code class="debug__val">{{ selectedGroup ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Group Timezone</h2>
+        <div class="section__content">
+          <v-pick-native v-model="selectedTimezone" :options="timezones" placeholder="Select a timezone" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedTimezone ?? 'null' }}</code></pre>
         </div>
       </section>
 
@@ -187,6 +238,57 @@ function onSubmit(e: Event) {
         <h2 class="section__title">Disabled</h2>
         <div class="section__content">
           <v-pick-native :options="status" disabled placeholder="Not available" />
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Keys ({id, name, inactive})</h2>
+        <div class="section__content">
+          <v-pick-native v-model="selectedByKeyNative" :options="users" value-key="id" label-key="name"
+            disabled-key="inactive" placeholder="Select user" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedByKeyNative ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Required</h2>
+        <div class="section__content">
+          <form class="form-row" @submit.prevent="onSubmit">
+            <v-pick-native v-model="selectedForm" name="status" :options="status" placeholder="Select status"
+              required />
+            <button type="submit" class="btn btn--pick">Submit</button>
+          </form>
+          <pre class="debug">submitted: <code class="debug__val">{{ formSubmitted ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Chevron</h2>
+        <div class="section__content">
+          <v-pick-native :options="status" placeholder="Select status">
+            <template #icon>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" style="width: 16px; height: 16px">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+              </svg>
+            </template>
+          </v-pick-native>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Loading Icon</h2>
+        <div class="section__content">
+          <v-pick-native :options="status" loading placeholder="Fetching">
+            <template #loading>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </template>
+          </v-pick-native>
         </div>
       </section>
     </div>

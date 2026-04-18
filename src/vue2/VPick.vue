@@ -14,15 +14,15 @@ import {
 } from "vue"
 import {
   type OptionItem,
-  type OptionOrGroup,
   type FlatOption,
   flattenOptions,
   generateId,
+  normalizeOptions,
 } from "../core"
 
 const props = defineProps<{
   value?: OptionItem["value"]
-  options: OptionOrGroup[]
+  options: readonly unknown[]
   id?: string
   name?: string
   placeholder?: string
@@ -35,6 +35,11 @@ const props = defineProps<{
   separators?: boolean
   ariaLabel?: string
   ariaDescribedby?: string
+  labelKey?: string
+  valueKey?: string
+  disabledKey?: string
+  childrenKey?: string
+  groupOptionsKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -48,8 +53,18 @@ const isFormControl = ref(true)
 const instanceId = props.id ?? generateId()
 const listboxId = `${instanceId}-listbox`
 
+const normalized = computed(() =>
+  normalizeOptions(props.options, {
+    label: props.labelKey,
+    value: props.valueKey,
+    disabled: props.disabledKey,
+    children: props.childrenKey,
+    groupOptions: props.groupOptionsKey,
+  }),
+)
+
 const flat = computed<FlatOption[]>(() =>
-  flattenOptions(props.options, instanceId),
+  flattenOptions(normalized.value, instanceId),
 )
 
 interface Section {
