@@ -18,29 +18,58 @@ import {
   flattenOptions,
   generateId,
   normalizeOptions,
+  computePosition,
+  lockBodyScroll,
+  unlockBodyScroll,
 } from "../core"
 
-const props = defineProps<{
-  value?: OptionItem["value"]
-  options: readonly unknown[]
-  id?: string
-  name?: string
-  placeholder?: string
-  disabled?: boolean
-  required?: boolean
-  loading?: boolean
-  error?: string
-  size?: "sm" | "default"
-  rotateIcon?: boolean
-  separators?: boolean
-  ariaLabel?: string
-  ariaDescribedby?: string
-  labelKey?: string
-  valueKey?: string
-  disabledKey?: string
-  childrenKey?: string
-  groupOptionsKey?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    value?: OptionItem["value"]
+    options: readonly unknown[]
+    id?: string
+    name?: string
+    placeholder?: string
+    disabled?: boolean
+    required?: boolean
+    loading?: boolean
+    error?: string
+    size?: "sm" | "default"
+    rotateIcon?: boolean
+    separators?: boolean
+    ariaLabel?: string
+    ariaDescribedby?: string
+    labelKey?: string
+    valueKey?: string
+    disabledKey?: string
+    childrenKey?: string
+    groupOptionsKey?: string
+    teleportTo?: string | HTMLElement
+    bodyLock?: boolean
+  }>(),
+  {
+    value: undefined,
+    id: undefined,
+    name: undefined,
+    placeholder: undefined,
+    disabled: false,
+    required: false,
+    loading: false,
+    error: undefined,
+    size: "default",
+    rotateIcon: false,
+    separators: false,
+    ariaLabel: undefined,
+    ariaDescribedby: undefined,
+    labelKey: undefined,
+    valueKey: undefined,
+    disabledKey: undefined,
+    childrenKey: undefined,
+    groupOptionsKey: undefined,
+    teleportTo: undefined,
+    bodyLock: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: "input", value: OptionItem["value"]): void
@@ -100,7 +129,10 @@ const selectedLabel = computed(() => {
 const instance = getCurrentInstance()
 const rootRef = ref<HTMLDivElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)
+const listboxRef = ref<HTMLDivElement | null>(null)
 const hiddenSelectRef = ref<HTMLSelectElement | null>(null)
+
+const listboxStyle = ref<Record<string, string>>({})
 
 function getRootEl(): HTMLElement | null {
   return (
@@ -108,6 +140,96 @@ function getRootEl(): HTMLElement | null {
     (instance?.proxy?.$el as HTMLElement | undefined) ??
     null
   )
+}
+
+// Forward listbox CSS vars from the root so they reach the portaled listbox,
+// which no longer inherits from .vpick once it lives in <body>.
+const FORWARDED_VARS = [
+  "--vpick-listbox-min-width",
+  "--vpick-listbox-max-width",
+  "--vpick-listbox-max-height",
+  "--vpick-listbox-bg",
+  "--vpick-listbox-shadow",
+  "--vpick-listbox-ring",
+  "--vpick-listbox-z-index",
+  "--vpick-option-hover-bg",
+  "--vpick-option-highlight-bg",
+  "--vpick-option-selected-color",
+  "--vpick-option-check-color",
+  "--vpick-option-radius",
+  "--vpick-group-label-color",
+  "--vpick-group-label-size",
+  "--vpick-border-radius",
+  "--vpick-border-color",
+  "--vpick-font-family",
+  "--vpick-font-size",
+  "--vpick-line-height",
+  "--vpick-text-color",
+  "--vpick-disabled-opacity",
+]
+
+function forwardedVars(): Record<string, string> {
+  const root = getRootEl()
+  if (!root) return {}
+  const cs = getComputedStyle(root)
+  const out: Record<string, string> = {}
+  for (const name of FORWARDED_VARS) {
+    const inline = root.style.getPropertyValue(name).trim()
+    if (inline) {
+      out[name] = inline
+      continue
+    }
+    const computed = cs.getPropertyValue(name).trim()
+    if (computed) out[name] = computed
+  }
+  return out
+}
+
+function resolveTeleportTarget(): HTMLElement {
+  const to = props.teleportTo
+  if (to instanceof HTMLElement) return to
+  if (typeof to === "string") {
+    const el = document.querySelector(to)
+    if (el instanceof HTMLElement) return el
+  }
+  return document.body
+}
+
+async function updatePosition() {
+  const trigger = triggerRef.value
+  if (!trigger) return
+  const rect = trigger.getBoundingClientRect()
+  const initialHeight = listboxRef.value?.offsetHeight || 240
+  const initial = computePosition(rect, initialHeight)
+  const forwarded = forwardedVars()
+  listboxStyle.value = {
+    ...forwarded,
+    position: "fixed",
+    top: `${initial.top}px`,
+    left: `${initial.left}px`,
+    "--vpick-trigger-width": `${rect.width}px`,
+  }
+  await nextTick()
+  const el = listboxRef.value
+  if (!el) return
+  const measured = computePosition(
+    trigger.getBoundingClientRect(),
+    el.offsetHeight,
+  )
+  listboxStyle.value = {
+    ...forwarded,
+    position: "fixed",
+    top: `${measured.top}px`,
+    left: `${measured.left}px`,
+    "--vpick-trigger-width": `${rect.width}px`,
+  }
+}
+
+function onReposition(e?: Event) {
+  if (!isOpen.value) return
+  const target = e?.target
+  if (target instanceof Node && listboxRef.value?.contains(target)) return
+  updatePosition()
 }
 
 watch(
@@ -131,15 +253,27 @@ function highlightDefault() {
       : list.findIndex((f) => !f.option.disabled && !f.groupDisabled)
 }
 
+let scrollLocked = false
+
 function open() {
   if (props.disabled || props.loading) return
   isOpen.value = true
   highlightDefault()
+  if (props.bodyLock) {
+    lockBodyScroll()
+    scrollLocked = true
+  }
+  nextTick(updatePosition)
 }
 
 function close() {
+  if (!isOpen.value) return
   isOpen.value = false
   highlightedIndex.value = -1
+  if (scrollLocked) {
+    unlockBodyScroll()
+    scrollLocked = false
+  }
 }
 
 function toggle() {
@@ -219,17 +353,35 @@ function onKeydown(e: KeyboardEvent) {
 function onClickOutside(e: MouseEvent) {
   const target = e.target as Node
   if (getRootEl()?.contains(target)) return
+  if (listboxRef.value?.contains(target)) return
   close()
 }
 
 onMounted(async () => {
   document.addEventListener("mousedown", onClickOutside)
+  window.addEventListener("scroll", onReposition, true)
+  window.addEventListener("resize", onReposition)
   await nextTick()
   isFormControl.value = !!getRootEl()?.closest("form")
+  // Move the listbox DOM node to the teleport target. Vue's vnode keeps the
+  // reference, so patching continues to work from the new location.
+  if (listboxRef.value) {
+    resolveTeleportTarget().appendChild(listboxRef.value)
+  }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
+  window.removeEventListener("scroll", onReposition, true)
+  window.removeEventListener("resize", onReposition)
+  if (scrollLocked) {
+    unlockBodyScroll()
+    scrollLocked = false
+  }
+  // Detach the portaled listbox so Vue doesn't leave orphan nodes in <body>.
+  if (listboxRef.value?.parentNode) {
+    listboxRef.value.parentNode.removeChild(listboxRef.value)
+  }
 })
 </script>
 
@@ -269,8 +421,9 @@ onBeforeUnmount(() => {
       </span>
     </button>
 
-    <!-- Dropdown listbox -->
-    <div v-show="isOpen" :id="listboxId" role="listbox" class="vpick-listbox" @mousedown.prevent>
+    <!-- Dropdown listbox (portaled to body via DOM move on mount) -->
+    <div v-show="isOpen" :id="listboxId" ref="listboxRef" role="listbox" class="vpick-listbox" :style="listboxStyle"
+      @mousedown.prevent>
       <div v-for="(section, si) in sections" :key="'s' + si">
         <div v-if="separators && si > 0" role="separator" class="vpick-separator" aria-hidden="true" />
         <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
