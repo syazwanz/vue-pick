@@ -27,6 +27,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ["docs/**/*.{vue,ts,js}", "sandbox/**/*.vue"],
+    rules: {
+      "vue/multi-word-component-names": "off",
+    },
+  },
+  {
     files: ["**/*.vue"],
     languageOptions: {
       globals: {
@@ -41,7 +47,13 @@ export default tseslint.config(
         KeyboardEvent: "readonly",
         MouseEvent: "readonly",
         Node: "readonly",
+        TouchEvent: "readonly",
         document: "readonly",
+        window: "readonly",
+        navigator: "readonly",
+        getComputedStyle: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
       },
       parserOptions: {
         parser: tseslint.parser,

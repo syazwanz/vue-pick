@@ -269,15 +269,16 @@ button.vpick-trigger--loading:disabled,
 /* Listbox / Dropdown */
 
 .vpick-listbox {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* position/top/left set inline by VPick (portaled to body) */
+  /* width: override --vpick-listbox-min-width to change behavior */
   z-index: var(--vpick-listbox-z-index);
   box-sizing: border-box;
-  min-width: 100%;
+  min-width: var(--vpick-listbox-min-width, var(--vpick-trigger-width));
+  max-width: var(--vpick-listbox-max-width, calc(100vw - 16px));
   max-height: var(--vpick-listbox-max-height);
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
   background-color: var(--vpick-listbox-bg);
   border-radius: var(--vpick-border-radius);
   box-shadow: var(--vpick-listbox-shadow);

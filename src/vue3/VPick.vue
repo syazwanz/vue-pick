@@ -1,36 +1,65 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue"
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue"
 import {
   type OptionItem,
   type FlatOption,
   flattenOptions,
   generateId,
   normalizeOptions,
+  computePosition,
+  lockBodyScroll,
+  unlockBodyScroll,
 } from "../core"
 
 defineOptions({ name: "VPick" })
 
-const props = defineProps<{
-  modelValue?: OptionItem["value"]
-  options: readonly unknown[]
-  id?: string
-  name?: string
-  placeholder?: string
-  disabled?: boolean
-  required?: boolean
-  loading?: boolean
-  error?: string
-  size?: "sm" | "default"
-  rotateIcon?: boolean
-  separators?: boolean
-  ariaLabel?: string
-  ariaDescribedby?: string
-  labelKey?: string
-  valueKey?: string
-  disabledKey?: string
-  childrenKey?: string
-  groupOptionsKey?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue?: OptionItem["value"]
+    options: readonly unknown[]
+    id?: string
+    name?: string
+    placeholder?: string
+    disabled?: boolean
+    required?: boolean
+    loading?: boolean
+    error?: string
+    size?: "sm" | "default"
+    rotateIcon?: boolean
+    separators?: boolean
+    ariaLabel?: string
+    ariaDescribedby?: string
+    labelKey?: string
+    valueKey?: string
+    disabledKey?: string
+    childrenKey?: string
+    groupOptionsKey?: string
+    teleportTo?: string | HTMLElement
+    bodyLock?: boolean
+  }>(),
+  {
+    modelValue: undefined,
+    id: undefined,
+    name: undefined,
+    placeholder: undefined,
+    disabled: false,
+    required: false,
+    loading: false,
+    error: undefined,
+    size: "default",
+    rotateIcon: false,
+    separators: false,
+    ariaLabel: undefined,
+    ariaDescribedby: undefined,
+    labelKey: undefined,
+    valueKey: undefined,
+    disabledKey: undefined,
+    childrenKey: undefined,
+    groupOptionsKey: undefined,
+    teleportTo: undefined,
+    bodyLock: true,
+  },
+)
 
 const emit = defineEmits<{
   "update:modelValue": [value: OptionItem["value"]]
@@ -90,7 +119,95 @@ const selectedLabel = computed(() => {
 
 const rootRef = ref<HTMLDivElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)
+const listboxRef = ref<HTMLDivElement | null>(null)
 const hiddenSelectRef = ref<HTMLSelectElement | null>(null)
+
+const listboxStyle = ref<Record<string, string>>({})
+
+// Forward listbox CSS vars from the root so they reach the teleported listbox,
+// which no longer inherits from .vpick once it lives in <body>.
+const FORWARDED_VARS = [
+  "--vpick-listbox-min-width",
+  "--vpick-listbox-max-width",
+  "--vpick-listbox-max-height",
+  "--vpick-listbox-bg",
+  "--vpick-listbox-shadow",
+  "--vpick-listbox-ring",
+  "--vpick-listbox-z-index",
+  "--vpick-option-hover-bg",
+  "--vpick-option-highlight-bg",
+  "--vpick-option-selected-color",
+  "--vpick-option-check-color",
+  "--vpick-option-radius",
+  "--vpick-group-label-color",
+  "--vpick-group-label-size",
+  "--vpick-border-radius",
+  "--vpick-border-color",
+  "--vpick-font-family",
+  "--vpick-font-size",
+  "--vpick-line-height",
+  "--vpick-text-color",
+  "--vpick-disabled-opacity",
+]
+
+function forwardedVars(): Record<string, string> {
+  const root = rootRef.value
+  if (!root) return {}
+  const cs = getComputedStyle(root)
+  const out: Record<string, string> = {}
+  for (const name of FORWARDED_VARS) {
+    // Prefer inline style so unresolved var() references (e.g.
+    // var(--vpick-trigger-width), which only resolves on the listbox) are
+    // forwarded as-is. Fall back to computed style for class-based overrides.
+    const inline = root.style.getPropertyValue(name).trim()
+    if (inline) {
+      out[name] = inline
+      continue
+    }
+    const computed = cs.getPropertyValue(name).trim()
+    if (computed) out[name] = computed
+  }
+  return out
+}
+
+async function updatePosition() {
+  const trigger = triggerRef.value
+  if (!trigger) return
+  const rect = trigger.getBoundingClientRect()
+  // First paint: use a sensible default height; next frame remeasures actual.
+  const initialHeight = listboxRef.value?.offsetHeight || 240
+  const initial = computePosition(rect, initialHeight)
+  const forwarded = forwardedVars()
+  listboxStyle.value = {
+    ...forwarded,
+    position: "fixed",
+    top: `${initial.top}px`,
+    left: `${initial.left}px`,
+    "--vpick-trigger-width": `${rect.width}px`,
+  }
+  await nextTick()
+  const el = listboxRef.value
+  if (!el) return
+  const measured = computePosition(
+    trigger.getBoundingClientRect(),
+    el.offsetHeight,
+  )
+  listboxStyle.value = {
+    ...forwarded,
+    position: "fixed",
+    top: `${measured.top}px`,
+    left: `${measured.left}px`,
+    "--vpick-trigger-width": `${rect.width}px`,
+  }
+}
+
+function onReposition(e?: Event) {
+  if (!isOpen.value) return
+  // Ignore scroll events originating from the listbox's own scroll container.
+  const target = e?.target
+  if (target instanceof Node && listboxRef.value?.contains(target)) return
+  updatePosition()
+}
 
 // Bubble value changes to parent form handlers.
 // Vue's reactive :value binding sets the DOM property without firing a change
@@ -116,15 +233,27 @@ function highlightDefault() {
       : list.findIndex((f) => !f.option.disabled && !f.groupDisabled)
 }
 
+let scrollLocked = false
+
 function open() {
   if (props.disabled || props.loading) return
   isOpen.value = true
   highlightDefault()
+  if (props.bodyLock) {
+    lockBodyScroll()
+    scrollLocked = true
+  }
+  nextTick(updatePosition)
 }
 
 function close() {
+  if (!isOpen.value) return
   isOpen.value = false
   highlightedIndex.value = -1
+  if (scrollLocked) {
+    unlockBodyScroll()
+    scrollLocked = false
+  }
 }
 
 function toggle() {
@@ -204,17 +333,26 @@ function onKeydown(e: KeyboardEvent) {
 function onClickOutside(e: MouseEvent) {
   const target = e.target as Node
   if (rootRef.value?.contains(target)) return
+  if (listboxRef.value?.contains(target)) return
   close()
 }
 
 onMounted(() => {
   document.addEventListener("mousedown", onClickOutside)
+  window.addEventListener("scroll", onReposition, true)
+  window.addEventListener("resize", onReposition)
   // render hidden form control only when trigger is inside a <form>
   isFormControl.value = !!rootRef.value?.closest("form")
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
+  window.removeEventListener("scroll", onReposition, true)
+  window.removeEventListener("resize", onReposition)
+  if (scrollLocked) {
+    unlockBodyScroll()
+    scrollLocked = false
+  }
 })
 </script>
 
@@ -254,37 +392,40 @@ onBeforeUnmount(() => {
       </span>
     </button>
 
-    <!-- Dropdown listbox -->
-    <div v-show="isOpen" :id="listboxId" role="listbox" class="vpick-listbox" @mousedown.prevent>
-      <template v-for="(section, si) in sections" :key="'s' + si">
-        <div v-if="separators && si > 0" role="separator" class="vpick-separator" aria-hidden="true" />
-        <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
-          <div v-if="section.label" :id="section.labelId" class="vpick-group-label">{{ section.label }}</div>
-          <div v-for="item in section.items" :id="item.fo.id" :key="item.fo.id" role="option" :class="[
-            'vpick-option',
-            {
-              'vpick-option--highlighted': item.flatIdx === highlightedIndex,
-              'vpick-option--selected': item.fo.option.value === modelValue,
-              'vpick-option--disabled':
-                item.fo.option.disabled || item.fo.groupDisabled,
-            },
-          ]" :aria-selected="item.fo.option.value === modelValue" :aria-disabled="item.fo.option.disabled || item.fo.groupDisabled || undefined
-          " @click="selectOption(item.fo)" @mouseenter="
-            !(item.fo.option.disabled || item.fo.groupDisabled) &&
-            (highlightedIndex = item.flatIdx)
-            ">
-            <span class="vpick-option-label">{{ item.fo.option.label }}</span>
-            <span class="vpick-option-check" aria-hidden="true">
-              <svg v-if="item.fo.option.value === modelValue" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-            </span>
+    <!-- Dropdown listbox (portaled to body by default) -->
+    <Teleport :to="teleportTo ?? 'body'" :disabled="!isOpen">
+      <div v-show="isOpen" :id="listboxId" ref="listboxRef" role="listbox" class="vpick-listbox" :style="listboxStyle"
+        @mousedown.prevent>
+        <template v-for="(section, si) in sections" :key="'s' + si">
+          <div v-if="separators && si > 0" role="separator" class="vpick-separator" aria-hidden="true" />
+          <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
+            <div v-if="section.label" :id="section.labelId" class="vpick-group-label">{{ section.label }}</div>
+            <div v-for="item in section.items" :id="item.fo.id" :key="item.fo.id" role="option" :class="[
+              'vpick-option',
+              {
+                'vpick-option--highlighted': item.flatIdx === highlightedIndex,
+                'vpick-option--selected': item.fo.option.value === modelValue,
+                'vpick-option--disabled':
+                  item.fo.option.disabled || item.fo.groupDisabled,
+              },
+            ]" :aria-selected="item.fo.option.value === modelValue" :aria-disabled="item.fo.option.disabled || item.fo.groupDisabled || undefined
+              " @click="selectOption(item.fo)" @mouseenter="
+                !(item.fo.option.disabled || item.fo.groupDisabled) &&
+                (highlightedIndex = item.flatIdx)
+                ">
+              <span class="vpick-option-label">{{ item.fo.option.label }}</span>
+              <span class="vpick-option-check" aria-hidden="true">
+                <svg v-if="item.fo.option.value === modelValue" xmlns="http://www.w3.org/2000/svg" width="16"
+                  height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
+            </div>
           </div>
-        </div>
-      </template>
-    </div>
+        </template>
+      </div>
+    </Teleport>
 
     <!-- Visually hidden select for form submission + validation -->
     <select v-if="isFormControl" ref="hiddenSelectRef" :name="name" :required="required" :disabled="disabled"
