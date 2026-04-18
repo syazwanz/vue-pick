@@ -133,6 +133,7 @@ export default defineConfig({
         items: [
           { text: "Introduction", link: "/guide/introduction" },
           { text: "Installation", link: "/guide/installation" },
+          { text: "Data Shape", link: "/guide/data-shape" },
           { text: "Theming", link: "/guide/theming" },
         ],
       },

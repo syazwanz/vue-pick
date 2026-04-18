@@ -20,6 +20,8 @@ import SizesExample from '../examples/vpick/sizes.vue'
 import SizesCode from '../examples/vpick/sizes.vue?raw'
 import RotateIconExample from '../examples/vpick/rotate-icon.vue'
 import RotateIconCode from '../examples/vpick/rotate-icon.vue?raw'
+import CustomKeysExample from '../examples/vpick/custom-keys.vue'
+import CustomKeysCode from '../examples/vpick/custom-keys.vue?raw'
 </script>
 
 # VPick
@@ -82,6 +84,14 @@ Use `separators` to render a horizontal divider between adjacent groups. Combine
   <RotateIconExample />
 </Preview>
 
+### Custom data shape
+
+Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
+
+<Preview :code="CustomKeysCode">
+  <CustomKeysExample />
+</Preview>
+
 ## Props
 
 These props apply to both `VPickNative` and `VPick`:
@@ -100,13 +110,18 @@ These props apply to both `VPickNative` and `VPick`:
 | `required`        | `boolean`           | `false`      | HTML `required` attribute.                               |
 | `ariaLabel`       | `string`            | `undefined`  | `aria-label` for accessibility.                          |
 | `ariaDescribedby` | `string`            | `undefined`  | `aria-describedby` for accessibility.                    |
+| `labelKey`        | `string`            | `"label"`    | Object key to read each option's visible label from.     |
+| `valueKey`        | `string`            | `"value"`    | Object key to read each option's value from.             |
+| `disabledKey`     | `string`            | `"disabled"` | Object key to read each option's disabled flag from.     |
+| `groupOptionsKey` | `string`            | `"options"`  | Object key for the options array inside a group.         |
 
 ### VPick-only props
 
-| Prop         | Type      | Default | Description                                                           |
-| ------------ | --------- | ------- | --------------------------------------------------------------------- |
-| `separators` | `boolean` | `false` | Renders a horizontal divider between adjacent groups in the dropdown. |
-| `rotateIcon` | `boolean` | `false` | Rotates the trigger chevron 180 degrees when the dropdown is open.    |
+| Prop          | Type      | Default      | Description                                                           |
+| ------------- | --------- | ------------ | --------------------------------------------------------------------- |
+| `separators`  | `boolean` | `false`      | Renders a horizontal divider between adjacent groups in the dropdown. |
+| `rotateIcon`  | `boolean` | `false`      | Rotates the trigger chevron 180 degrees when the dropdown is open.    |
+| `childrenKey` | `string`  | `"children"` | Object key for nested children (reserved for future tree support).    |
 
 ## Slots
 
@@ -117,14 +132,14 @@ These props apply to both `VPickNative` and `VPick`:
 
 ## Keyboard navigation
 
-| Key               | Action                                |
-| ----------------- | ------------------------------------- |
-| `Enter` / `Space` | Open dropdown / select focused option |
-| `Escape`          | Close dropdown                        |
-| `Arrow Up` / `Arrow Down` | Move focus between options    |
-| `Home`            | Focus first option                    |
-| `End`             | Focus last option                     |
-| `Tab`             | Close dropdown and move focus         |
+| Key                       | Action                                |
+| ------------------------- | ------------------------------------- |
+| `Enter` / `Space`         | Open dropdown / select focused option |
+| `Escape`                  | Close dropdown                        |
+| `Arrow Up` / `Arrow Down` | Move focus between options            |
+| `Home`                    | Focus first option                    |
+| `End`                     | Focus last option                     |
+| `Tab`                     | Close dropdown and move focus         |
 
 ## Accessibility
 

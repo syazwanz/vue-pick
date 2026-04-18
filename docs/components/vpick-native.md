@@ -16,6 +16,8 @@ import ErrorExample from '../examples/vpick-native/error.vue'
 import ErrorCode from '../examples/vpick-native/error.vue?raw'
 import SizesExample from '../examples/vpick-native/sizes.vue'
 import SizesCode from '../examples/vpick-native/sizes.vue?raw'
+import CustomKeysExample from '../examples/vpick-native/custom-keys.vue'
+import CustomKeysCode from '../examples/vpick-native/custom-keys.vue?raw'
 </script>
 
 # VPickNative
@@ -68,6 +70,14 @@ The `options` prop accepts a flat array or a nested array with groups. Groups ar
   <SizesExample />
 </Preview>
 
+### Custom data shape
+
+Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
+
+<Preview :code="CustomKeysCode">
+  <CustomKeysExample />
+</Preview>
+
 ## Props
 
 | Prop                   | Type                | Default      | Description                                              |
@@ -84,6 +94,10 @@ The `options` prop accepts a flat array or a nested array with groups. Groups ar
 | `required`             | `boolean`           | `false`      | HTML `required` attribute.                               |
 | `ariaLabel`            | `string`            | `undefined`  | `aria-label` for accessibility.                          |
 | `ariaDescribedby`      | `string`            | `undefined`  | `aria-describedby` for accessibility.                    |
+| `labelKey`             | `string`            | `"label"`    | Object key to read each option's visible label from.     |
+| `valueKey`             | `string`            | `"value"`    | Object key to read each option's value from.             |
+| `disabledKey`          | `string`            | `"disabled"` | Object key to read each option's disabled flag from.     |
+| `groupOptionsKey`      | `string`            | `"options"`  | Object key for the options array inside a group.         |
 
 ## Slots
 
