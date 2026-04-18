@@ -22,5 +22,5 @@ const options = [
 </script>
 
 <template>
-  <VPick v-model="selected" :options="options" placeholder="Select status" />
+  <VPick v-model="selected" :options="options" placeholder="Select status" style="--vpick-width: 14rem;" />
 </template>

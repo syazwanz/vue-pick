@@ -47,7 +47,7 @@ All defaults match the base shape, so existing code keeps working with no change
 
 ## Using custom keys
 
-Your API returns users as `{ id, name, inactive }`? Point Vue Pick at those keys directly — no `.map()` required.
+Your API returns users as `{ id, name, inactive }`? Point Vue Pick at those keys directly. No `.map()` required.
 
 <Preview :code="CustomKeysCode">
   <CustomKeysExample />

@@ -5,16 +5,16 @@ description: Vue Pick is a lightweight, zero-dependency select component library
 
 # Introduction
 
-Vue Pick is an accessible select component library for Vue 2.7 and Vue 3. It ships two components with a shared API, slots, and props across both Vue versions — so migrating from Vue 2 to Vue 3 is a single import path change.
+Vue Pick is an accessible select component library for Vue 2.7 and Vue 3. Both versions ship with the same API, slots, and props, so migrating from Vue 2 to Vue 3 is a single import path change.
 
 Zero runtime dependencies. CSS custom properties for theming. Built for accessibility, forms, and production use.
 
 ## Components
 
-| Component | Status | Description |
-| --- | --- | --- |
-| `VPickNative` | Available | A styled wrapper around the native `<select>` element |
-| `VPick` | Available | A custom dropdown with keyboard navigation and group labels |
+| Component     | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `VPickNative` | A styled wrapper around the native `<select>` element       |
+| `VPick`       | A custom dropdown with keyboard navigation and group labels |
 
 > Both components support Vue 2.7 and Vue 3.
 

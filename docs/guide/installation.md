@@ -49,7 +49,7 @@ new Vue({ render: (h) => h(App) }).$mount("#app")
 
 ## Vue 2.7 vs Vue 3 imports
 
-Both components are available from separate entry points. The API is identical — only the import path changes.
+Both components are available from separate entry points. The API is identical across Vue versions. Only the import path changes.
 
 ```ts
 // Vue 3

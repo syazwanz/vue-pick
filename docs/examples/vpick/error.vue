@@ -11,10 +11,6 @@ const options = [
 </script>
 
 <template>
-  <VPick
-    v-model="selected"
-    :options="options"
-    placeholder="Select status"
-    error="This field is required"
-  />
+  <VPick v-model="selected" :options="options" placeholder="Select status" error="This field is required"
+    style="--vpick-width: 14rem;" />
 </template>

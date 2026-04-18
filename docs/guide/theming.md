@@ -1,16 +1,16 @@
 ---
 title: Theming
-description: Style Vue Pick with CSS custom properties. Override colors, spacing, and typography globally, per-scope, or inline — with full light and dark mode support.
+description: Style Vue Pick with CSS custom properties. Override colors, spacing, and typography at any scope. Full light and dark mode support.
 ---
 
 # Theming
 
-Vue Pick uses CSS custom properties for all visual styling. Override them at any scope — globally in your root stylesheet, per-container, or inline on a single instance.
+Vue Pick uses CSS custom properties for all visual styling. Overrides can be applied globally in your root stylesheet, scoped to a container, or set inline on a single instance.
 
 ## Overriding variables
 
 ```css
-/* Global — in your main CSS file */
+/* Global override in your main CSS file */
 :root {
   --vpick-border-radius: 0;
   --vpick-border-color: #d1d5db;
@@ -18,7 +18,7 @@ Vue Pick uses CSS custom properties for all visual styling. Override them at any
 ```
 
 ```vue
-<!-- Scoped — affects only instances inside this container -->
+<!-- Scoped override, affects only instances inside this container -->
 <style scoped>
 .my-form {
   --vpick-border-radius: 0px;
@@ -28,7 +28,7 @@ Vue Pick uses CSS custom properties for all visual styling. Override them at any
 ```
 
 ```vue
-<!-- Inline — single instance -->
+<!-- Inline override on a single instance -->
 <VPickNative
   :options="options"
   style="--vpick-border-radius: 9999px; --vpick-border-color: #6366f1;"

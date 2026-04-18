@@ -22,7 +22,7 @@ import CustomKeysCode from '../examples/vpick-native/custom-keys.vue?raw'
 
 # VPickNative
 
-A styled wrapper around the native `<select>` element. Same browser behaviour, consistent design. Available for Vue 2.7 and Vue 3.
+A styled wrapper around the native `<select>` element. Same browser behaviour, consistent design.
 
 ## Usage
 
@@ -31,7 +31,7 @@ A styled wrapper around the native `<select>` element. Same browser behaviour, c
 </Preview>
 
 ::: tip Vue 2.7
-Same code — just change the import to `import { VPickNative } from "vue-pick/vue2"`.
+Same code works in Vue 2.7. Just change the import to `import { VPickNative } from "vue-pick/vue2"`.
 :::
 
 ## Options
@@ -119,7 +119,7 @@ Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data st
 
 ## Accessibility
 
-- Uses a real native `<select>` element — full browser and screen reader support.
+- Uses a real native `<select>` element for full browser and screen reader support.
 - `aria-invalid` is set when the `error` prop is present.
 - `aria-busy` is set when `loading` is true.
 - `aria-describedby` wired via the `ariaDescribedby` prop.

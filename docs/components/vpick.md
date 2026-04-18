@@ -16,8 +16,8 @@ import LoadingExample from '../examples/vpick/loading.vue'
 import LoadingCode from '../examples/vpick/loading.vue?raw'
 import ErrorExample from '../examples/vpick/error.vue'
 import ErrorCode from '../examples/vpick/error.vue?raw'
-import SizesExample from '../examples/vpick/sizes.vue'
-import SizesCode from '../examples/vpick/sizes.vue?raw'
+import ScrollableExample from '../examples/vpick/scrollable.vue'
+import ScrollableCode from '../examples/vpick/scrollable.vue?raw'
 import RotateIconExample from '../examples/vpick/rotate-icon.vue'
 import RotateIconCode from '../examples/vpick/rotate-icon.vue?raw'
 import CustomKeysExample from '../examples/vpick/custom-keys.vue'
@@ -36,7 +36,7 @@ A custom dropdown triggered by a button, with full keyboard navigation and group
 
 ## Options
 
-Accepts the same `options` shape as `VPickNative` -- flat arrays and grouped arrays both work.
+Accepts the same `options` shape as `VPickNative`. Flat arrays and grouped arrays both work.
 
 ## Examples
 
@@ -48,10 +48,26 @@ Accepts the same `options` shape as `VPickNative` -- flat arrays and grouped arr
 
 ### Separators
 
-Use `separators` to render a horizontal divider between adjacent groups. Combine with `rotate-icon` to rotate the chevron when the dropdown is open.
+Use `separators` to render a horizontal divider between adjacent groups.
 
 <Preview :code="SeparatorsCode">
   <SeparatorsExample />
+</Preview>
+
+### Rotate icon
+
+Rotates the chevron 180 degrees when the dropdown is open.
+
+<Preview :code="RotateIconCode">
+  <RotateIconExample />
+</Preview>
+
+### Scrollable
+
+Long option lists scroll inside the dropdown. Max height is controlled by `--vpick-listbox-max-height` (default `16rem`).
+
+<Preview :code="ScrollableCode">
+  <ScrollableExample />
 </Preview>
 
 ### Disabled
@@ -72,18 +88,6 @@ Use `separators` to render a horizontal divider between adjacent groups. Combine
   <ErrorExample />
 </Preview>
 
-### Sizes
-
-<Preview :code="SizesCode">
-  <SizesExample />
-</Preview>
-
-### Rotate icon
-
-<Preview :code="RotateIconCode">
-  <RotateIconExample />
-</Preview>
-
 ### Custom data shape
 
 Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
@@ -91,6 +95,34 @@ Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data st
 <Preview :code="CustomKeysCode">
   <CustomKeysExample />
 </Preview>
+
+## Sizing
+
+By default, the trigger hugs its content (`--vpick-width: fit-content`) and the dropdown matches the trigger width at minimum. Give the trigger an explicit width and the dropdown will follow.
+
+```vue
+<VPick v-model="selected" :options="options" style="--vpick-width: 18rem" />
+```
+
+Options wider than the trigger make the dropdown grow. To pin both widths identical and truncate long labels, also cap the listbox:
+
+```vue
+<VPick
+  v-model="selected"
+  :options="options"
+  style="
+    --vpick-width: 18rem;
+    --vpick-listbox-max-width: var(--vpick-trigger-width);
+  "
+/>
+```
+
+| Variable                     | Default                 | Effect                                    |
+| ---------------------------- | ----------------------- | ----------------------------------------- |
+| `--vpick-width`              | `fit-content`           | Trigger width.                            |
+| `--vpick-listbox-min-width`  | `--vpick-trigger-width` | Minimum dropdown width.                   |
+| `--vpick-listbox-max-width`  | `calc(100vw - 16px)`    | Maximum dropdown width.                   |
+| `--vpick-listbox-max-height` | `16rem`                 | Maximum dropdown height before scrolling. |
 
 ## Props
 

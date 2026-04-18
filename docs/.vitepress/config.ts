@@ -11,7 +11,7 @@ const ogImage = `${hostname}/hero.webp`
 
 export default defineConfig({
   title: siteTitle,
-  titleTemplate: ":title | Vue Pick — Accessible Vue Select Component",
+  titleTemplate: ":title | Vue Pick",
   description: siteDescription,
   base: "/",
   cleanUrls: true,
@@ -50,7 +50,7 @@ export default defineConfig({
       {
         property: "og:image:alt",
         content:
-          "Vue Pick — accessible select components for Vue 2.7 and Vue 3",
+          "Vue Pick, an accessible select component library for Vue 2.7 and Vue 3",
       },
     ],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
