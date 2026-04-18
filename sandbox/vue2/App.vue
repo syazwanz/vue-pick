@@ -179,6 +179,16 @@ function onSubmit(e: Event) {
         </div>
       </section>
 
+      <section class="section">
+        <h2 class="section__title">Inside overflow: hidden</h2>
+        <div class="section__content">
+          <div
+            style="height: 120px; overflow: hidden; padding: 1rem; border: 1px dashed var(--vpick-border-color, #ccc); border-radius: 8px;">
+            <v-pick :options="timezones" placeholder="Dropdown should escape the box" />
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <div class="container" style="margin-top: 6rem;">
