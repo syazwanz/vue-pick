@@ -24,7 +24,7 @@ export function isOptionGroup(item: OptionOrGroup): item is OptionGroup {
 export { generateId, resetIdCounter } from "./id"
 export { flattenOptions } from "./flatten"
 export type { FlatOption } from "./flatten"
-export { filterFlat } from "./filter"
+export { filterFlat, filterFlatWith } from "./filter"
 export { normalizeOptions, DEFAULT_KEYS } from "./normalize"
 export type { OptionKeys } from "./normalize"
 export { computePosition } from "./positioning"

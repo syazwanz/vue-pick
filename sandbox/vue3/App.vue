@@ -16,6 +16,39 @@ const selectedTimezone = ref(null)
 const selectedByKey = ref<number | null>(null)
 const selectedByKeyNative = ref<number | null>(null)
 
+const selectedSearch = ref<string | null>(null)
+const selectedSearchGroup = ref<string | null>(null)
+const selectedClearable = ref<string | null>("in-progress")
+const selectedSearchClear = ref<string | null>(null)
+
+const allCountries = [
+  { label: "Australia", value: "au" },
+  { label: "Brazil", value: "br" },
+  { label: "Canada", value: "ca" },
+  { label: "Denmark", value: "dk" },
+  { label: "Egypt", value: "eg" },
+  { label: "France", value: "fr" },
+  { label: "Germany", value: "de" },
+  { label: "Indonesia", value: "id" },
+  { label: "Japan", value: "jp" },
+  { label: "Malaysia", value: "my" },
+  { label: "Norway", value: "no" },
+  { label: "Poland", value: "pl" },
+  { label: "Spain", value: "es" },
+  { label: "Thailand", value: "th" },
+  { label: "Vietnam", value: "vn" },
+]
+
+// Custom filter demo: match label OR value
+const selectedCustomFilter = ref<string | null>(null)
+const customFilterFn = (opt: { label: string; value: string }, q: string) => {
+  const needle = q.toLowerCase()
+  return (
+    opt.label.toLowerCase().includes(needle) ||
+    String(opt.value).toLowerCase().includes(needle)
+  )
+}
+
 const users = [
   { id: 1, name: "Alice", inactive: false },
   { id: 2, name: "Bob", inactive: false },
@@ -81,6 +114,66 @@ function onSubmit(e: Event) {
         <h2 class="section__title">Separators</h2>
         <div class="section__content">
           <v-pick v-model="selectedTimezone" :options="timezones" placeholder="Select a timezone" separators />
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Searchable</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedSearch" :options="status" searchable placeholder="Type to search" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedSearch ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Searchable + Groups</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedSearchGroup" :options="timezones" searchable placeholder="Search timezones" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedSearchGroup ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Clearable</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedClearable" :options="status" clearable placeholder="Select status" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedClearable ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Searchable + Clearable</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedSearchClear" :options="timezones" searchable clearable
+            placeholder="Search timezones" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedSearchClear ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Custom Filter (matches label or value)</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedCustomFilter" :options="allCountries" searchable clearable :filter="customFilterFn"
+            placeholder="Search by name or code (e.g. 'my')" />
+          <pre class="debug">v-model: <code class="debug__val">{{ selectedCustomFilter ?? 'null' }}</code></pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Searchable inside overflow: hidden</h2>
+        <div class="section__content">
+          <div
+            style="height: 120px; overflow: hidden; padding: 1rem; border: 1px dashed var(--vpick-border-color, #ccc); border-radius: 8px;">
+            <v-pick :options="timezones" searchable placeholder="Dropdown should escape the box" />
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">Testing</h2>
+        <div class="section__content">
+          <v-pick v-model="selectedSearchClear" :options="timezones" searchable rotate-icon clearable
+            placeholder="Search timezones" style="--vpick-width:20rem" ; />
         </div>
       </section>
 
