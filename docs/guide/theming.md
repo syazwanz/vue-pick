@@ -63,9 +63,13 @@ These apply to both `VPickNative` and `VPick`.
 
 ## VPickNative variables
 
-| Variable               | Default       |
-| ---------------------- | ------------- |
-| `--vpick-native-width` | `fit-content` |
+| Variable               | Default                                       |
+| ---------------------- | --------------------------------------------- |
+| `--vpick-native-width` | inherits from `--vpick-width` (`fit-content`) |
+
+`--vpick-native-width` is an optional override for native-only width when you
+need the native and custom triggers to be sized differently. By default it
+inherits from `--vpick-width` so a single override styles both.
 
 ## VPick variables
 
