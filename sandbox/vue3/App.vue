@@ -173,7 +173,7 @@ function onSubmit(e: Event) {
         <h2 class="section__title">Testing</h2>
         <div class="section__content">
           <v-pick v-model="selectedSearchClear" :options="timezones" searchable rotate-icon clearable
-            placeholder="Search timezones" style="--vpick-width:20rem" ; />
+            placeholder="Search timezones" style="--vpick-width:20rem" />
         </div>
       </section>
 
