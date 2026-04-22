@@ -2,6 +2,16 @@
   --vpick-width: 12rem;
 }
 
+/* 
+  Prevent iOS Safari from auto-zooming on focus by ensuring 
+  the input font-size is at least 16px. 
+*/
+@media (max-width: 768px) {
+  :root {
+    --vpick-font-size: 16px;
+  }
+}
+
 *,
 *::before,
 *::after {
