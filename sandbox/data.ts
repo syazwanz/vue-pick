@@ -80,3 +80,31 @@ export const timezones: OptionOrGroup[] = [
     ],
   },
 ]
+
+export const options = [
+  { label: "Australia", value: "au" },
+  { label: "Brazil", value: "br" },
+  { label: "Canada", value: "ca" },
+  { label: "Denmark", value: "dk" },
+  { label: "Egypt", value: "eg" },
+  { label: "France", value: "fr" },
+  { label: "Germany", value: "de" },
+  { label: "Indonesia", value: "id" },
+  { label: "Japan", value: "jp" },
+  { label: "Malaysia", value: "my" },
+  { label: "Norway", value: "no" },
+  { label: "Poland", value: "pl" },
+  { label: "Spain", value: "es" },
+  { label: "Thailand", value: "th" },
+  { label: "Vietnam", value: "vn" },
+]
+
+export const sizeOptions = [
+  { label: "Default", value: "default" },
+  { label: "Small", value: "sm" },
+]
+
+export const dataOptions = [
+  { label: "Countries", value: "countries" },
+  { label: "Timezones", value: "timezones" },
+]
