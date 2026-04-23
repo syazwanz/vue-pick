@@ -23,6 +23,7 @@ import {
   computePosition,
   lockBodyScroll,
   unlockBodyScroll,
+  setupScrollListeners,
 } from "../core"
 
 const props = withDefaults(
@@ -184,9 +185,7 @@ const placement = ref<"top" | "bottom">("bottom")
 
 function getRootEl(): HTMLElement | null {
   return (
-    rootRef.value ??
-    (instance?.proxy?.$el as HTMLElement | undefined) ??
-    null
+    rootRef.value ?? (instance?.proxy?.$el as HTMLElement | undefined) ?? null
   )
 }
 
@@ -255,11 +254,14 @@ async function updatePosition() {
   const initial = computePosition(rect, initialHeight, vpHeight, offset)
   placement.value = initial.placement
   const forwarded = forwardedVars()
+
+  const scrollX = typeof window !== "undefined" ? window.scrollX : 0
+  const scrollY = typeof window !== "undefined" ? window.scrollY : 0
   listboxStyle.value = {
     ...forwarded,
-    position: "fixed",
-    top: `${initial.top}px`,
-    left: `${initial.left}px`,
+    position: "absolute",
+    top: `${initial.top + scrollY}px`,
+    left: `${initial.left + scrollX}px`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
   await nextTick()
@@ -274,9 +276,9 @@ async function updatePosition() {
   placement.value = measured.placement
   listboxStyle.value = {
     ...forwarded,
-    position: "fixed",
-    top: `${measured.top}px`,
-    left: `${measured.left}px`,
+    position: "absolute",
+    top: `${measured.top + scrollY}px`,
+    left: `${measured.left + scrollX}px`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
 }
@@ -323,12 +325,10 @@ function highlightDefault() {
 }
 
 let scrollLocked = false
+let cleanupScroll: (() => void) | null = null
 
 function open() {
-  if (props.disabled) return
-  // Non-searchable mode has no async use case, so loading blocks opening.
-  // Searchable mode stays interactive during async fetches.
-  if (props.loading && !props.searchable) return
+  if (props.disabled || props.loading) return
   if (isOpen.value) return
   isOpen.value = true
   highlightDefault()
@@ -339,7 +339,12 @@ function open() {
     lockBodyScroll()
     scrollLocked = true
   }
-  nextTick(updatePosition)
+  nextTick(() => {
+    updatePosition()
+    if (triggerRef.value && !cleanupScroll) {
+      cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
+    }
+  })
 }
 
 function close() {
@@ -352,6 +357,10 @@ function close() {
   if (scrollLocked) {
     unlockBodyScroll()
     scrollLocked = false
+  }
+  if (cleanupScroll) {
+    cleanupScroll()
+    cleanupScroll = null
   }
 }
 
@@ -366,6 +375,7 @@ function toggle() {
 }
 
 function onSearchTriggerClick(e: MouseEvent) {
+  if (props.disabled || props.loading) return
   // Mirror shadcn's InputGroupAddon: clicks on the dead area around the input
   // (e.g. the right-edge padding sliver) focus the input, which fires
   // @focus="open". Skip if the click already landed on the input or an
@@ -550,8 +560,6 @@ function onClickOutside(e: MouseEvent) {
 
 onMounted(async () => {
   document.addEventListener("mousedown", onClickOutside)
-  window.addEventListener("scroll", onReposition, true)
-  window.addEventListener("resize", onReposition)
   await nextTick()
   isFormControl.value = !!getRootEl()?.closest("form")
   // Move the listbox DOM node to the teleport target. Vue's vnode keeps the
@@ -563,8 +571,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
-  window.removeEventListener("scroll", onReposition, true)
-  window.removeEventListener("resize", onReposition)
+  if (cleanupScroll) {
+    cleanupScroll()
+    cleanupScroll = null
+  }
   if (scrollLocked) {
     unlockBodyScroll()
     scrollLocked = false
@@ -576,36 +586,90 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootRef" :class="['vpick', { 'vpick--rotate-icon': rotateIcon }]" role="none">
+  <div
+    ref="rootRef"
+    :class="['vpick', { 'vpick--rotate-icon': rotateIcon }]"
+    role="none"
+  >
     <!-- Button trigger (non-searchable) -->
-    <button v-if="!searchable" :id="instanceId" ref="triggerRef" type="button" role="combobox" :class="[
-      'vpick-trigger',
-      `vpick-trigger--${size ?? 'default'}`,
-      { 'vpick-trigger--open': isOpen },
-      { 'vpick-trigger--error': error },
-      { 'vpick-trigger--loading': loading },
-    ]" :aria-expanded="isOpen ? 'true' : 'false'" :aria-haspopup="'listbox'" :aria-activedescendant="isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
-      ? filteredFlat[highlightedIndex].id
-      : undefined
-      " :aria-controls="listboxId" :aria-label="ariaLabel" :aria-describedby="ariaDescribedby"
-      :aria-invalid="error ? 'true' : undefined" :aria-busy="loading ? 'true' : undefined"
-      :disabled="disabled || loading" @click="toggle" @keydown="onKeydown">
-      <span class="vpick-trigger-label" :class="{ 'vpick-trigger-placeholder': !selectedLabel }">
-        {{ selectedLabel || placeholder || '\u00A0' }}
+    <button
+      v-if="!searchable"
+      :id="instanceId"
+      ref="triggerRef"
+      type="button"
+      role="combobox"
+      :class="[
+        'vpick-trigger',
+        `vpick-trigger--${size ?? 'default'}`,
+        { 'vpick-trigger--open': isOpen },
+        { 'vpick-trigger--error': error },
+        { 'vpick-trigger--loading': loading },
+      ]"
+      :aria-expanded="isOpen ? 'true' : 'false'"
+      :aria-haspopup="'listbox'"
+      :aria-activedescendant="
+        isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
+          ? filteredFlat[highlightedIndex].id
+          : undefined
+      "
+      :aria-controls="listboxId"
+      :aria-label="ariaLabel"
+      :aria-describedby="ariaDescribedby"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-busy="loading ? 'true' : undefined"
+      :disabled="disabled || loading"
+      @click="toggle"
+      @keydown="onKeydown"
+    >
+      <span
+        class="vpick-trigger-label"
+        :class="{ 'vpick-trigger-placeholder': !selectedLabel }"
+      >
+        {{ selectedLabel || placeholder || "\u00A0" }}
       </span>
-      <span v-if="loading" class="vpick-trigger-icon vpick-trigger-spinner" aria-hidden="true">
+      <span
+        v-if="loading"
+        class="vpick-trigger-icon vpick-trigger-spinner"
+        aria-hidden="true"
+      >
         <slot name="loading">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
           </svg>
         </slot>
       </span>
-      <span v-else-if="canClear" class="vpick-clear" role="button" tabindex="-1" aria-label="Clear selection"
-        @mousedown.prevent @click.stop="onClear">
+      <span
+        v-else-if="canClear"
+        class="vpick-clear"
+        role="button"
+        tabindex="-1"
+        aria-label="Clear selection"
+        @mousedown.prevent
+        @click.stop="onClear"
+      >
         <slot name="clear">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M18 6 6 18" />
             <path d="m6 6 12 12" />
           </svg>
@@ -613,8 +677,17 @@ onBeforeUnmount(() => {
       </span>
       <span v-else class="vpick-trigger-icon" aria-hidden="true">
         <slot name="icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="m6 9 6 6 6-6" />
           </svg>
         </slot>
@@ -622,47 +695,118 @@ onBeforeUnmount(() => {
     </button>
 
     <!-- Input trigger (searchable) -->
-    <div v-else ref="triggerRef" :class="[
-      'vpick-trigger',
-      'vpick-trigger--search',
-      `vpick-trigger--${size ?? 'default'}`,
-      { 'vpick-trigger--open': isOpen },
-      { 'vpick-trigger--error': error },
-      { 'vpick-trigger--loading': loading },
-      { 'vpick-trigger--disabled': disabled || loading },
-    ]" @click="onSearchTriggerClick">
-      <input :id="instanceId" ref="inputRef" type="text" role="combobox" class="vpick-trigger-input" autocomplete="off"
-        spellcheck="false" aria-autocomplete="list" :aria-expanded="isOpen ? 'true' : 'false'"
-        :aria-haspopup="'listbox'" :aria-controls="listboxId" :aria-activedescendant="isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
-          ? filteredFlat[highlightedIndex].id
-          : undefined
-          " :aria-label="ariaLabel" :aria-describedby="ariaDescribedby" :aria-invalid="error ? 'true' : undefined"
-        :aria-busy="loading ? 'true' : undefined" :disabled="disabled" :placeholder="selectedLabel || placeholder"
-        :value="isUserSearching ? searchQuery : selectedLabel" @input="onInput" @keydown="onKeydown" @focus="open"
-        @click="open">
-      <span v-if="loading" class="vpick-trigger-icon vpick-trigger-spinner" aria-hidden="true">
+    <div
+      v-else
+      ref="triggerRef"
+      :class="[
+        'vpick-trigger',
+        'vpick-trigger--search',
+        `vpick-trigger--${size ?? 'default'}`,
+        { 'vpick-trigger--open': isOpen },
+        { 'vpick-trigger--error': error },
+        { 'vpick-trigger--loading': loading },
+        { 'vpick-trigger--disabled': disabled || loading },
+      ]"
+      @click="onSearchTriggerClick"
+    >
+      <input
+        :id="instanceId"
+        ref="inputRef"
+        type="text"
+        role="combobox"
+        class="vpick-trigger-input"
+        autocomplete="off"
+        spellcheck="false"
+        aria-autocomplete="list"
+        :aria-expanded="isOpen ? 'true' : 'false'"
+        :aria-haspopup="'listbox'"
+        :aria-controls="listboxId"
+        :aria-activedescendant="
+          isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
+            ? filteredFlat[highlightedIndex].id
+            : undefined
+        "
+        :aria-label="ariaLabel"
+        :aria-describedby="ariaDescribedby"
+        :aria-invalid="error ? 'true' : undefined"
+        :aria-busy="loading ? 'true' : undefined"
+        :disabled="disabled"
+        :placeholder="selectedLabel || placeholder"
+        :value="isUserSearching ? searchQuery : selectedLabel"
+        @input="onInput"
+        @keydown="onKeydown"
+        @focus="open"
+        @click="open"
+      />
+      <span
+        v-if="loading"
+        class="vpick-trigger-icon vpick-trigger-spinner"
+        aria-hidden="true"
+      >
         <slot name="loading">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
           </svg>
         </slot>
       </span>
-      <span v-else-if="canClear" class="vpick-clear" role="button" tabindex="-1" aria-label="Clear selection"
-        @mousedown.prevent @click.stop="onClear">
+      <span
+        v-else-if="canClear"
+        class="vpick-clear"
+        role="button"
+        tabindex="-1"
+        aria-label="Clear selection"
+        @mousedown.prevent
+        @click.stop="onClear"
+      >
         <slot name="clear">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M18 6 6 18" />
             <path d="m6 6 12 12" />
           </svg>
         </slot>
       </span>
-      <span v-else class="vpick-trigger-icon vpick-trigger-icon--button" role="button" tabindex="-1" aria-hidden="true"
-        @mousedown.prevent @click="onChevronClick">
+      <span
+        v-else
+        class="vpick-trigger-icon vpick-trigger-icon--button"
+        role="button"
+        tabindex="-1"
+        aria-hidden="true"
+        @mousedown.prevent
+        @click="onChevronClick"
+      >
         <slot name="icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="m6 9 6 6 6-6" />
           </svg>
         </slot>
@@ -671,30 +815,76 @@ onBeforeUnmount(() => {
 
     <!-- Dropdown listbox (portaled to body via DOM move on mount) -->
     <transition name="vpick-dropdown" @after-leave="onAfterLeave">
-      <div v-show="isOpen" :id="listboxId" ref="listboxRef" role="listbox" class="vpick-listbox" :style="listboxStyle"
-        :data-placement="placement" @mousedown.prevent>
+      <div
+        v-show="isOpen"
+        :id="listboxId"
+        ref="listboxRef"
+        role="listbox"
+        class="vpick-listbox"
+        :style="listboxStyle"
+        :data-placement="placement"
+        @mousedown.prevent
+      >
         <div v-for="(section, si) in sections" :key="'s' + si">
-          <div v-if="separators && si > 0" role="separator" class="vpick-separator" aria-hidden="true" />
-          <div class="vpick-group" :role="section.label ? 'group' : undefined" :aria-labelledby="section.labelId">
-            <div v-if="section.label" :id="section.labelId" class="vpick-group-label">{{ section.label }}</div>
-            <div v-for="item in section.items" :id="item.fo.id" :key="item.fo.id" role="option" :class="[
-              'vpick-option',
-              {
-                'vpick-option--highlighted': item.flatIdx === highlightedIndex,
-                'vpick-option--selected': item.fo.option.value === value,
-                'vpick-option--disabled':
-                  item.fo.option.disabled || item.fo.groupDisabled,
-              },
-            ]" :aria-selected="item.fo.option.value === value ? 'true' : 'false'" :aria-disabled="item.fo.option.disabled || item.fo.groupDisabled ? 'true' : undefined
-              " @click="selectOption(item.fo)" @mouseenter="
-              !(item.fo.option.disabled || item.fo.groupDisabled) &&
-              (highlightedIndex = item.flatIdx)
-              ">
+          <div
+            v-if="separators && si > 0"
+            role="separator"
+            class="vpick-separator"
+            aria-hidden="true"
+          />
+          <div
+            class="vpick-group"
+            :role="section.label ? 'group' : undefined"
+            :aria-labelledby="section.labelId"
+          >
+            <div
+              v-if="section.label"
+              :id="section.labelId"
+              class="vpick-group-label"
+            >
+              {{ section.label }}
+            </div>
+            <div
+              v-for="item in section.items"
+              :id="item.fo.id"
+              :key="item.fo.id"
+              role="option"
+              :class="[
+                'vpick-option',
+                {
+                  'vpick-option--highlighted':
+                    item.flatIdx === highlightedIndex,
+                  'vpick-option--selected': item.fo.option.value === value,
+                  'vpick-option--disabled':
+                    item.fo.option.disabled || item.fo.groupDisabled,
+                },
+              ]"
+              :aria-selected="item.fo.option.value === value ? 'true' : 'false'"
+              :aria-disabled="
+                item.fo.option.disabled || item.fo.groupDisabled
+                  ? 'true'
+                  : undefined
+              "
+              @click="selectOption(item.fo)"
+              @mouseenter="
+                !(item.fo.option.disabled || item.fo.groupDisabled) &&
+                (highlightedIndex = item.flatIdx)
+              "
+            >
               <span class="vpick-option-label">{{ item.fo.option.label }}</span>
               <span class="vpick-option-check" aria-hidden="true">
-                <svg v-if="item.fo.option.value === value" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
+                <svg
+                  v-if="item.fo.option.value === value"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               </span>
@@ -708,10 +898,23 @@ onBeforeUnmount(() => {
     </transition>
 
     <!-- Visually hidden select for form submission + validation -->
-    <select v-if="isFormControl" ref="hiddenSelectRef" :name="name" :required="required" :disabled="disabled"
-      tabindex="-1" aria-hidden="true" class="vpick-hidden-select" :value="String(value ?? '')">
+    <select
+      v-if="isFormControl"
+      ref="hiddenSelectRef"
+      :name="name"
+      :required="required"
+      :disabled="disabled"
+      tabindex="-1"
+      aria-hidden="true"
+      class="vpick-hidden-select"
+      :value="String(value ?? '')"
+    >
       <option value="" />
-      <option v-for="item in flat" :key="String(item.option.value)" :value="String(item.option.value)">
+      <option
+        v-for="item in flat"
+        :key="String(item.option.value)"
+        :value="String(item.option.value)"
+      >
         {{ item.option.label }}
       </option>
     </select>

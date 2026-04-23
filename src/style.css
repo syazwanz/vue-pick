@@ -24,6 +24,12 @@
   --vpick-shadow: 0 0 0 0 transparent;
 }
 
+@media (max-width: 768px) {
+  :root {
+    --vpick-font-size: 16px;
+  }
+}
+
 /* ---- VPickNative ---- */
 
 .vpick-native-wrapper {
@@ -128,6 +134,7 @@
   from {
     transform: translateY(-50%) rotate(0deg);
   }
+
   to {
     transform: translateY(-50%) rotate(360deg);
   }
@@ -226,6 +233,7 @@ button.vpick-trigger--loading:disabled,
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -286,6 +294,10 @@ button.vpick-trigger--loading:disabled,
 .vpick-trigger--search.vpick-trigger--disabled {
   cursor: not-allowed;
   opacity: var(--vpick-disabled-opacity);
+}
+
+.vpick-trigger--search.vpick-trigger--loading {
+  cursor: progress;
 }
 
 .vpick-trigger--search:focus-within:not(.vpick-trigger--error) {
