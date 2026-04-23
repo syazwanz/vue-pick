@@ -12,8 +12,13 @@ const options = [
 </script>
 
 <template>
-  <div style="display: flex; gap: 1rem; align-items: center;">
-    <VPickNative v-model="selectedA" :options="options" size="sm" placeholder="Small" />
+  <div style="display: flex; gap: 1rem; align-items: center">
+    <VPickNative
+      v-model="selectedA"
+      :options="options"
+      size="sm"
+      placeholder="Small"
+    />
     <VPickNative v-model="selectedB" :options="options" placeholder="Default" />
   </div>
 </template>

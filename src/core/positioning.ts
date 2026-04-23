@@ -27,7 +27,9 @@ export function computePosition(
       : triggerRect.top - listboxHeight - offset
   const availableHeight = Math.max(
     0,
-    (placement === "bottom" ? spaceBelow : spaceAbove) - offset - viewportMargin,
+    (placement === "bottom" ? spaceBelow : spaceAbove) -
+      offset -
+      viewportMargin,
   )
   return {
     top,

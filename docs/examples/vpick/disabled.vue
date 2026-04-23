@@ -11,5 +11,10 @@ const options = [
 </script>
 
 <template>
-  <VPick v-model="selected" :options="options" disabled style="--vpick-width: 14rem;" />
+  <VPick
+    v-model="selected"
+    :options="options"
+    disabled
+    style="--vpick-width: 14rem"
+  />
 </template>
