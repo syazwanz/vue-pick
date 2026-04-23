@@ -22,6 +22,10 @@ import RotateIconExample from '../examples/vpick/rotate-icon.vue'
 import RotateIconCode from '../examples/vpick/rotate-icon.vue?raw'
 import CustomKeysExample from '../examples/vpick/custom-keys.vue'
 import CustomKeysCode from '../examples/vpick/custom-keys.vue?raw'
+import SearchableExample from '../examples/vpick/searchable.vue'
+import SearchableCode from '../examples/vpick/searchable.vue?raw'
+import ClearableExample from '../examples/vpick/clearable.vue'
+import ClearableCode from '../examples/vpick/clearable.vue?raw'
 </script>
 
 # VPick
@@ -96,6 +100,22 @@ Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data st
   <CustomKeysExample />
 </Preview>
 
+### Searchable
+
+Use `searchable` to render an input trigger with built-in type-ahead filtering. The dropdown shows all options when opened, and filters as the user types.
+
+<Preview :code="SearchableCode">
+  <SearchableExample />
+</Preview>
+
+### Clearable
+
+Use `clearable` to show a clear button when a value is selected. Works in both button and searchable modes.
+
+<Preview :code="ClearableCode">
+  <ClearableExample />
+</Preview>
+
 ## Sizing
 
 By default, the trigger hugs its content (`--vpick-width: fit-content`) and the dropdown matches the trigger width at minimum. Give the trigger an explicit width and the dropdown will follow.
@@ -149,29 +169,43 @@ These props apply to both `VPickNative` and `VPick`:
 
 ### VPick-only props
 
-| Prop          | Type      | Default      | Description                                                           |
-| ------------- | --------- | ------------ | --------------------------------------------------------------------- |
-| `separators`  | `boolean` | `false`      | Renders a horizontal divider between adjacent groups in the dropdown. |
-| `rotateIcon`  | `boolean` | `false`      | Rotates the trigger chevron 180 degrees when the dropdown is open.    |
-| `childrenKey` | `string`  | `"children"` | Object key for nested children (reserved for future tree support).    |
+| Prop            | Type                         | Default        | Description                                                                                                       |
+| --------------- | ---------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `separators`    | `boolean`                    | `false`        | Renders a horizontal divider between adjacent groups in the dropdown.                                             |
+| `rotateIcon`    | `boolean`                    | `false`        | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                |
+| `searchable`    | `boolean`                    | `false`        | Renders an input trigger with type-ahead filtering instead of a button.                                           |
+| `clearable`     | `boolean`                    | `false`        | Shows a clear button when a value is selected.                                                                    |
+| `filter`        | `(option, query) => boolean` | `undefined`    | Custom filter function for searchable mode. Receives each option and the query string.                            |
+| `noResultsText` | `string`                     | `"No results"` | Text displayed when the search query matches no options.                                                          |
+| `teleportTo`    | `string \| HTMLElement`      | `"body"`       | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.            |
+| `bodyLock`      | `boolean \| null`            | `null`         | Locks body scroll while open. Defaults to `true` for button mode, `false` for searchable mode when set to `null`. |
+| `childrenKey`   | `string`                     | `"children"`   | Object key for nested children (reserved for future tree support).                                                |
 
 ## Slots
 
-| Slot      | Description                                             |
-| --------- | ------------------------------------------------------- |
-| `icon`    | Custom chevron icon. Shown when not loading.            |
-| `loading` | Custom loading indicator. Shown when `loading` is true. |
+| Slot      | Scope               | Description                                                                  |
+| --------- | ------------------- | ---------------------------------------------------------------------------- |
+| `icon`    | —                   | Custom chevron icon. Shown when not loading.                                 |
+| `loading` | —                   | Custom loading indicator. Shown when `loading` is true.                      |
+| `clear`   | —                   | Custom clear button content. Shown when `clearable` and a value is selected. |
+| `empty`   | `{ query: string }` | Custom empty state when no options match the search query.                   |
+
+## Events
+
+| Event    | Payload  | Description                                    |
+| -------- | -------- | ---------------------------------------------- |
+| `search` | `string` | Emitted on every keystroke in searchable mode. |
 
 ## Keyboard navigation
 
-| Key                       | Action                                |
-| ------------------------- | ------------------------------------- |
-| `Enter` / `Space`         | Open dropdown / select focused option |
-| `Escape`                  | Close dropdown                        |
-| `Arrow Up` / `Arrow Down` | Move focus between options            |
-| `Home`                    | Focus first option                    |
-| `End`                     | Focus last option                     |
-| `Tab`                     | Close dropdown and move focus         |
+| Key                       | Action                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `Enter` / `Space`         | Open dropdown / select focused option. In searchable mode, `Space` types normally. |
+| `Escape`                  | Close dropdown. When closed and `clearable`, clears the selection.                 |
+| `Arrow Up` / `Arrow Down` | Move focus between options                                                         |
+| `Home`                    | Focus first option                                                                 |
+| `End`                     | Focus last option                                                                  |
+| `Tab`                     | Close dropdown and move focus                                                      |
 
 ## Accessibility
 

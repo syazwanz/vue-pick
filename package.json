@@ -66,6 +66,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
+    "@riophae/vue-treeselect": "^0.4.0",
     "@types/node": "^25.5.2",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue2": "^2.3.4",
@@ -85,6 +86,7 @@
     "vitest": "^1.6.0",
     "vue": "^3.5.32",
     "vue-eslint-parser": "^10.4.0",
+    "vue-select": "^3.20.4",
     "vue2": "npm:vue@^2.7.16"
   },
   "pnpm": {

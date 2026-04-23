@@ -8,12 +8,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src",
-    "sandbox"
-  ]
+  "include": ["src", "sandbox"]
 }

@@ -1,32 +1,9 @@
-import type { OptionOrGroup } from "../src/core"
+<script setup lang="ts">
+import { ref } from "vue"
+import { VPick } from "vue-pick"
 
-export const status: OptionOrGroup[] = [
-  { label: "Todo", value: "todo" },
-  { label: "In Progress", value: "in-progress" },
-  { label: "Done", value: "done" },
-  { label: "Cancelled", value: "cancelled" },
-]
-
-export const departments: OptionOrGroup[] = [
-  {
-    label: "Engineering",
-    options: [
-      { label: "Frontend", value: "frontend" },
-      { label: "Backend", value: "backend" },
-      { label: "DevOps", value: "devops" },
-    ],
-  },
-  {
-    label: "Sales",
-    options: [
-      { label: "Sales Rep", value: "sales-rep" },
-      { label: "Account Manager", value: "account-manager" },
-      { label: "Sales Director", value: "sales-director", disabled: true },
-    ],
-  },
-]
-
-export const timezones: OptionOrGroup[] = [
+const selected = ref<string | null>(null)
+const options = [
   {
     label: "North America",
     options: [
@@ -80,31 +57,15 @@ export const timezones: OptionOrGroup[] = [
     ],
   },
 ]
+</script>
 
-export const options = [
-  { label: "Australia", value: "au" },
-  { label: "Brazil", value: "br" },
-  { label: "Canada", value: "ca" },
-  { label: "Denmark", value: "dk" },
-  { label: "Egypt", value: "eg" },
-  { label: "France", value: "fr" },
-  { label: "Germany", value: "de" },
-  { label: "Indonesia", value: "id" },
-  { label: "Japan", value: "jp" },
-  { label: "Malaysia", value: "my" },
-  { label: "Norway", value: "no" },
-  { label: "Poland", value: "pl" },
-  { label: "Spain", value: "es" },
-  { label: "Thailand", value: "th" },
-  { label: "Vietnam", value: "vn" },
-]
-
-export const sizeOptions = [
-  { label: "Default", value: "default" },
-  { label: "Small", value: "sm" },
-]
-
-export const dataOptions = [
-  { label: "Countries", value: "countries" },
-  { label: "Timezones", value: "timezones" },
-]
+<template>
+  <VPick
+    v-model="selected"
+    :options="options"
+    searchable
+    placeholder="Search timezones..."
+    style="--vpick-width: 17rem"
+    separators
+  />
+</template>

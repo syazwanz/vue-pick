@@ -11,5 +11,9 @@ const options = [
 </script>
 
 <template>
-  <VPickNative v-model="selected" :options="options" placeholder="Select status" />
+  <VPickNative
+    v-model="selected"
+    :options="options"
+    placeholder="Select status"
+  />
 </template>

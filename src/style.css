@@ -22,8 +22,12 @@
   --vpick-height-default: 2rem;
   --vpick-height-sm: 1.75rem;
   --vpick-shadow: 0 0 0 0 transparent;
-  /* Native Specific */
-  --vpick-native-width: fit-content;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --vpick-font-size: 16px;
+  }
 }
 
 /* ---- VPickNative ---- */
@@ -31,7 +35,7 @@
 .vpick-native-wrapper {
   position: relative;
   display: inline-flex;
-  width: var(--vpick-native-width);
+  width: var(--vpick-native-width, var(--vpick-width));
 }
 
 .vpick-native-wrapper.vpick-native--disabled,
@@ -130,6 +134,7 @@
   from {
     transform: translateY(-50%) rotate(0deg);
   }
+
   to {
     transform: translateY(-50%) rotate(360deg);
   }
@@ -169,7 +174,7 @@
   width: 100%;
   min-width: 0;
   height: var(--vpick-height-default);
-  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  padding: 0.5rem 0.375rem 0.5rem 0.625rem;
   font-family: var(--vpick-font-family);
   font-size: var(--vpick-font-size);
   line-height: var(--vpick-line-height);
@@ -181,6 +186,7 @@
   outline: none;
   white-space: nowrap;
   position: relative;
+  touch-action: manipulation;
   transition:
     color 0.15s,
     background-color 0.15s,
@@ -189,6 +195,13 @@
 
 .vpick-trigger--sm {
   height: var(--vpick-height-sm);
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.vpick-trigger--search.vpick-trigger--sm .vpick-trigger-input {
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
 }
 
 /* Button trigger */
@@ -196,7 +209,7 @@ button.vpick-trigger {
   cursor: pointer;
 }
 
-button.vpick-trigger:focus-visible {
+button.vpick-trigger:focus-visible:not(.vpick-trigger--open) {
   border-color: var(--vpick-focus-border-color);
   box-shadow:
     var(--vpick-shadow),
@@ -221,6 +234,7 @@ button.vpick-trigger--loading:disabled,
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -253,9 +267,13 @@ button.vpick-trigger--loading:disabled,
 }
 
 .vpick-trigger-icon {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
   color: var(--vpick-icon-color);
   pointer-events: none;
   user-select: none;
@@ -264,6 +282,90 @@ button.vpick-trigger--loading:disabled,
 
 .vpick--rotate-icon .vpick-trigger--open .vpick-trigger-icon {
   transform: rotate(180deg);
+}
+
+/* Search (input) trigger */
+
+.vpick-trigger--search {
+  cursor: text;
+  padding: 0;
+  padding-right: 0.375rem;
+}
+
+.vpick-trigger--search.vpick-trigger--disabled {
+  cursor: not-allowed;
+  opacity: var(--vpick-disabled-opacity);
+}
+
+.vpick-trigger--search.vpick-trigger--loading {
+  cursor: progress;
+}
+
+.vpick-trigger--search:focus-within:not(.vpick-trigger--error) {
+  border-color: var(--vpick-focus-border-color);
+  box-shadow:
+    var(--vpick-shadow),
+    0 0 0 3px var(--vpick-focus-ring-color);
+}
+
+.vpick-trigger-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0.5rem 0 0.5rem 0.625rem;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+  appearance: none;
+}
+
+.vpick-trigger-input::placeholder {
+  color: var(--vpick-placeholder-color);
+}
+
+.vpick-trigger-input:disabled {
+  cursor: inherit;
+}
+
+.vpick-trigger-icon--button {
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 0.25rem;
+  border-radius: calc(var(--vpick-border-radius) - 2px);
+  transition:
+    background-color 0.15s,
+    transform 0.15s;
+}
+
+.vpick-trigger:not(.vpick-trigger--open) .vpick-trigger-icon--button:hover {
+  background-color: var(
+    --vpick-icon-button-hover-bg,
+    var(--vpick-option-hover-bg)
+  );
+}
+
+/* Clear button */
+
+.vpick-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.25rem;
+  color: var(--vpick-clear-color, var(--vpick-icon-color));
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--vpick-border-radius) - 2px);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.vpick-clear:hover {
+  background-color: var(--vpick-clear-hover-bg, var(--vpick-option-hover-bg));
 }
 
 /* Listbox / Dropdown */
@@ -283,6 +385,31 @@ button.vpick-trigger--loading:disabled,
   border-radius: var(--vpick-border-radius);
   box-shadow: var(--vpick-listbox-shadow);
   outline: 1px solid var(--vpick-listbox-ring);
+  transform-origin: var(--vpick-transform-origin, top center);
+}
+
+.vpick-listbox[data-placement="top"] {
+  --vpick-transform-origin: bottom center;
+}
+
+/* Enter/leave transition — 100ms fade + scale + slide from trigger side. */
+
+.vpick-dropdown-enter-active,
+.vpick-dropdown-leave-active {
+  transition:
+    opacity 100ms ease-out,
+    transform 100ms ease-out;
+}
+
+.vpick-dropdown-enter-from,
+.vpick-dropdown-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-8px);
+}
+
+.vpick-dropdown-enter-from[data-placement="top"],
+.vpick-dropdown-leave-to[data-placement="top"] {
+  transform: scale(0.95) translateY(8px);
 }
 
 /* Group wrapper */
@@ -304,7 +431,7 @@ button.vpick-trigger--loading:disabled,
   font-size: var(--vpick-font-size);
   line-height: var(--vpick-line-height);
   border-radius: var(--vpick-option-radius);
-  cursor: default;
+  cursor: pointer;
   user-select: none;
 }
 
@@ -357,6 +484,16 @@ button.vpick-trigger--loading:disabled,
   height: 1px;
   margin-block: 0.25rem;
   background-color: var(--vpick-border-color);
+}
+
+/* Empty state */
+
+.vpick-empty {
+  padding: var(--vpick-empty-padding, 0.5rem 0.625rem);
+  color: var(--vpick-empty-color, var(--vpick-placeholder-color));
+  text-align: center;
+  font-size: var(--vpick-font-size);
+  user-select: none;
 }
 
 /* Visually hidden select for form submission */

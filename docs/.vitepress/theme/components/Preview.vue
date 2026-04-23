@@ -45,10 +45,20 @@ async function copy() {
 <template>
   <div class="preview">
     <div class="preview__tabs">
-      <button type="button" class="preview__tab" :class="{ 'is-active': tab === 'preview' }" @click="tab = 'preview'">
+      <button
+        type="button"
+        class="preview__tab"
+        :class="{ 'is-active': tab === 'preview' }"
+        @click="tab = 'preview'"
+      >
         Preview
       </button>
-      <button type="button" class="preview__tab" :class="{ 'is-active': tab === 'code' }" @click="tab = 'code'">
+      <button
+        type="button"
+        class="preview__tab"
+        :class="{ 'is-active': tab === 'code' }"
+        @click="tab = 'code'"
+      >
         Code
       </button>
     </div>
@@ -58,7 +68,12 @@ async function copy() {
     </div>
 
     <div v-show="tab === 'code'" class="preview__panel preview__panel--code">
-      <button type="button" class="preview__copy" :aria-label="copied ? 'Copied' : 'Copy code'" @click="copy">
+      <button
+        type="button"
+        class="preview__copy"
+        :aria-label="copied ? 'Copied' : 'Copy code'"
+        @click="copy"
+      >
         <span v-if="copied">Copied</span>
         <span v-else>Copy</span>
       </button>

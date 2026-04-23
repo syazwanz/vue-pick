@@ -7,10 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       vue: resolve(__dirname, "node_modules/vue2"),
-      "@vue/test-utils": resolve(
-        __dirname,
-        "node_modules/test-utils-vue2",
-      ),
+      "@vue/test-utils": resolve(__dirname, "node_modules/test-utils-vue2"),
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

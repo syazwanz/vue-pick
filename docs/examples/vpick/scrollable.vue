@@ -57,10 +57,14 @@ const options = [
     ],
   },
 ]
-
 </script>
 
 <template>
-  <VPick v-model="selected" :options="options" placeholder="Select a timezone" style="--vpick-width: 17rem;"
-    separators />
+  <VPick
+    v-model="selected"
+    :options="options"
+    placeholder="Select a timezone"
+    style="--vpick-width: 17rem"
+    separators
+  />
 </template>

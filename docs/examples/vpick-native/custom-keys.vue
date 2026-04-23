@@ -11,6 +11,12 @@ const users = [
 </script>
 
 <template>
-  <VPickNative v-model="selected" :options="users" value-key="id" label-key="name" disabled-key="inactive"
-    placeholder="Select user" />
+  <VPickNative
+    v-model="selected"
+    :options="users"
+    value-key="id"
+    label-key="name"
+    disabled-key="inactive"
+    placeholder="Select user"
+  />
 </template>

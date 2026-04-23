@@ -593,4 +593,333 @@ describe("VPick (Vue 2) — slots", () => {
       expect(opts.at(1).text()).toBe("Canada")
     })
   })
+
+  describe("searchable", () => {
+    const fruits: OptionOrGroup[] = [
+      { label: "Apple", value: "apple" },
+      { label: "Banana", value: "banana" },
+      { label: "Cherry", value: "cherry" },
+      { label: "apricot", value: "apricot" },
+    ]
+
+    it("renders an input trigger when searchable is true", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      expect(wrapper.find("button.vpick-trigger").exists()).toBe(false)
+      const input = wrapper.find("input.vpick-trigger-input")
+      expect(input.exists()).toBe(true)
+      expect(input.attributes("role")).toBe("combobox")
+      expect(input.attributes("aria-expanded")).toBe("false")
+      expect(input.attributes("aria-haspopup")).toBe("listbox")
+      expect(input.attributes("aria-autocomplete")).toBe("list")
+    })
+
+    it("filters options as the user types (case-insensitive)", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("AP")
+      const labels = wrapper.findAll(".vpick-option-label")
+      expect(labels.length).toBe(2)
+      expect(labels.at(0).text()).toBe("Apple")
+      expect(labels.at(1).text()).toBe("apricot")
+    })
+
+    it("opens the dropdown on typing", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      expect(input.attributes("aria-expanded")).toBe("false")
+      await input.setValue("a")
+      expect(input.attributes("aria-expanded")).toBe("true")
+    })
+
+    it("emits search event on every keystroke", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("a")
+      await input.setValue("ap")
+      const events = wrapper.emitted("search")
+      expect(events).toBeDefined()
+      expect(events![0]).toEqual(["a"])
+      expect(events![1]).toEqual(["ap"])
+    })
+
+    it("renders empty state when no matches", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("zzz")
+      expect(wrapper.find(".vpick-empty").exists()).toBe(true)
+      expect(wrapper.find(".vpick-empty").text()).toBe("No results")
+    })
+
+    it("uses noResultsText prop for empty state", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: fruits,
+          searchable: true,
+          noResultsText: "Nothing found",
+        },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("zzz")
+      expect(wrapper.find(".vpick-empty").text()).toBe("Nothing found")
+    })
+
+    it("hides empty state while loading to prevent flash", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: [],
+          searchable: true,
+          loading: true,
+        },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("zzz")
+      expect(wrapper.find(".vpick-empty").exists()).toBe(false)
+    })
+
+    it("shows spinner instead of chevron while loading in searchable mode", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true, loading: true },
+      })
+      const icons = wrapper.findAll(
+        ".vpick-trigger--search .vpick-trigger-icon",
+      )
+      let hasSpinner = false
+      let hasChevron = false
+      for (let i = 0; i < icons.length; i++) {
+        const el = icons.at(i).element as HTMLElement
+        if (el.classList.contains("vpick-trigger-spinner")) hasSpinner = true
+        if (el.classList.contains("vpick-trigger-icon--button"))
+          hasChevron = true
+      }
+      expect(hasSpinner).toBe(true)
+      expect(hasChevron).toBe(false)
+    })
+
+    it("keeps input enabled while loading in searchable mode", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true, loading: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+        .element as HTMLInputElement
+      expect(input.disabled).toBe(false)
+    })
+
+    it("hides empty groups when all children filter out", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          searchable: true,
+          options: [
+            {
+              label: "Fruits",
+              options: [
+                { label: "Apple", value: "apple" },
+                { label: "Banana", value: "banana" },
+              ],
+            },
+            {
+              label: "Veggies",
+              options: [
+                { label: "Carrot", value: "carrot" },
+                { label: "Daikon", value: "daikon" },
+              ],
+            },
+          ],
+        },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("apple")
+      const labels = wrapper.findAll(".vpick-group-label")
+      expect(labels.length).toBe(1)
+      expect(labels.at(0).text()).toBe("Fruits")
+    })
+
+    it("uses filter prop when provided", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: fruits,
+          searchable: true,
+          filter: (opt: { value: unknown }, q: string) =>
+            String(opt.value).toLowerCase().includes(q.toLowerCase()),
+        },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("cher")
+      const labels = wrapper.findAll(".vpick-option-label")
+      expect(labels.length).toBe(1)
+      expect(labels.at(0).text()).toBe("Cherry")
+    })
+
+    it("selects from filtered list with Enter", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("cher")
+      await input.trigger("keydown", { key: "Enter" })
+      expect(wrapper.emitted("input")![0]).toEqual(["cherry"])
+    })
+
+    it("does not select on Space in searchable mode", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("a")
+      await input.trigger("keydown", { key: " " })
+      expect(wrapper.emitted("input")).toBeUndefined()
+    })
+
+    it("retains the filtered list during close animation", async () => {
+      // The reset of searchQuery + isUserSearching is deferred to onAfterLeave
+      // so the dropdown doesn't flicker from "no results" back to "full list"
+      // while fading out. The input text stays frozen through the animation.
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("nomatch")
+      expect(wrapper.findAll(".vpick-option").length).toBe(0)
+      await input.trigger("keydown", { key: "Escape" })
+      expect(wrapper.findAll(".vpick-option").length).toBe(0)
+      expect((input.element as HTMLInputElement).value).toBe("nomatch")
+    })
+
+    it("closes on Enter when there is no matching result", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("nomatch")
+      expect(input.attributes("aria-expanded")).toBe("true")
+      await input.trigger("keydown", { key: "Enter" })
+      expect(input.attributes("aria-expanded")).toBe("false")
+    })
+
+    it("shows selected label in the input when closed", () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: fruits,
+          searchable: true,
+          value: "banana",
+        },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      expect((input.element as HTMLInputElement).value).toBe("Banana")
+    })
+
+    it("filters work with non-default labelKey", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          searchable: true,
+          options: [
+            { id: 1, name: "Alice" },
+            { id: 2, name: "Bob" },
+            { id: 3, name: "Charlie" },
+          ],
+          labelKey: "name",
+          valueKey: "id",
+        },
+      })
+      await wrapper.find("input.vpick-trigger-input").setValue("li")
+      const labels = wrapper.findAll(".vpick-option-label")
+      expect(labels.length).toBe(2)
+      expect(labels.at(0).text()).toBe("Alice")
+      expect(labels.at(1).text()).toBe("Charlie")
+    })
+
+    it("toggles open/close when the chevron is clicked", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const chevron = wrapper.find(".vpick-trigger-icon--button")
+      expect(chevron.exists()).toBe(true)
+      const input = wrapper.find("input.vpick-trigger-input")
+      await chevron.trigger("click")
+      expect(input.attributes("aria-expanded")).toBe("true")
+      await chevron.trigger("click")
+      expect(input.attributes("aria-expanded")).toBe("false")
+    })
+  })
+
+  describe("clearable", () => {
+    const fruits: OptionOrGroup[] = [
+      { label: "Apple", value: "apple" },
+      { label: "Banana", value: "banana" },
+    ]
+
+    it("does not render the clear button by default", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, value: "apple" },
+      })
+      expect(wrapper.find(".vpick-clear").exists()).toBe(false)
+    })
+
+    it("does not render the clear button when there is no selection", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, clearable: true },
+      })
+      expect(wrapper.find(".vpick-clear").exists()).toBe(false)
+    })
+
+    it("renders the clear button when clearable and selection exists", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, clearable: true, value: "apple" },
+      })
+      const clear = wrapper.find(".vpick-clear")
+      expect(clear.exists()).toBe(true)
+      expect(clear.attributes("aria-label")).toBe("Clear selection")
+    })
+
+    it("does not render the clear button when disabled", () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: fruits,
+          clearable: true,
+          value: "apple",
+          disabled: true,
+        },
+      })
+      expect(wrapper.find(".vpick-clear").exists()).toBe(false)
+    })
+
+    it("emits undefined on click (button mode)", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, clearable: true, value: "apple" },
+      })
+      await wrapper.find(".vpick-clear").trigger("click")
+      expect(wrapper.emitted("input")![0]).toEqual([undefined])
+    })
+
+    it("does not toggle the popup when clear is clicked", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, clearable: true, value: "apple" },
+        attachTo: document.body,
+      })
+      const trigger = wrapper.find(".vpick-trigger")
+      expect(trigger.attributes("aria-expanded")).toBe("false")
+      await wrapper.find(".vpick-clear").trigger("click")
+      expect(trigger.attributes("aria-expanded")).toBe("false")
+    })
+
+    it("renders clear in searchable mode", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: fruits,
+          clearable: true,
+          searchable: true,
+          value: "apple",
+        },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("ban")
+      expect(wrapper.find(".vpick-clear").exists()).toBe(true)
+      await wrapper.find(".vpick-clear").trigger("click")
+      expect(wrapper.emitted("input")![0]).toEqual([undefined])
+    })
+  })
 })
