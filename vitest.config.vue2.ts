@@ -14,6 +14,7 @@ export default defineConfig({
   plugins: [vue2({ compiler: compiler as never }) as any],
   test: {
     environment: "happy-dom",
+    setupFiles: ["tests/vue2/setup.ts"],
     include: ["tests/vue2/**/*.test.ts"],
   },
 })

@@ -707,12 +707,12 @@ describe("VPick — slots", () => {
       expect(hasChevron).toBe(false)
     })
 
-    it("keeps input enabled while loading in searchable mode", () => {
+    it("disables input while loading in searchable mode", () => {
       const wrapper = mount(VPick, {
         props: { options: fruits, searchable: true, loading: true },
       })
       const input = wrapper.find<HTMLInputElement>("input.vpick-trigger-input")
-      expect(input.element.disabled).toBe(false)
+      expect(input.element.disabled).toBe(true)
     })
 
     it("hides empty groups when all children filter out", async () => {
@@ -937,6 +937,315 @@ describe("VPick — slots", () => {
       // parent updates modelValue) or empty when parent syncs. In this test we
       // don't sync modelValue so input still shows "Apple" but query is empty.
       // The important assertion is the emit.
+    })
+  })
+})
+
+describe("VPick — multiple selection", () => {
+  it("renders aria-multiselectable on listbox when multiple", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(
+      wrapper.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBe("true")
+  })
+
+  it("does not render aria-multiselectable in single mode", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(
+      wrapper.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBeUndefined()
+  })
+
+  it("shows placeholder when modelValue is empty array", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: [],
+        placeholder: "Pick items",
+      },
+    })
+    // multiple always uses searchable trigger — placeholder is on the input
+    expect(
+      wrapper.find("input.vpick-trigger-input").attributes("placeholder"),
+    ).toBe("Pick items")
+  })
+
+  it("shows chips (not comma-joined text) when multiple", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo", "done"] },
+    })
+    const chips = wrapper.findAll(".vpick-chip")
+    expect(chips).toHaveLength(2)
+    expect(chips[0].find(".vpick-chip-label").text()).toBe("Todo")
+    expect(chips[1].find(".vpick-chip-label").text()).toBe("Done")
+  })
+
+  it("emits array with value added on click", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo"] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[1].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0]).toEqual([
+      ["todo", "in-progress"],
+    ])
+  })
+
+  it("emits array with value removed on click (toggle)", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: ["todo", "in-progress"],
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0]).toEqual([["in-progress"]])
+  })
+
+  it("keeps dropdown open after selection", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.find('[role="listbox"]').isVisible()).toBe(true)
+  })
+
+  it("shows check marks on all selected options", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo", "done"] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    expect(options[0].find(".vpick-option-check svg").exists()).toBe(true)
+    expect(options[1].find(".vpick-option-check svg").exists()).toBe(false)
+    expect(options[2].find(".vpick-option-check svg").exists()).toBe(true)
+  })
+
+  it("sets aria-selected on all selected options", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo", "done"] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    expect(options[0].attributes("aria-selected")).toBe("true")
+    expect(options[1].attributes("aria-selected")).toBe("false")
+    expect(options[2].attributes("aria-selected")).toBe("true")
+  })
+
+  it("Enter toggles selection in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("keydown", { key: "ArrowDown" })
+    await trigger.trigger("keydown", { key: "Enter" })
+    expect(wrapper.emitted("update:modelValue")![0]).toEqual([["todo"]])
+  })
+
+  it("does not select disabled options in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withDisabled, multiple: true, modelValue: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[1].trigger("click")
+    expect(wrapper.emitted("update:modelValue")).toBeFalsy()
+  })
+
+  it("clear emits empty array", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: ["todo"],
+        clearable: true,
+      },
+    })
+    await wrapper.find(".vpick-clear").trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0]).toEqual([[]])
+  })
+
+  describe("searchable + multiple", () => {
+    it("renders chips in searchable trigger", () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo", "done"],
+        },
+      })
+      const chips = wrapper.findAll(".vpick-chip")
+      expect(chips).toHaveLength(2)
+      expect(chips[0].find(".vpick-chip-label").text()).toBe("Todo")
+      expect(chips[1].find(".vpick-chip-label").text()).toBe("Done")
+    })
+
+    it("chip remove button emits array without that value", async () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo", "in-progress"],
+        },
+      })
+      const removes = wrapper.findAll(".vpick-chip-remove")
+      await removes[0].trigger("click")
+      expect(wrapper.emitted("update:modelValue")![0]).toEqual([
+        ["in-progress"],
+      ])
+    })
+
+    it("chip remove is a native <button> element", () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo"],
+        },
+      })
+      const remove = wrapper.find(".vpick-chip-remove")
+      expect(remove.element.tagName).toBe("BUTTON")
+      expect(remove.attributes("type")).toBe("button")
+    })
+
+    it("chip remove is disabled when trigger is disabled", () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo"],
+          disabled: true,
+        },
+      })
+      const remove = wrapper.find<HTMLButtonElement>(".vpick-chip-remove")
+      expect(remove.element.disabled).toBe(true)
+    })
+
+    it("chip remove is disabled when trigger is loading", () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo"],
+          loading: true,
+        },
+      })
+      const remove = wrapper.find<HTMLButtonElement>(".vpick-chip-remove")
+      expect(remove.element.disabled).toBe(true)
+    })
+
+    it("Backspace on empty input removes last chip", async () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo", "in-progress"],
+        },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.trigger("keydown", { key: "Backspace" })
+      expect(wrapper.emitted("update:modelValue")![0]).toEqual([["todo"]])
+    })
+
+    it("clears search after selecting in multi+searchable", async () => {
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: [],
+        },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("tod")
+      await input.trigger("keydown", { key: "Enter" })
+      // Search should be cleared after selection
+      expect(wrapper.emitted("search")).toBeDefined()
+      const searchEvents = wrapper.emitted("search")!
+      expect(searchEvents[searchEvents.length - 1]).toEqual([""])
+    })
+
+    it("shows placeholder only when no chips", () => {
+      const empty = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: [],
+          placeholder: "Select...",
+        },
+      })
+      const input = empty.find<HTMLInputElement>("input.vpick-trigger-input")
+      expect(input.attributes("placeholder")).toBe("Select...")
+
+      const filled = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          modelValue: ["todo"],
+          placeholder: "Select...",
+        },
+      })
+      const input2 = filled.find<HTMLInputElement>("input.vpick-trigger-input")
+      expect(input2.attributes("placeholder")).toBeUndefined()
+    })
+  })
+
+  describe("form integration", () => {
+    it("hidden select has multiple attribute", async () => {
+      const form = document.createElement("form")
+      document.body.appendChild(form)
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          modelValue: [],
+          name: "tags",
+        },
+        attachTo: form,
+      })
+      await nextTick()
+      const select = wrapper.find<HTMLSelectElement>(
+        "select.vpick-hidden-select",
+      )
+      expect(select.element.multiple).toBe(true)
+      wrapper.unmount()
+      form.remove()
+    })
+
+    it("hidden select has selected options for each value", async () => {
+      const form = document.createElement("form")
+      document.body.appendChild(form)
+      const wrapper = mount(VPick, {
+        props: {
+          options: status,
+          multiple: true,
+          modelValue: ["todo", "done"],
+          name: "tags",
+        },
+        attachTo: form,
+      })
+      await nextTick()
+      const selected = wrapper.findAll(
+        "select.vpick-hidden-select option[selected]",
+      )
+      expect(selected).toHaveLength(2)
+      wrapper.unmount()
+      form.remove()
     })
   })
 })
