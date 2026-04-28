@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, ref, watch } from "vue"
 import Treeselect from "@riophae/vue-treeselect"
 import VueSelect from "vue-select"
 import { VPick, VPickNative } from "../../src/vue2"
+import { isOptionGroup, type OptionItem } from "../../src/core"
 
 import { timezones, options, sizeOptions, dataOptions } from "../data"
 
@@ -17,15 +18,17 @@ const currentOptions = computed(() =>
 )
 
 const currentTab = ref("vpick") // 'vpick' or 'native'
-const selectedValue = ref(null)
+const selectedValue = ref<unknown>(null)
 
-const reduceOption = (opt: any) => opt.value
+const reduceOption = (opt: { value: unknown }) => opt.value
 
 const treeSelectOptions = computed(() => {
-  return currentOptions.value.map((opt: any) => ({
-    id: opt.value,
-    label: opt.label,
-  }))
+  return currentOptions.value
+    .filter((opt): opt is OptionItem => !isOptionGroup(opt))
+    .map((opt) => ({
+      id: opt.value,
+      label: opt.label,
+    }))
 })
 
 const propsConfig = ref({
@@ -38,7 +41,22 @@ const propsConfig = ref({
   size: "default" as "default" | "sm",
   rotateIcon: false,
   separators: false,
-  bodyLock: null as boolean | null,
+  bodyLock: undefined as boolean | undefined,
+  multiple: false,
+})
+
+// Reset value shape when toggling multiple mode
+watch(
+  () => propsConfig.value.multiple,
+  (isMulti) => {
+    selectedValue.value = isMulti ? [] : null
+  },
+)
+
+// VPickNative doesn't support multiple — drop the flag when switching tabs so
+// selectedValue stays in single-value shape.
+watch(currentTab, (tab) => {
+  if (tab === "native") propsConfig.value.multiple = false
 })
 
 function toggleError(e: Event) {
@@ -110,6 +128,10 @@ function toggleError(e: Event) {
           ><input v-model="propsConfig.separators" type="checkbox" />
           Separators</label
         >
+        <label class="control-label"
+          ><input v-model="propsConfig.multiple" type="checkbox" />
+          Multiple</label
+        >
       </div>
 
       <div class="control-group">
@@ -166,6 +188,7 @@ function toggleError(e: Event) {
           :disabled="propsConfig.disabled"
           :searchable="propsConfig.searchable"
           :clearable="propsConfig.clearable"
+          :multiple="propsConfig.multiple"
           placeholder="Select an option"
           style="width: 300px"
         />
@@ -182,6 +205,7 @@ function toggleError(e: Event) {
           :disabled="propsConfig.disabled"
           :searchable="propsConfig.searchable"
           :clearable="propsConfig.clearable"
+          :multiple="propsConfig.multiple"
           placeholder="Select an option"
           style="width: 300px"
         />

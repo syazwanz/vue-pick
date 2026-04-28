@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, ref, watch } from "vue"
 import { VPick, VPickNative } from "../../src/vue3"
 
 import { timezones, options, sizeOptions, dataOptions } from "../data"
@@ -13,7 +13,7 @@ const currentOptions = computed(() =>
 )
 
 const currentTab = ref("vpick") // 'vpick' or 'native'
-const selectedValue = ref(null)
+const selectedValue = ref<unknown>(null)
 
 const propsConfig = ref({
   disabled: false,
@@ -25,7 +25,22 @@ const propsConfig = ref({
   size: "default" as "default" | "sm",
   rotateIcon: false,
   separators: false,
-  bodyLock: null as boolean | null,
+  bodyLock: undefined as boolean | undefined,
+  multiple: false,
+})
+
+// Reset value shape when toggling multiple mode
+watch(
+  () => propsConfig.value.multiple,
+  (isMulti) => {
+    selectedValue.value = isMulti ? [] : null
+  },
+)
+
+// VPickNative doesn't support multiple — drop the flag when switching tabs so
+// selectedValue stays in single-value shape.
+watch(currentTab, (tab) => {
+  if (tab === "native") propsConfig.value.multiple = false
 })
 
 function toggleError(e: Event) {
@@ -96,6 +111,10 @@ function toggleError(e: Event) {
         <label class="control-label"
           ><input v-model="propsConfig.separators" type="checkbox" />
           Separators</label
+        >
+        <label class="control-label"
+          ><input v-model="propsConfig.multiple" type="checkbox" />
+          Multiple</label
         >
       </div>
 

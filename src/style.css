@@ -153,6 +153,12 @@
   --vpick-option-highlight-bg: #f5f5f5;
   --vpick-option-selected-color: inherit;
   --vpick-option-check-color: currentColor;
+  --vpick-checkbox-border: var(--vpick-border-color);
+  --vpick-checkbox-radius: 0.25rem;
+  --vpick-checkbox-bg: transparent;
+  --vpick-checkbox-bg-checked: #18181b;
+  --vpick-checkbox-border-checked: #18181b;
+  --vpick-checkbox-color: #fff;
   --vpick-group-label-color: #737373;
   --vpick-group-label-size: 0.75rem;
 }
@@ -199,14 +205,11 @@
   padding-bottom: 0.125rem;
 }
 
-.vpick-trigger--search.vpick-trigger--sm .vpick-trigger-input {
-  padding-top: 0.125rem;
-  padding-bottom: 0.125rem;
-}
-
 /* Button trigger */
 button.vpick-trigger {
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button.vpick-trigger:focus-visible:not(.vpick-trigger--open) {
@@ -260,6 +263,8 @@ button.vpick-trigger--loading:disabled,
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .vpick-trigger-placeholder {
@@ -282,6 +287,13 @@ button.vpick-trigger--loading:disabled,
 
 .vpick--rotate-icon .vpick-trigger--open .vpick-trigger-icon {
   transform: rotate(180deg);
+}
+
+/* In multi mode the icon is absolutely centered, so combine both transforms */
+.vpick--rotate-icon
+  .vpick-trigger--multi.vpick-trigger--open
+  .vpick-trigger-icon {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 /* Search (input) trigger */
@@ -332,6 +344,12 @@ button.vpick-trigger--loading:disabled,
 }
 
 .vpick-trigger-icon--button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
   pointer-events: auto;
   padding: 0.25rem;
@@ -341,11 +359,16 @@ button.vpick-trigger--loading:disabled,
     transform 0.15s;
 }
 
-.vpick-trigger:not(.vpick-trigger--open) .vpick-trigger-icon--button:hover {
+.vpick-trigger:not(.vpick-trigger--open)
+  .vpick-trigger-icon--button:not(:disabled):hover {
   background-color: var(
     --vpick-icon-button-hover-bg,
     var(--vpick-option-hover-bg)
   );
+}
+
+.vpick-trigger-icon--button:disabled {
+  cursor: not-allowed;
 }
 
 /* Clear button */
@@ -460,6 +483,38 @@ button.vpick-trigger--loading:disabled,
   pointer-events: none;
 }
 
+/* Multi-select option rows: reserve left for the checkbox, drop right reserve */
+.vpick-option--multi {
+  padding-left: 1.75rem;
+  padding-right: 0.5rem;
+}
+
+/* Left-side checkbox (visual only; aria-selected on the row is the source of truth) */
+.vpick-option-checkbox {
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--vpick-checkbox-border);
+  border-radius: var(--vpick-checkbox-radius);
+  background: var(--vpick-checkbox-bg);
+  color: var(--vpick-checkbox-color);
+  pointer-events: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.vpick-option-checkbox--checked {
+  background: var(--vpick-checkbox-bg-checked);
+  border-color: var(--vpick-checkbox-border-checked);
+}
+
 .vpick-option-label {
   flex: 1;
   overflow: hidden;
@@ -494,6 +549,112 @@ button.vpick-trigger--loading:disabled,
   text-align: center;
   font-size: var(--vpick-font-size);
   user-select: none;
+}
+
+/* ---- Multi-select ---- */
+
+/* Trigger wrapper: grows to accommodate chips */
+.vpick-trigger--multi {
+  height: auto;
+  min-height: var(--vpick-height-default);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  /* reserve space on the right for icons so chips don't overlap */
+  padding-right: 1.75rem;
+}
+
+/* When chips are present, tighten left padding but keep the right reserved
+   for the absolutely-positioned clear / caret icon. */
+.vpick-trigger--multi:has(.vpick-chip) {
+  padding-left: 0.25rem;
+}
+
+/* Keep chevron / clear icons pinned to the right, vertically centered */
+.vpick-trigger--multi .vpick-trigger-icon,
+.vpick-trigger--multi .vpick-clear {
+  position: absolute;
+  right: 0.375rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Spinner in multi mode: translateY centres the container; animation rotates the SVG inside */
+.vpick-trigger--multi .vpick-trigger-spinner {
+  animation: none;
+}
+
+.vpick-trigger--multi .vpick-trigger-spinner > svg {
+  animation: vpick-trigger-spin 0.6s linear infinite;
+}
+
+/* Chip / Tag */
+.vpick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  height: 1.3125rem;
+  padding: 0 0.375rem;
+  font-size: var(--vpick-chip-font-size, 0.75rem);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--vpick-chip-color, inherit);
+  background-color: var(--vpick-chip-bg, #f5f5f5);
+  border: 1px solid var(--vpick-chip-border, transparent);
+  border-radius: var(--vpick-chip-radius, 0.375rem);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.vpick-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vpick-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  padding: 0;
+  margin-left: 0.0625rem;
+  color: var(--vpick-chip-remove-color, currentColor);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.5;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s;
+}
+
+.vpick-chip-remove:hover:not(:disabled) {
+  opacity: 1;
+  background-color: var(--vpick-chip-remove-hover-bg, rgba(0, 0, 0, 0.1));
+}
+
+.vpick-chip-remove:disabled {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.3;
+}
+
+/* Inline search input inside multi-select trigger */
+.vpick-trigger--multi .vpick-trigger-input {
+  flex: 1 1 0;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+}
+
+/* Non-searchable multi trigger: comma-joined label */
+.vpick-trigger--multi .vpick-trigger-label {
+  white-space: normal;
+  line-height: 1.25rem;
 }
 
 /* Visually hidden select for form submission */

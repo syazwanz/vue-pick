@@ -12,13 +12,15 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
   setupScrollListeners,
+  setupResizeObserver,
 } from "../core"
 
 defineOptions({ name: "VPick" })
 
 const props = withDefaults(
   defineProps<{
-    modelValue?: OptionItem["value"]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    modelValue?: any
     options: readonly unknown[]
     id?: string
     name?: string
@@ -38,11 +40,12 @@ const props = withDefaults(
     childrenKey?: string
     groupOptionsKey?: string
     teleportTo?: string | HTMLElement
-    bodyLock?: boolean | null
+    bodyLock?: boolean
     searchable?: boolean
     filter?: (option: OptionItem, query: string) => boolean
     noResultsText?: string
     clearable?: boolean
+    multiple?: boolean
   }>(),
   {
     modelValue: undefined,
@@ -64,16 +67,17 @@ const props = withDefaults(
     childrenKey: undefined,
     groupOptionsKey: undefined,
     teleportTo: undefined,
-    bodyLock: null,
+    bodyLock: undefined,
     searchable: false,
     filter: undefined,
     noResultsText: "No results",
     clearable: false,
+    multiple: false,
   },
 )
 
 const emit = defineEmits<{
-  "update:modelValue": [value: OptionItem["value"]]
+  "update:modelValue": [value: OptionItem["value"] | OptionItem["value"][]]
   search: [query: string]
 }>()
 
@@ -86,6 +90,14 @@ const searchQuery = ref("")
 const isUserSearching = ref(false)
 // Default true for SSR — adjusted on mount by checking closest('form')
 const isFormControl = ref(true)
+
+// Multi-select renders as a combobox so chips and the input share one trigger.
+const isSearchable = computed(() => props.searchable || props.multiple)
+
+// Combobox trigger ignores the size variants.
+const effectiveSize = computed(() =>
+  isSearchable.value ? "default" : (props.size ?? "default"),
+)
 
 const instanceId = props.id ?? generateId()
 const listboxId = `${instanceId}-listbox`
@@ -105,7 +117,6 @@ const flat = computed<FlatOption[]>(() =>
 )
 
 const filteredFlat = computed<FlatOption[]>(() => {
-  if (!props.searchable) return flat.value
   // Only filter when the user is actively typing. Opening the dropdown with a
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
@@ -139,6 +150,27 @@ const sections = computed<Section[]>(() => {
   return result
 })
 
+// Set of selected values for O(1) lookups in multi mode
+const selectedValues = computed<Set<OptionItem["value"]>>(() => {
+  if (!props.multiple) return new Set()
+  const arr = Array.isArray(props.modelValue) ? props.modelValue : []
+  return new Set(arr)
+})
+
+function isSelected(value: OptionItem["value"]): boolean {
+  if (props.multiple) return selectedValues.value.has(value)
+  return props.modelValue === value
+}
+
+// Ordered list of selected option objects for rendering chips
+const selectedOptions = computed(() => {
+  if (!props.multiple) return []
+  const arr = Array.isArray(props.modelValue) ? props.modelValue : []
+  return arr
+    .map((v) => flat.value.find((f) => f.option.value === v))
+    .filter(Boolean) as FlatOption[]
+})
+
 const selectedLabel = computed(() => {
   if (props.modelValue == null) return ""
   const found = flat.value.find((f) => f.option.value === props.modelValue)
@@ -147,22 +179,20 @@ const selectedLabel = computed(() => {
 
 const showEmpty = computed(
   () =>
-    props.searchable &&
+    isSearchable.value &&
     isOpen.value &&
     !props.loading &&
     searchQuery.value.trim().length > 0 &&
     filteredFlat.value.length === 0,
 )
 
-const canClear = computed(
-  () =>
-    props.clearable &&
-    props.modelValue != null &&
-    !props.disabled &&
-    // Keep clear visible during async loading in searchable mode so the user
-    // can abort mid-fetch without waiting.
-    (props.searchable || !props.loading),
-)
+const canClear = computed(() => {
+  if (!props.clearable || props.disabled || props.loading) return false
+  if (props.multiple) {
+    return Array.isArray(props.modelValue) && props.modelValue.length > 0
+  }
+  return props.modelValue != null
+})
 
 const rootRef = ref<HTMLDivElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
@@ -227,7 +257,7 @@ async function updatePosition() {
   const rect = trigger.getBoundingClientRect()
   // Searchable uses a larger offset so the 3px focus ring on the input has
   // breathing room from the dropdown.
-  const offset = props.searchable ? 6 : 4
+  const offset = isSearchable.value ? 6 : 4
   const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
   // First paint: use a sensible default height; next frame remeasures actual.
   const initialHeight = listboxRef.value?.offsetHeight || 240
@@ -296,6 +326,13 @@ watch(
 
 function highlightDefault() {
   const list = filteredFlat.value
+  if (props.multiple) {
+    // In multi mode, always highlight first enabled option
+    highlightedIndex.value = list.findIndex(
+      (f) => !f.option.disabled && !f.groupDisabled,
+    )
+    return
+  }
   const idx = list.findIndex(
     (f) => f.option.value === props.modelValue && !f.option.disabled,
   )
@@ -307,6 +344,7 @@ function highlightDefault() {
 
 let scrollLocked = false
 let cleanupScroll: (() => void) | null = null
+let cleanupResize: (() => void) | null = null
 
 function open() {
   if (props.disabled || props.loading) return
@@ -315,7 +353,7 @@ function open() {
   highlightDefault()
   // Default: lock body scroll for button mode (select-like, modal feel),
   // leave unlocked for searchable mode (combobox, persistent typeahead).
-  const shouldLock = props.bodyLock ?? !props.searchable
+  const shouldLock = props.bodyLock ?? !isSearchable.value
   if (shouldLock) {
     lockBodyScroll()
     scrollLocked = true
@@ -324,6 +362,13 @@ function open() {
     updatePosition()
     if (triggerRef.value && !cleanupScroll) {
       cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
+    }
+    // Reposition when the trigger height changes (e.g. multi-select chips wrap
+    // onto additional rows).
+    if (triggerRef.value && !cleanupResize) {
+      cleanupResize = setupResizeObserver(triggerRef.value, () => {
+        if (isOpen.value) updatePosition()
+      })
     }
   })
 }
@@ -343,6 +388,10 @@ function close() {
     cleanupScroll()
     cleanupScroll = null
   }
+  if (cleanupResize) {
+    cleanupResize()
+    cleanupResize = null
+  }
 }
 
 function onAfterLeave() {
@@ -357,10 +406,9 @@ function toggle() {
 
 function onSearchTriggerClick(e: MouseEvent) {
   if (props.disabled || props.loading) return
-  // Mirror shadcn's InputGroupAddon: clicks on the dead area around the input
-  // (e.g. the right-edge padding sliver) focus the input, which fires
-  // @focus="open". Skip if the click already landed on the input or an
-  // interactive child — they handle themselves.
+  // Clicks on the dead area around the input (e.g. right-edge padding) focus
+  // the input, which fires @focus="open". Skip if the click already landed on
+  // the input or an interactive child — they handle themselves.
   const target = e.target as HTMLElement | null
   if (!target) return
   if (target.closest("input, .vpick-trigger-icon--button, .vpick-clear")) return
@@ -380,19 +428,46 @@ function onChevronClick() {
 }
 
 function focusTrigger() {
-  if (props.searchable) inputRef.value?.focus()
+  if (isSearchable.value) inputRef.value?.focus()
   else (triggerRef.value as HTMLButtonElement | null)?.focus()
 }
 
 function selectOption(flatOption: FlatOption) {
   if (flatOption.option.disabled || flatOption.groupDisabled) return
+  if (props.multiple) {
+    const arr = Array.isArray(props.modelValue) ? props.modelValue : []
+    const val = flatOption.option.value
+    if (selectedValues.value.has(val)) {
+      emit(
+        "update:modelValue",
+        arr.filter((v) => v !== val),
+      )
+    } else {
+      emit("update:modelValue", [...arr, val])
+    }
+    // Keep dropdown open in multi mode; clear search after each pick
+    searchQuery.value = ""
+    isUserSearching.value = false
+    emit("search", "")
+    return
+  }
   emit("update:modelValue", flatOption.option.value)
   close()
 }
 
+function removeChip(value: OptionItem["value"]) {
+  if (props.disabled) return
+  const arr = Array.isArray(props.modelValue) ? props.modelValue : []
+  emit(
+    "update:modelValue",
+    arr.filter((v) => v !== value),
+  )
+  focusTrigger()
+}
+
 function onClear() {
   if (!canClear.value) return
-  emit("update:modelValue", undefined)
+  emit("update:modelValue", props.multiple ? [] : undefined)
   searchQuery.value = ""
   isUserSearching.value = false
   focusTrigger()
@@ -457,16 +532,31 @@ watch(highlightedIndex, () => {
 })
 
 function onKeydown(e: KeyboardEvent) {
+  // Backspace on empty search input removes last chip in multi mode
+  if (
+    props.multiple &&
+    isSearchable.value &&
+    e.key === "Backspace" &&
+    searchQuery.value === "" &&
+    selectedOptions.value.length > 0
+  ) {
+    const last = selectedOptions.value[selectedOptions.value.length - 1]
+    if (last && !last.option.disabled) {
+      removeChip(last.option.value)
+    }
+    return
+  }
+
   if (!isOpen.value) {
     if (
       e.key === "ArrowDown" ||
       e.key === "ArrowUp" ||
       e.key === "Enter" ||
-      (!props.searchable && e.key === " ")
+      (!isSearchable.value && e.key === " ")
     ) {
       e.preventDefault()
       open()
-    } else if (e.key === "Escape" && props.searchable && canClear.value) {
+    } else if (e.key === "Escape" && isSearchable.value && canClear.value) {
       // WAI-ARIA combobox pattern: when the popup is closed, Escape clears
       // the value. Searchable mode only — button mode follows native select.
       e.preventDefault()
@@ -511,7 +601,7 @@ function onKeydown(e: KeyboardEvent) {
       e.preventDefault()
       if (highlightedIndex.value >= 0 && list[highlightedIndex.value]) {
         selectOption(list[highlightedIndex.value])
-      } else if (props.searchable && list.length === 0) {
+      } else if (isSearchable.value && list.length === 0) {
         // No match to commit — close and let onAfterLeave clear the query.
         close()
       }
@@ -519,7 +609,7 @@ function onKeydown(e: KeyboardEvent) {
     }
     case " ": {
       // In search mode, space types a space in the input; in button mode it selects.
-      if (props.searchable) return
+      if (isSearchable.value) return
       e.preventDefault()
       if (highlightedIndex.value >= 0 && list[highlightedIndex.value]) {
         selectOption(list[highlightedIndex.value])
@@ -554,6 +644,10 @@ onBeforeUnmount(() => {
     cleanupScroll()
     cleanupScroll = null
   }
+  if (cleanupResize) {
+    cleanupResize()
+    cleanupResize = null
+  }
   if (scrollLocked) {
     unlockBodyScroll()
     scrollLocked = false
@@ -569,14 +663,15 @@ onBeforeUnmount(() => {
   >
     <!-- Button trigger (non-searchable) -->
     <button
-      v-if="!searchable"
+      v-if="!isSearchable"
       :id="instanceId"
       ref="triggerRef"
       type="button"
       role="combobox"
       :class="[
         'vpick-trigger',
-        `vpick-trigger--${size ?? 'default'}`,
+        `vpick-trigger--${effectiveSize}`,
+        { 'vpick-trigger--multi': multiple },
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },
         { 'vpick-trigger--loading': loading },
@@ -677,7 +772,8 @@ onBeforeUnmount(() => {
       :class="[
         'vpick-trigger',
         'vpick-trigger--search',
-        `vpick-trigger--${size ?? 'default'}`,
+        `vpick-trigger--${effectiveSize}`,
+        { 'vpick-trigger--multi': multiple },
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },
         { 'vpick-trigger--loading': loading },
@@ -685,6 +781,39 @@ onBeforeUnmount(() => {
       ]"
       @click="onSearchTriggerClick"
     >
+      <!-- Chips for multi-select -->
+      <span
+        v-for="fo in selectedOptions"
+        :key="String(fo.option.value)"
+        class="vpick-chip"
+      >
+        <span class="vpick-chip-label">{{ fo.option.label }}</span>
+        <button
+          type="button"
+          class="vpick-chip-remove"
+          tabindex="-1"
+          :disabled="disabled || loading"
+          :aria-label="`Remove ${fo.option.label}`"
+          @mousedown.prevent
+          @click.stop="removeChip(fo.option.value)"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </span>
       <input
         :id="instanceId"
         ref="inputRef"
@@ -706,9 +835,15 @@ onBeforeUnmount(() => {
         :aria-describedby="ariaDescribedby"
         :aria-invalid="error ? true : undefined"
         :aria-busy="loading || undefined"
-        :disabled="disabled"
-        :placeholder="selectedLabel || placeholder"
-        :value="isUserSearching ? searchQuery : selectedLabel"
+        :disabled="disabled || loading"
+        :placeholder="
+          multiple
+            ? selectedOptions.length
+              ? undefined
+              : placeholder
+            : selectedLabel || placeholder
+        "
+        :value="isUserSearching ? searchQuery : multiple ? '' : selectedLabel"
         @input="onInput"
         @keydown="onKeydown"
         @focus="open"
@@ -762,12 +897,13 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span
+      <button
         v-else
+        type="button"
         class="vpick-trigger-icon vpick-trigger-icon--button"
-        role="button"
         tabindex="-1"
         aria-hidden="true"
+        :disabled="disabled || loading"
         @mousedown.prevent
         @click="onChevronClick"
       >
@@ -786,7 +922,7 @@ onBeforeUnmount(() => {
             <path d="m6 9 6 6 6-6" />
           </svg>
         </slot>
-      </span>
+      </button>
     </div>
 
     <!-- Dropdown listbox (portaled to body by default) -->
@@ -798,6 +934,7 @@ onBeforeUnmount(() => {
           ref="listboxRef"
           role="listbox"
           class="vpick-listbox"
+          :aria-multiselectable="multiple || undefined"
           :style="listboxStyle"
           :data-placement="placement"
           @mousedown.prevent
@@ -829,15 +966,15 @@ onBeforeUnmount(() => {
                 :class="[
                   'vpick-option',
                   {
+                    'vpick-option--multi': multiple,
                     'vpick-option--highlighted':
                       item.flatIdx === highlightedIndex,
-                    'vpick-option--selected':
-                      item.fo.option.value === modelValue,
+                    'vpick-option--selected': isSelected(item.fo.option.value),
                     'vpick-option--disabled':
                       item.fo.option.disabled || item.fo.groupDisabled,
                   },
                 ]"
-                :aria-selected="item.fo.option.value === modelValue"
+                :aria-selected="isSelected(item.fo.option.value)"
                 :aria-disabled="
                   item.fo.option.disabled || item.fo.groupDisabled || undefined
                 "
@@ -847,12 +984,43 @@ onBeforeUnmount(() => {
                   (highlightedIndex = item.flatIdx)
                 "
               >
+                <span
+                  v-if="multiple"
+                  :class="[
+                    'vpick-option-checkbox',
+                    {
+                      'vpick-option-checkbox--checked': isSelected(
+                        item.fo.option.value,
+                      ),
+                    },
+                  ]"
+                  aria-hidden="true"
+                >
+                  <svg
+                    v-if="isSelected(item.fo.option.value)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                </span>
                 <span class="vpick-option-label">{{
                   item.fo.option.label
                 }}</span>
-                <span class="vpick-option-check" aria-hidden="true">
+                <span
+                  v-if="!multiple"
+                  class="vpick-option-check"
+                  aria-hidden="true"
+                >
                   <svg
-                    v-if="item.fo.option.value === modelValue"
+                    v-if="isSelected(item.fo.option.value)"
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
                     height="16"
@@ -883,16 +1051,18 @@ onBeforeUnmount(() => {
       :name="name"
       :required="required"
       :disabled="disabled"
+      :multiple="multiple || undefined"
       tabindex="-1"
       aria-hidden="true"
       class="vpick-hidden-select"
-      :value="String(modelValue ?? '')"
+      :value="multiple ? undefined : String(modelValue ?? '')"
     >
-      <option value="" />
+      <option v-if="!multiple" value="" />
       <option
         v-for="item in flat"
         :key="String(item.option.value)"
         :value="String(item.option.value)"
+        :selected="multiple ? isSelected(item.option.value) : undefined"
       >
         {{ item.option.label }}
       </option>
