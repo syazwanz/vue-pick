@@ -37,6 +37,12 @@ watch(
   },
 )
 
+// VPickNative doesn't support multiple — drop the flag when switching tabs so
+// selectedValue stays in single-value shape.
+watch(currentTab, (tab) => {
+  if (tab === "native") propsConfig.value.multiple = false
+})
+
 function toggleError(e: Event) {
   propsConfig.value.error = (e.target as HTMLInputElement).checked
     ? "Invalid selection"

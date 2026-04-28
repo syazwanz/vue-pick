@@ -153,6 +153,12 @@
   --vpick-option-highlight-bg: #f5f5f5;
   --vpick-option-selected-color: inherit;
   --vpick-option-check-color: currentColor;
+  --vpick-checkbox-border: var(--vpick-border-color);
+  --vpick-checkbox-radius: 0.25rem;
+  --vpick-checkbox-bg: transparent;
+  --vpick-checkbox-bg-checked: #18181b;
+  --vpick-checkbox-border-checked: #18181b;
+  --vpick-checkbox-color: #fff;
   --vpick-group-label-color: #737373;
   --vpick-group-label-size: 0.75rem;
 }
@@ -202,6 +208,8 @@
 /* Button trigger */
 button.vpick-trigger {
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button.vpick-trigger:focus-visible:not(.vpick-trigger--open) {
@@ -255,6 +263,8 @@ button.vpick-trigger--loading:disabled,
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .vpick-trigger-placeholder {
@@ -334,6 +344,12 @@ button.vpick-trigger--loading:disabled,
 }
 
 .vpick-trigger-icon--button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
   pointer-events: auto;
   padding: 0.25rem;
@@ -343,11 +359,16 @@ button.vpick-trigger--loading:disabled,
     transform 0.15s;
 }
 
-.vpick-trigger:not(.vpick-trigger--open) .vpick-trigger-icon--button:hover {
+.vpick-trigger:not(.vpick-trigger--open)
+  .vpick-trigger-icon--button:not(:disabled):hover {
   background-color: var(
     --vpick-icon-button-hover-bg,
     var(--vpick-option-hover-bg)
   );
+}
+
+.vpick-trigger-icon--button:disabled {
+  cursor: not-allowed;
 }
 
 /* Clear button */
@@ -462,6 +483,38 @@ button.vpick-trigger--loading:disabled,
   pointer-events: none;
 }
 
+/* Multi-select option rows: reserve left for the checkbox, drop right reserve */
+.vpick-option--multi {
+  padding-left: 1.75rem;
+  padding-right: 0.5rem;
+}
+
+/* Left-side checkbox (visual only; aria-selected on the row is the source of truth) */
+.vpick-option-checkbox {
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--vpick-checkbox-border);
+  border-radius: var(--vpick-checkbox-radius);
+  background: var(--vpick-checkbox-bg);
+  color: var(--vpick-checkbox-color);
+  pointer-events: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.vpick-option-checkbox--checked {
+  background: var(--vpick-checkbox-bg-checked);
+  border-color: var(--vpick-checkbox-border-checked);
+}
+
 .vpick-option-label {
   flex: 1;
   overflow: hidden;
@@ -506,11 +559,9 @@ button.vpick-trigger--loading:disabled,
   min-height: var(--vpick-height-default);
   flex-wrap: wrap;
   gap: 0.25rem;
-  /* px-2.5 py-1 baseline, collapses to px-1 when chips present (shadcn parity) */
   padding: 0.25rem 0.625rem;
   /* reserve space on the right for icons so chips don't overlap */
   padding-right: 1.75rem;
-  position: relative;
 }
 
 /* When chips are present, tighten left padding but keep the right reserved

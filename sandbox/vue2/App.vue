@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue"
 import Treeselect from "@riophae/vue-treeselect"
 import VueSelect from "vue-select"
 import { VPick, VPickNative } from "../../src/vue2"
+import { isOptionGroup, type OptionItem } from "../../src/core"
 
 import { timezones, options, sizeOptions, dataOptions } from "../data"
 
@@ -19,13 +20,15 @@ const currentOptions = computed(() =>
 const currentTab = ref("vpick") // 'vpick' or 'native'
 const selectedValue = ref<unknown>(null)
 
-const reduceOption = (opt: any) => opt.value
+const reduceOption = (opt: { value: unknown }) => opt.value
 
 const treeSelectOptions = computed(() => {
-  return currentOptions.value.map((opt: any) => ({
-    id: opt.value,
-    label: opt.label,
-  }))
+  return currentOptions.value
+    .filter((opt): opt is OptionItem => !isOptionGroup(opt))
+    .map((opt) => ({
+      id: opt.value,
+      label: opt.label,
+    }))
 })
 
 const propsConfig = ref({
@@ -49,6 +52,12 @@ watch(
     selectedValue.value = isMulti ? [] : null
   },
 )
+
+// VPickNative doesn't support multiple — drop the flag when switching tabs so
+// selectedValue stays in single-value shape.
+watch(currentTab, (tab) => {
+  if (tab === "native") propsConfig.value.multiple = false
+})
 
 function toggleError(e: Event) {
   propsConfig.value.error = (e.target as HTMLInputElement).checked
@@ -179,6 +188,7 @@ function toggleError(e: Event) {
           :disabled="propsConfig.disabled"
           :searchable="propsConfig.searchable"
           :clearable="propsConfig.clearable"
+          :multiple="propsConfig.multiple"
           placeholder="Select an option"
           style="width: 300px"
         />
@@ -195,6 +205,7 @@ function toggleError(e: Event) {
           :disabled="propsConfig.disabled"
           :searchable="propsConfig.searchable"
           :clearable="propsConfig.clearable"
+          :multiple="propsConfig.multiple"
           placeholder="Select an option"
           style="width: 300px"
         />

@@ -844,6 +844,27 @@ describe("VPick (Vue 2) — slots", () => {
       await chevron.trigger("click")
       expect(input.attributes("aria-expanded")).toBe("false")
     })
+
+    it("chevron is a real <button> with native disabled gating", async () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true, disabled: true },
+      })
+      const chevron = wrapper.find(".vpick-trigger-icon--button")
+      expect((chevron.element as HTMLElement).tagName).toBe("BUTTON")
+      expect((chevron.element as HTMLButtonElement).type).toBe("button")
+      expect(chevron.attributes("disabled")).toBeDefined()
+      const input = wrapper.find("input.vpick-trigger-input")
+      await chevron.trigger("click")
+      expect(input.attributes("aria-expanded")).toBe("false")
+    })
+
+    it("chevron has no disabled attribute when enabled", () => {
+      const wrapper = mount(VPick, {
+        propsData: { options: fruits, searchable: true },
+      })
+      const chevron = wrapper.find(".vpick-trigger-icon--button")
+      expect(chevron.attributes("disabled")).toBeUndefined()
+    })
   })
 
   describe("clearable", () => {
@@ -991,15 +1012,34 @@ describe("VPick (Vue 2) — multiple selection", () => {
     expect(wrapper.find('[role="listbox"]').isVisible()).toBe(true)
   })
 
-  it("shows check marks on all selected options", async () => {
+  it("shows checked checkbox on all selected options", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: status, multiple: true, value: ["todo", "done"] },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     const options = wrapper.findAll('[role="option"]')
-    expect(options.at(0).find(".vpick-option-check svg").exists()).toBe(true)
-    expect(options.at(1).find(".vpick-option-check svg").exists()).toBe(false)
-    expect(options.at(2).find(".vpick-option-check svg").exists()).toBe(true)
+    expect(options.at(0).find(".vpick-option-checkbox--checked").exists()).toBe(
+      true,
+    )
+    expect(options.at(1).find(".vpick-option-checkbox--checked").exists()).toBe(
+      false,
+    )
+    expect(options.at(2).find(".vpick-option-checkbox--checked").exists()).toBe(
+      true,
+    )
+  })
+
+  it("renders checkbox on every option in multi mode (even unchecked)", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, multiple: true, value: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    expect(options.length).toBeGreaterThan(0)
+    for (let i = 0; i < options.length; i++) {
+      expect(options.at(i).find(".vpick-option-checkbox").exists()).toBe(true)
+      expect(options.at(i).find(".vpick-option-check").exists()).toBe(false)
+    }
   })
 
   it("sets aria-selected on all selected options", async () => {
@@ -1120,6 +1160,103 @@ describe("VPick (Vue 2) — multiple selection", () => {
       const input = wrapper.find("input.vpick-trigger-input")
       await input.trigger("keydown", { key: "Backspace" })
       expect(wrapper.emitted("input")![0]).toEqual([["todo"]])
+    })
+
+    it("clears search after selecting in multi+searchable", async () => {
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          value: [],
+        },
+      })
+      const input = wrapper.find("input.vpick-trigger-input")
+      await input.setValue("tod")
+      await input.trigger("keydown", { key: "Enter" })
+      expect(wrapper.emitted("search")).toBeDefined()
+      const searchEvents = wrapper.emitted("search")!
+      expect(searchEvents[searchEvents.length - 1]).toEqual([""])
+    })
+
+    it("shows placeholder only when no chips", () => {
+      const empty = mount(VPick, {
+        propsData: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          value: [],
+          placeholder: "Select...",
+        },
+      })
+      const input = empty.find<HTMLInputElement>("input.vpick-trigger-input")
+      expect(input.attributes("placeholder")).toBe("Select...")
+
+      const filled = mount(VPick, {
+        propsData: {
+          options: status,
+          multiple: true,
+          searchable: true,
+          value: ["todo"],
+          placeholder: "Select...",
+        },
+      })
+      const input2 = filled.find<HTMLInputElement>("input.vpick-trigger-input")
+      expect(input2.attributes("placeholder")).toBeUndefined()
+    })
+  })
+
+  describe("form integration", () => {
+    it("hidden select has multiple attribute", async () => {
+      const form = document.createElement("form")
+      const target = document.createElement("div")
+      form.appendChild(target)
+      document.body.appendChild(form)
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: status,
+          multiple: true,
+          value: [],
+          name: "tags",
+        },
+        attachTo: target,
+      })
+      await nextTick()
+      await nextTick()
+      const select = wrapper.find<HTMLSelectElement>(
+        "select.vpick-hidden-select",
+      )
+      expect(select.element.multiple).toBe(true)
+      wrapper.destroy()
+      form.remove()
+    })
+
+    it("hidden select has selected options for each value", async () => {
+      const form = document.createElement("form")
+      const target = document.createElement("div")
+      form.appendChild(target)
+      document.body.appendChild(form)
+      const wrapper = mount(VPick, {
+        propsData: {
+          options: status,
+          multiple: true,
+          value: ["todo", "done"],
+          name: "tags",
+        },
+        attachTo: target,
+      })
+      await nextTick()
+      await nextTick()
+      const options = wrapper.findAll("select.vpick-hidden-select option")
+        .wrappers
+      // Vue 2 binds :selected as the DOM property; collect via the option API.
+      const selectedValues = options
+        .map((o) => o.element as HTMLOptionElement)
+        .filter((el) => el.selected)
+        .map((el) => el.value)
+      expect(selectedValues).toEqual(["todo", "done"])
+      wrapper.destroy()
+      form.remove()
     })
   })
 })

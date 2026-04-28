@@ -91,11 +91,10 @@ const isUserSearching = ref(false)
 // Default true for SSR — adjusted on mount by checking closest('form')
 const isFormControl = ref(true)
 
-// Multiple mode always uses the searchable (combobox) trigger — matching
-// shadcn behaviour where multi-select is only offered as a combobox.
+// Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
 
-// shadcn only has size variants on the select trigger, not the combobox.
+// Combobox trigger ignores the size variants.
 const effectiveSize = computed(() =>
   isSearchable.value ? "default" : (props.size ?? "default"),
 )
@@ -118,7 +117,6 @@ const flat = computed<FlatOption[]>(() =>
 )
 
 const filteredFlat = computed<FlatOption[]>(() => {
-  if (!isSearchable.value) return flat.value
   // Only filter when the user is actively typing. Opening the dropdown with a
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
@@ -174,10 +172,6 @@ const selectedOptions = computed(() => {
 })
 
 const selectedLabel = computed(() => {
-  if (props.multiple) {
-    // Comma-joined for button trigger
-    return selectedOptions.value.map((f) => f.option.label).join(", ")
-  }
   if (props.modelValue == null) return ""
   const found = flat.value.find((f) => f.option.value === props.modelValue)
   return found?.option.label ?? ""
@@ -412,10 +406,9 @@ function toggle() {
 
 function onSearchTriggerClick(e: MouseEvent) {
   if (props.disabled || props.loading) return
-  // Mirror shadcn's InputGroupAddon: clicks on the dead area around the input
-  // (e.g. the right-edge padding sliver) focus the input, which fires
-  // @focus="open". Skip if the click already landed on the input or an
-  // interactive child — they handle themselves.
+  // Clicks on the dead area around the input (e.g. right-edge padding) focus
+  // the input, which fires @focus="open". Skip if the click already landed on
+  // the input or an interactive child — they handle themselves.
   const target = e.target as HTMLElement | null
   if (!target) return
   if (target.closest("input, .vpick-trigger-icon--button, .vpick-clear")) return
@@ -453,11 +446,9 @@ function selectOption(flatOption: FlatOption) {
       emit("update:modelValue", [...arr, val])
     }
     // Keep dropdown open in multi mode; clear search after each pick
-    if (isSearchable.value) {
-      searchQuery.value = ""
-      isUserSearching.value = false
-      emit("search", "")
-    }
+    searchQuery.value = ""
+    isUserSearching.value = false
+    emit("search", "")
     return
   }
   emit("update:modelValue", flatOption.option.value)
@@ -906,12 +897,13 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span
+      <button
         v-else
+        type="button"
         class="vpick-trigger-icon vpick-trigger-icon--button"
-        role="button"
         tabindex="-1"
         aria-hidden="true"
+        :disabled="disabled || loading"
         @mousedown.prevent
         @click="onChevronClick"
       >
@@ -930,7 +922,7 @@ onBeforeUnmount(() => {
             <path d="m6 9 6 6 6-6" />
           </svg>
         </slot>
-      </span>
+      </button>
     </div>
 
     <!-- Dropdown listbox (portaled to body by default) -->
@@ -974,6 +966,7 @@ onBeforeUnmount(() => {
                 :class="[
                   'vpick-option',
                   {
+                    'vpick-option--multi': multiple,
                     'vpick-option--highlighted':
                       item.flatIdx === highlightedIndex,
                     'vpick-option--selected': isSelected(item.fo.option.value),
@@ -991,10 +984,41 @@ onBeforeUnmount(() => {
                   (highlightedIndex = item.flatIdx)
                 "
               >
+                <span
+                  v-if="multiple"
+                  :class="[
+                    'vpick-option-checkbox',
+                    {
+                      'vpick-option-checkbox--checked': isSelected(
+                        item.fo.option.value,
+                      ),
+                    },
+                  ]"
+                  aria-hidden="true"
+                >
+                  <svg
+                    v-if="isSelected(item.fo.option.value)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                </span>
                 <span class="vpick-option-label">{{
                   item.fo.option.label
                 }}</span>
-                <span class="vpick-option-check" aria-hidden="true">
+                <span
+                  v-if="!multiple"
+                  class="vpick-option-check"
+                  aria-hidden="true"
+                >
                   <svg
                     v-if="isSelected(item.fo.option.value)"
                     xmlns="http://www.w3.org/2000/svg"

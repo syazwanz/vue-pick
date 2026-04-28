@@ -100,11 +100,10 @@ const searchQuery = ref("")
 const isUserSearching = ref(false)
 const isFormControl = ref(true)
 
-// Multiple mode always uses the searchable (combobox) trigger — matching
-// shadcn behaviour where multi-select is only offered as a combobox.
+// Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
 
-// shadcn only has size variants on the select trigger, not the combobox.
+// Combobox trigger ignores the size variants.
 const effectiveSize = computed(() =>
   isSearchable.value ? "default" : (props.size ?? "default"),
 )
@@ -127,7 +126,6 @@ const flat = computed<FlatOption[]>(() =>
 )
 
 const filteredFlat = computed<FlatOption[]>(() => {
-  if (!isSearchable.value) return flat.value
   // Only filter when the user is actively typing. Opening the dropdown with a
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
@@ -183,10 +181,6 @@ const selectedOptions = computed(() => {
 })
 
 const selectedLabel = computed(() => {
-  if (props.multiple) {
-    // Comma-joined for button trigger
-    return selectedOptions.value.map((f) => f.option.label).join(", ")
-  }
   if (props.value == null) return ""
   const found = flat.value.find((f) => f.option.value === props.value)
   return found?.option.label ?? ""
@@ -200,6 +194,13 @@ const showEmpty = computed(
     searchQuery.value.trim().length > 0 &&
     filteredFlat.value.length === 0,
 )
+
+const hiddenSelectValue = computed<string | string[]>(() => {
+  if (props.multiple) {
+    return Array.isArray(props.value) ? props.value.map(String) : []
+  }
+  return String(props.value ?? "")
+})
 
 const canClear = computed(() => {
   if (!props.clearable || props.disabled || props.loading) return false
@@ -329,12 +330,27 @@ function onReposition(e?: Event) {
 // Vue 2.7's `flush: "post"` fires before the hidden select's :value binding
 // has been patched, so change events would carry the stale value. Explicitly
 // awaiting nextTick mirrors Vue 3's post-flush timing.
+// Also: Vue 2 only auto-syncs HTMLOptionElement.selected via the v-model
+// directive's special-case for <select multiple>. With :value alone the
+// option.selected props stay false, so form submission would lose all values.
+// Manually mirror the array onto each option.
+function syncMultiSelectOptions() {
+  if (!props.multiple) return
+  const select = hiddenSelectRef.value
+  if (!select) return
+  const arr = Array.isArray(props.value) ? props.value.map(String) : []
+  for (const opt of Array.from(select.options)) {
+    opt.selected = arr.includes(opt.value)
+  }
+}
+
 watch(
   () => props.value,
   async () => {
     await nextTick()
     const select = hiddenSelectRef.value
     if (!select) return
+    syncMultiSelectOptions()
     select.dispatchEvent(new Event("change", { bubbles: true }))
   },
 )
@@ -431,10 +447,9 @@ function toggle() {
 
 function onSearchTriggerClick(e: MouseEvent) {
   if (props.disabled || props.loading) return
-  // Mirror shadcn's InputGroupAddon: clicks on the dead area around the input
-  // (e.g. the right-edge padding sliver) focus the input, which fires
-  // @focus="open". Skip if the click already landed on the input or an
-  // interactive child — they handle themselves.
+  // Clicks on the dead area around the input (e.g. right-edge padding) focus
+  // the input, which fires @focus="open". Skip if the click already landed on
+  // the input or an interactive child — they handle themselves.
   const target = e.target as HTMLElement | null
   if (!target) return
   if (target.closest("input, .vpick-trigger-icon--button, .vpick-clear")) return
@@ -472,11 +487,9 @@ function selectOption(flatOption: FlatOption) {
       emit("input", [...arr, val])
     }
     // Keep dropdown open in multi mode; clear search after each pick
-    if (isSearchable.value) {
-      searchQuery.value = ""
-      isUserSearching.value = false
-      emit("search", "")
-    }
+    searchQuery.value = ""
+    isUserSearching.value = false
+    emit("search", "")
     return
   }
   emit("input", flatOption.option.value)
@@ -661,6 +674,8 @@ onMounted(async () => {
   document.addEventListener("mousedown", onClickOutside)
   await nextTick()
   isFormControl.value = !!getRootEl()?.closest("form")
+  await nextTick()
+  syncMultiSelectOptions()
   // Move the listbox DOM node to the teleport target. Vue's vnode keeps the
   // reference, so patching continues to work from the new location.
   if (listboxRef.value) {
@@ -930,12 +945,13 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span
+      <button
         v-else
+        type="button"
         class="vpick-trigger-icon vpick-trigger-icon--button"
-        role="button"
         tabindex="-1"
         aria-hidden="true"
+        :disabled="disabled || loading"
         @mousedown.prevent
         @click="onChevronClick"
       >
@@ -954,7 +970,7 @@ onBeforeUnmount(() => {
             <path d="m6 9 6 6 6-6" />
           </svg>
         </slot>
-      </span>
+      </button>
     </div>
 
     <!-- Dropdown listbox (portaled to body via DOM move on mount) -->
@@ -997,6 +1013,7 @@ onBeforeUnmount(() => {
               :class="[
                 'vpick-option',
                 {
+                  'vpick-option--multi': multiple,
                   'vpick-option--highlighted':
                     item.flatIdx === highlightedIndex,
                   'vpick-option--selected': isSelected(item.fo.option.value),
@@ -1018,8 +1035,39 @@ onBeforeUnmount(() => {
                 (highlightedIndex = item.flatIdx)
               "
             >
+              <span
+                v-if="multiple"
+                :class="[
+                  'vpick-option-checkbox',
+                  {
+                    'vpick-option-checkbox--checked': isSelected(
+                      item.fo.option.value,
+                    ),
+                  },
+                ]"
+                aria-hidden="true"
+              >
+                <svg
+                  v-if="isSelected(item.fo.option.value)"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
               <span class="vpick-option-label">{{ item.fo.option.label }}</span>
-              <span class="vpick-option-check" aria-hidden="true">
+              <span
+                v-if="!multiple"
+                class="vpick-option-check"
+                aria-hidden="true"
+              >
                 <svg
                   v-if="isSelected(item.fo.option.value)"
                   xmlns="http://www.w3.org/2000/svg"
@@ -1045,6 +1093,8 @@ onBeforeUnmount(() => {
     </transition>
 
     <!-- Visually hidden select for form submission + validation -->
+    <!-- Vue 2 doesn't honor :selected on <option> the way Vue 3 does; bind the
+         array on the select itself so its multi-select sync marks options. -->
     <select
       v-if="isFormControl"
       ref="hiddenSelectRef"
@@ -1055,14 +1105,13 @@ onBeforeUnmount(() => {
       tabindex="-1"
       aria-hidden="true"
       class="vpick-hidden-select"
-      :value="multiple ? undefined : String(value ?? '')"
+      :value="hiddenSelectValue"
     >
       <option v-if="!multiple" value="" />
       <option
         v-for="item in flat"
         :key="String(item.option.value)"
         :value="String(item.option.value)"
-        :selected="multiple ? isSelected(item.option.value) : undefined"
       >
         {{ item.option.label }}
       </option>

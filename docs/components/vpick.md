@@ -26,6 +26,8 @@ import SearchableExample from '../examples/vpick/searchable.vue'
 import SearchableCode from '../examples/vpick/searchable.vue?raw'
 import ClearableExample from '../examples/vpick/clearable.vue'
 import ClearableCode from '../examples/vpick/clearable.vue?raw'
+import MultipleExample from '../examples/vpick/multiple.vue'
+import MultipleCode from '../examples/vpick/multiple.vue?raw'
 </script>
 
 # VPick
@@ -116,6 +118,16 @@ Use `clearable` to show a clear button when a value is selected. Works in both b
   <ClearableExample />
 </Preview>
 
+### Multiple
+
+Use `multiple` to allow selecting more than one option. The trigger renders selected values as removable chips, and `v-model` becomes an array. Picking an option does not close the dropdown, so the user can keep selecting; pressing `Backspace` while the input is empty removes the last chip.
+
+`multiple` always uses the searchable trigger so chips and the input share one row. Combine with `clearable` to expose a single button that empties the array.
+
+<Preview :code="MultipleCode">
+  <MultipleExample />
+</Preview>
+
 ## Sizing
 
 By default, the trigger hugs its content (`--vpick-width: fit-content`) and the dropdown matches the trigger width at minimum. Give the trigger an explicit width and the dropdown will follow.
@@ -150,7 +162,7 @@ These props apply to both `VPickNative` and `VPick`:
 
 | Prop              | Type                | Default      | Description                                              |
 | ----------------- | ------------------- | ------------ | -------------------------------------------------------- |
-| `modelValue`      | `any`               | `undefined`  | Selected value. Use `v-model` for two-way binding.       |
+| `modelValue`      | `any`               | `undefined`  | Selected value. Use `v-model` for two-way binding. With `multiple`, an array of values. |
 | `options`         | `OptionOrGroup[]`   | **required** | Array of options or option groups.                       |
 | `placeholder`     | `string`            | `undefined`  | Placeholder text shown when no value is selected.        |
 | `disabled`        | `boolean`           | `false`      | Disables the select.                                     |
@@ -175,6 +187,7 @@ These props apply to both `VPickNative` and `VPick`:
 | `rotateIcon`    | `boolean`                    | `false`        | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                |
 | `searchable`    | `boolean`                    | `false`        | Renders an input trigger with type-ahead filtering instead of a button.                                           |
 | `clearable`     | `boolean`                    | `false`        | Shows a clear button when a value is selected.                                                                    |
+| `multiple`      | `boolean`                    | `false`        | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.     |
 | `filter`        | `(option, query) => boolean` | `undefined`    | Custom filter function for searchable mode. Receives each option and the query string.                            |
 | `noResultsText` | `string`                     | `"No results"` | Text displayed when the search query matches no options.                                                          |
 | `teleportTo`    | `string \| HTMLElement`      | `"body"`       | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.            |
@@ -200,18 +213,20 @@ These props apply to both `VPickNative` and `VPick`:
 
 | Key                       | Action                                                                             |
 | ------------------------- | ---------------------------------------------------------------------------------- |
-| `Enter` / `Space`         | Open dropdown / select focused option. In searchable mode, `Space` types normally. |
-| `Escape`                  | Close dropdown. When closed and `clearable`, clears the selection.                 |
-| `Arrow Up` / `Arrow Down` | Move focus between options                                                         |
-| `Home`                    | Focus first option                                                                 |
-| `End`                     | Focus last option                                                                  |
-| `Tab`                     | Close dropdown and move focus                                                      |
+| `Enter` / `Space`         | Open dropdown / select focused option. In searchable mode, `Space` types normally.    |
+| `Escape`                  | Close dropdown. When closed and `clearable`, clears the selection.                    |
+| `Arrow Up` / `Arrow Down` | Move focus between options                                                            |
+| `Home`                    | Focus first option                                                                    |
+| `End`                     | Focus last option                                                                     |
+| `Backspace`               | In `multiple` mode, removes the last selected chip when the search input is empty.    |
+| `Tab`                     | Close dropdown and move focus                                                         |
 
 ## Accessibility
 
 - WAI-ARIA listbox pattern (`role="combobox"`, `role="listbox"`, `role="option"`).
 - `aria-expanded` reflects open state on the trigger button.
 - `aria-activedescendant` tracks the focused option.
+- `aria-multiselectable` is set on the listbox in `multiple` mode, with `aria-selected` reflected per option.
 - `aria-invalid` is set when the `error` prop is present.
 - `aria-disabled` on individual disabled options.
-- A visually hidden native `<select>` is kept in sync for form submission and Safari autofill.
+- A visually hidden native `<select>` is kept in sync for form submission and Safari autofill. In `multiple` mode it renders as `<select multiple>` and serializes the selected values.

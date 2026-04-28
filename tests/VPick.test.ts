@@ -845,6 +845,29 @@ describe("VPick — slots", () => {
       await chevron.trigger("click")
       expect(input.attributes("aria-expanded")).toBe("false")
     })
+
+    it("chevron is a real <button> with native disabled gating", async () => {
+      const wrapper = mount(VPick, {
+        props: { options: fruits, searchable: true, disabled: true },
+      })
+      const chevron = wrapper.find<HTMLButtonElement>(
+        ".vpick-trigger-icon--button",
+      )
+      expect(chevron.element.tagName).toBe("BUTTON")
+      expect(chevron.element.type).toBe("button")
+      expect(chevron.attributes("disabled")).toBeDefined()
+      const input = wrapper.find("input.vpick-trigger-input")
+      await chevron.trigger("click")
+      expect(input.attributes("aria-expanded")).toBe("false")
+    })
+
+    it("chevron is disabled while loading", () => {
+      const wrapper = mount(VPick, {
+        props: { options: fruits, searchable: true },
+      })
+      const chevron = wrapper.find(".vpick-trigger-icon--button")
+      expect(chevron.attributes("disabled")).toBeUndefined()
+    })
   })
 
   describe("clearable", () => {
@@ -1018,15 +1041,34 @@ describe("VPick — multiple selection", () => {
     expect(wrapper.find('[role="listbox"]').isVisible()).toBe(true)
   })
 
-  it("shows check marks on all selected options", async () => {
+  it("shows checked checkbox on all selected options", async () => {
     const wrapper = mount(VPick, {
       props: { options: status, multiple: true, modelValue: ["todo", "done"] },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     const options = wrapper.findAll('[role="option"]')
-    expect(options[0].find(".vpick-option-check svg").exists()).toBe(true)
-    expect(options[1].find(".vpick-option-check svg").exists()).toBe(false)
-    expect(options[2].find(".vpick-option-check svg").exists()).toBe(true)
+    expect(options[0].find(".vpick-option-checkbox--checked").exists()).toBe(
+      true,
+    )
+    expect(options[1].find(".vpick-option-checkbox--checked").exists()).toBe(
+      false,
+    )
+    expect(options[2].find(".vpick-option-checkbox--checked").exists()).toBe(
+      true,
+    )
+  })
+
+  it("renders checkbox on every option in multi mode (even unchecked)", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    expect(options.length).toBeGreaterThan(0)
+    for (const o of options) {
+      expect(o.find(".vpick-option-checkbox").exists()).toBe(true)
+      expect(o.find(".vpick-option-check").exists()).toBe(false)
+    }
   })
 
   it("sets aria-selected on all selected options", async () => {
