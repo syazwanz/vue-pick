@@ -3,7 +3,7 @@ export function setupResizeObserver(
   callback: () => void,
 ): () => void {
   if (typeof ResizeObserver === "undefined") return () => {}
-  const ro = new ResizeObserver(() => callback())
+  const ro = new ResizeObserver(callback)
   ro.observe(el)
   return () => ro.disconnect()
 }
