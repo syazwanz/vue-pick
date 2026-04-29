@@ -27,6 +27,10 @@ const treeSearchable = ref(false)
 const treeClearable = ref(true)
 const treeDisableBranches = ref(false)
 const treeDefaultExpandLevel = ref(0)
+const treeCascade = ref(true)
+const treeValueConsistsOf = ref<
+  "LEAF_PRIORITY" | "ALL" | "BRANCH_PRIORITY" | "ALL_WITH_INDETERMINATE"
+>("LEAF_PRIORITY")
 
 const propsConfig = ref({
   disabled: false,
@@ -203,6 +207,23 @@ function toggleError(e: Event) {
             style="width: 3rem; margin-left: 0.25rem"
           />
         </label>
+        <label class="control-label">
+          <input v-model="treeCascade" type="checkbox" />
+          <span>Cascade</span>
+        </label>
+        <label class="control-label">
+          <span>valueConsistsOf:</span>
+          <v-pick-native
+            v-model="treeValueConsistsOf"
+            :options="[
+              { label: 'LEAF_PRIORITY', value: 'LEAF_PRIORITY' },
+              { label: 'ALL', value: 'ALL' },
+              { label: 'BRANCH_PRIORITY', value: 'BRANCH_PRIORITY' },
+              { label: 'ALL_WITH_INDETERMINATE', value: 'ALL_WITH_INDETERMINATE' },
+            ]"
+            style="--vpick-width: 200px; margin-left: 0.25rem"
+          />
+        </label>
       </div>
       <div
         style="
@@ -254,7 +275,7 @@ function toggleError(e: Event) {
               margin-bottom: 0.5rem;
             "
           >
-            Multiple (no cascade yet)
+            Multiple
           </div>
           <v-pick
             v-model="treeMultiValue"
@@ -263,6 +284,8 @@ function toggleError(e: Event) {
             :clearable="treeClearable"
             :disable-branch-nodes="treeDisableBranches"
             :default-expand-level="treeDefaultExpandLevel || undefined"
+            :cascade="treeCascade"
+            :value-consists-of="treeValueConsistsOf"
             multiple
             placeholder="Select categories"
             style="--vpick-width: 280px; --vpick-bg: white"

@@ -32,6 +32,8 @@ import TreeExample from '../examples/vpick/tree.vue'
 import TreeCode from '../examples/vpick/tree.vue?raw'
 import TreeSearchableExample from '../examples/vpick/tree-searchable.vue'
 import TreeSearchableCode from '../examples/vpick/tree-searchable.vue?raw'
+import TreeCascadeExample from '../examples/vpick/tree-cascade.vue'
+import TreeCascadeCode from '../examples/vpick/tree-cascade.vue?raw'
 </script>
 
 # VPick
@@ -158,7 +160,33 @@ Combine with `searchable` to filter the tree. Matching nodes auto-expand their a
   <TreeSearchableExample />
 </Preview>
 
-`multiple` works with tree options for independent node selection. Cascade (selecting a parent auto-selects all children) is coming in a future release.
+### Tree + cascade
+
+Combine `multiple` with tree options to get cascade selection: clicking a branch checks all its descendants, clicking again unchecks them. An indeterminate dash appears when only some children are selected.
+
+<Preview :code="TreeCascadeCode">
+  <TreeCascadeExample />
+</Preview>
+
+Use `cascade: false` to opt out and get independent node selection instead.
+
+**`valueConsistsOf`** controls what ends up in `v-model`:
+
+| Value | What is emitted |
+| --- | --- |
+| `"LEAF_PRIORITY"` (default) | Only leaf values. A fully-selected branch is implied by its leaves — no branch value appears in the array. |
+| `"BRANCH_PRIORITY"` | The topmost selected ancestor replaces its descendants. Selecting all of Electronics emits `["electronics"]` rather than every leaf. |
+| `"ALL"` | Every checked node — both fully-selected branches and their leaf descendants. |
+| `"ALL_WITH_INDETERMINATE"` | Like `ALL` but also includes partially-selected (indeterminate) branch values. |
+
+```vue
+<VPick
+  v-model="selected"
+  :options="options"
+  multiple
+  value-consists-of="BRANCH_PRIORITY"
+/>
+```
 
 ## Sizing
 
@@ -227,6 +255,8 @@ These props apply to both `VPickNative` and `VPick`:
 | `childrenKey`        | `string`                     | `"children"`   | Object key for nested children. Options with a non-empty `children` array enable tree mode automatically.     |
 | `defaultExpandLevel` | `number`                     | `undefined`    | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.   |
 | `disableBranchNodes` | `boolean`                    | `false`        | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                       |
+| `cascade`            | `boolean`                    | `true`         | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection. |
+| `valueConsistsOf`    | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"` | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details. |
 
 ## Slots
 
