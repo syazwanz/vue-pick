@@ -511,7 +511,8 @@ button.vpick-trigger--loading:disabled,
     border-color 0.15s;
 }
 
-.vpick-option-checkbox--checked {
+.vpick-option-checkbox--checked,
+.vpick-option-checkbox--indeterminate {
   background: var(--vpick-checkbox-bg-checked);
   border-color: var(--vpick-checkbox-border-checked);
 }

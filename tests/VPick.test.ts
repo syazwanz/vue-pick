@@ -1564,3 +1564,190 @@ describe("VPick — tree select", () => {
     expect(labels.some((l) => l.includes("Laptops"))).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Cascade (Phase B)
+// ---------------------------------------------------------------------------
+
+describe("VPick — cascade", () => {
+  // Selecting a branch selects all its leaf descendants (LEAF_PRIORITY default)
+  it("selecting a branch cascades to all leaf descendants", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: [],
+        multiple: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    await electronics.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    // LEAF_PRIORITY: only leaf values emitted (phones + gaming + business)
+    expect(emitted[emitted.length - 1][0]).toEqual(
+      expect.arrayContaining(["phones", "gaming", "business"]),
+    )
+    expect(emitted[emitted.length - 1][0]).not.toContain("electronics")
+  })
+
+  // Deselecting a branch removes all its leaf descendants
+  it("deselecting a branch removes all leaf descendants", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones", "gaming", "business"],
+        multiple: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    await electronics.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    expect(emitted[emitted.length - 1][0]).toEqual([])
+  })
+
+  // Branch shows as checked when all its leaves are selected
+  it("branch checkbox is checked when all leaves are selected", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones", "gaming", "business"],
+        multiple: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    expect(electronics.find(".vpick-option-checkbox--checked").exists()).toBe(
+      true,
+    )
+    expect(
+      electronics.find(".vpick-option-checkbox--indeterminate").exists(),
+    ).toBe(false)
+  })
+
+  // Branch shows as indeterminate when some but not all leaves are selected
+  it("branch checkbox is indeterminate when only some leaves are selected", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones"],
+        multiple: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    expect(
+      electronics.find(".vpick-option-checkbox--indeterminate").exists(),
+    ).toBe(true)
+    expect(electronics.find(".vpick-option-checkbox--checked").exists()).toBe(
+      false,
+    )
+  })
+
+  // Chip display uses BRANCH_PRIORITY regardless of valueConsistsOf
+  it("chips show branch when all leaves are selected (LEAF_PRIORITY mode)", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones", "gaming", "business"],
+        multiple: true,
+        searchable: true,
+      },
+    })
+    const chips = wrapper.findAll(".vpick-chip-label")
+    const chipTexts = chips.map((c) => c.text())
+    // All leaves of Electronics selected → single "Electronics" chip
+    expect(chipTexts).toContain("Electronics")
+    expect(chipTexts).not.toContain("Phones")
+    expect(chipTexts).not.toContain("Gaming")
+  })
+
+  // Removing a branch chip cascade-deselects all its leaves
+  it("removing a branch chip cascade-deselects all leaves", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones", "gaming", "business"],
+        multiple: true,
+        searchable: true,
+      },
+    })
+    const removeBtn = wrapper.find(".vpick-chip-remove")
+    await removeBtn.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    expect(emitted[emitted.length - 1][0]).toEqual([])
+  })
+
+  // cascade: false → independent selection (Phase A behavior)
+  it("cascade: false disables cascade — branch click only toggles the branch itself", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: [],
+        multiple: true,
+        cascade: false,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    await electronics.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    // Only the branch itself is toggled, not its leaves
+    expect(emitted[emitted.length - 1][0]).toEqual(["electronics"])
+  })
+
+  // BRANCH_PRIORITY: emits the branch when all its children are selected
+  it("valueConsistsOf BRANCH_PRIORITY emits branch value when all children selected", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: [],
+        multiple: true,
+        valueConsistsOf: "BRANCH_PRIORITY",
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    await electronics.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    // BRANCH_PRIORITY: Electronics is the topmost selected node
+    expect(emitted[emitted.length - 1][0]).toEqual(["electronics"])
+  })
+
+  // ALL: emits both branch and all descendants when fully selected
+  it("valueConsistsOf ALL emits branch and all descendants", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: [],
+        multiple: true,
+        valueConsistsOf: "ALL",
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const options = wrapper.findAll('[role="option"]')
+    const electronics = options.find((o) => o.text().includes("Electronics"))!
+    await electronics.trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")!
+    const val = emitted[emitted.length - 1][0] as unknown[]
+    // ALL: Electronics (fully selected branch) + its sub-branch + all leaves
+    expect(val).toContain("electronics")
+    expect(val).toContain("phones")
+    expect(val).toContain("laptops")
+    expect(val).toContain("gaming")
+    expect(val).toContain("business")
+  })
+})

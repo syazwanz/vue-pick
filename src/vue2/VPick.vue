@@ -60,6 +60,12 @@ const props = withDefaults(
     multiple?: boolean
     defaultExpandLevel?: number
     disableBranchNodes?: boolean
+    cascade?: boolean
+    valueConsistsOf?:
+      | "LEAF_PRIORITY"
+      | "ALL"
+      | "BRANCH_PRIORITY"
+      | "ALL_WITH_INDETERMINATE"
   }>(),
   {
     value: undefined,
@@ -89,6 +95,8 @@ const props = withDefaults(
     multiple: false,
     defaultExpandLevel: undefined,
     disableBranchNodes: false,
+    cascade: true,
+    valueConsistsOf: "LEAF_PRIORITY",
   },
 )
 
@@ -214,6 +222,130 @@ function autoExpandForSearch(q: string) {
   expandedSet.value = next
 }
 
+// --- Cascade support ---
+
+function getLeafDescendants(option: OptionItem): OptionItem["value"][] {
+  if (!option.children?.length) return [option.value]
+  return option.children.flatMap((c) => getLeafDescendants(c as OptionItem))
+}
+
+function compactToBranchPriority(
+  leafSet: ReadonlySet<OptionItem["value"]>,
+  items: OptionOrGroup[],
+): OptionItem["value"][] {
+  const result: OptionItem["value"][] = []
+  for (const item of items) {
+    if (isOptionGroup(item)) {
+      result.push(...compactToBranchPriority(leafSet, item.options))
+      continue
+    }
+    if (!item.children?.length) {
+      if (leafSet.has(item.value)) result.push(item.value)
+    } else {
+      const leaves = getLeafDescendants(item)
+      if (leaves.every((v) => leafSet.has(v))) {
+        result.push(item.value)
+      } else {
+        result.push(
+          ...compactToBranchPriority(leafSet, item.children as OptionOrGroup[]),
+        )
+      }
+    }
+  }
+  return result
+}
+
+const isCascadeMode = computed(
+  () => props.multiple && props.cascade && isTreeMode.value,
+)
+
+const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
+  if (!isCascadeMode.value) return selectedValues.value
+  const arr = Array.isArray(props.value) ? props.value : []
+  if (props.valueConsistsOf === "LEAF_PRIORITY") return new Set(arr)
+  const set = new Set<OptionItem["value"]>()
+  for (const v of arr) {
+    const fo = flatAll.value.find((f) => f.option.value === v)
+    if (!fo) continue
+    if (fo.hasChildren) {
+      for (const lv of getLeafDescendants(fo.option)) set.add(lv)
+    } else {
+      set.add(v)
+    }
+  }
+  return set
+})
+
+function emitFromLeafSet(
+  newLeafSet: ReadonlySet<OptionItem["value"]>,
+): OptionItem["value"][] {
+  switch (props.valueConsistsOf) {
+    case "ALL": {
+      const result: OptionItem["value"][] = []
+      const walkAll = (items: OptionOrGroup[]) => {
+        for (const item of items) {
+          if (isOptionGroup(item)) {
+            walkAll(item.options)
+            continue
+          }
+          if (!item.children?.length) {
+            if (newLeafSet.has(item.value)) result.push(item.value)
+          } else {
+            const leaves = getLeafDescendants(item)
+            if (leaves.every((v) => newLeafSet.has(v))) result.push(item.value)
+            walkAll(item.children as OptionOrGroup[])
+          }
+        }
+      }
+      walkAll(normalized.value)
+      return result
+    }
+    case "BRANCH_PRIORITY":
+      return compactToBranchPriority(newLeafSet, normalized.value)
+    case "ALL_WITH_INDETERMINATE": {
+      const result: OptionItem["value"][] = []
+      const walkAWI = (items: OptionOrGroup[]) => {
+        for (const item of items) {
+          if (isOptionGroup(item)) {
+            walkAWI(item.options)
+            continue
+          }
+          if (!item.children?.length) {
+            if (newLeafSet.has(item.value)) result.push(item.value)
+          } else {
+            const leaves = getLeafDescendants(item)
+            if (leaves.some((v) => newLeafSet.has(v))) {
+              result.push(item.value)
+              walkAWI(item.children as OptionOrGroup[])
+            }
+          }
+        }
+      }
+      walkAWI(normalized.value)
+      return result
+    }
+    case "LEAF_PRIORITY":
+    default:
+      return [...newLeafSet]
+  }
+}
+
+function isCascadeChecked(fo: FlatOption): boolean {
+  if (!isCascadeMode.value) return isSelected(fo.option.value)
+  if (!fo.hasChildren) return effectiveLeafSet.value.has(fo.option.value)
+  const leaves = getLeafDescendants(fo.option)
+  return leaves.length > 0 && leaves.every((v) => effectiveLeafSet.value.has(v))
+}
+
+function isCascadeIndeterminate(fo: FlatOption): boolean {
+  if (!isCascadeMode.value || !fo.hasChildren) return false
+  const leaves = getLeafDescendants(fo.option)
+  const n = leaves.filter((v) => effectiveLeafSet.value.has(v)).length
+  return n > 0 && n < leaves.length
+}
+
+// --- /Cascade support ---
+
 // --- /Tree support ---
 
 const flat = computed<FlatOption[]>(() =>
@@ -285,12 +417,16 @@ function isSelected(value: OptionItem["value"]): boolean {
   return props.value === value
 }
 
-// Ordered list of selected option objects for rendering chips
+// Ordered list of selected option objects for rendering chips.
+// In cascade mode, always display in BRANCH_PRIORITY format (most compact) so
+// selecting a parent shows one chip, not one chip per leaf.
 const selectedOptions = computed(() => {
   if (!props.multiple) return []
-  const arr = Array.isArray(props.value) ? props.value : []
-  return arr
-    .map((v) => flat.value.find((f) => f.option.value === v))
+  const displayValues = isCascadeMode.value
+    ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
+    : (Array.isArray(props.value) ? props.value : [])
+  return displayValues
+    .map((v) => flatAll.value.find((f) => f.option.value === v))
     .filter(Boolean) as FlatOption[]
 })
 
@@ -597,15 +733,23 @@ function selectOption(flatOption: FlatOption) {
   if (flatOption.option.disabled || flatOption.groupDisabled) return
   if (props.disableBranchNodes && flatOption.hasChildren) return
   if (props.multiple) {
-    const arr = Array.isArray(props.value) ? props.value : []
-    const val = flatOption.option.value
-    if (selectedValues.value.has(val)) {
-      emit(
-        "input",
-        arr.filter((v) => v !== val),
-      )
+    if (isCascadeMode.value) {
+      const leaves = getLeafDescendants(flatOption.option)
+      const newLeafSet = new Set(effectiveLeafSet.value)
+      if (isCascadeChecked(flatOption)) {
+        for (const v of leaves) newLeafSet.delete(v)
+      } else {
+        for (const v of leaves) newLeafSet.add(v)
+      }
+      emit("input", emitFromLeafSet(newLeafSet))
     } else {
-      emit("input", [...arr, val])
+      const arr = Array.isArray(props.value) ? props.value : []
+      const val = flatOption.option.value
+      if (selectedValues.value.has(val)) {
+        emit("input", arr.filter((v) => v !== val))
+      } else {
+        emit("input", [...arr, val])
+      }
     }
     // Keep dropdown open in multi mode; clear search after each pick
     searchQuery.value = ""
@@ -619,11 +763,21 @@ function selectOption(flatOption: FlatOption) {
 
 function removeChip(value: OptionItem["value"]) {
   if (props.disabled) return
-  const arr = Array.isArray(props.value) ? props.value : []
-  emit(
-    "input",
-    arr.filter((v) => v !== value),
-  )
+  if (isCascadeMode.value) {
+    const fo = flatAll.value.find((f) => f.option.value === value)
+    if (fo) {
+      const leaves = getLeafDescendants(fo.option)
+      const newLeafSet = new Set(effectiveLeafSet.value)
+      for (const v of leaves) newLeafSet.delete(v)
+      emit("input", emitFromLeafSet(newLeafSet))
+    }
+  } else {
+    const arr = Array.isArray(props.value) ? props.value : []
+    emit(
+      "input",
+      arr.filter((v) => v !== value),
+    )
+  }
   focusTrigger()
 }
 
@@ -1210,7 +1364,11 @@ onBeforeUnmount(() => {
                 },
               ]"
               :aria-selected="
-                isSelected(item.fo.option.value) ? 'true' : 'false'
+                (multiple
+                  ? isCascadeChecked(item.fo)
+                  : isSelected(item.fo.option.value))
+                  ? 'true'
+                  : 'false'
               "
               :aria-disabled="
                 item.fo.option.disabled ||
@@ -1240,15 +1398,15 @@ onBeforeUnmount(() => {
                 :class="[
                   'vpick-option-checkbox',
                   {
-                    'vpick-option-checkbox--checked': isSelected(
-                      item.fo.option.value,
-                    ),
+                    'vpick-option-checkbox--checked': isCascadeChecked(item.fo),
+                    'vpick-option-checkbox--indeterminate':
+                      isCascadeIndeterminate(item.fo),
                   },
                 ]"
                 aria-hidden="true"
               >
                 <svg
-                  v-if="isSelected(item.fo.option.value)"
+                  v-if="isCascadeChecked(item.fo)"
                   xmlns="http://www.w3.org/2000/svg"
                   width="12"
                   height="12"
@@ -1260,6 +1418,20 @@ onBeforeUnmount(() => {
                   stroke-linejoin="round"
                 >
                   <path d="M20 6 9 17l-5-5" />
+                </svg>
+                <svg
+                  v-else-if="isCascadeIndeterminate(item.fo)"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 12h14" />
                 </svg>
               </span>
               <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
