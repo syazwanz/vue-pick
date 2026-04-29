@@ -40,7 +40,7 @@ Rather than forcing you to map your data, VPick and VPickNative accept key adapt
 | `labelKey`        | `"label"`    | Both       | Key for the visible option text.                                |
 | `valueKey`        | `"value"`    | Both       | Key for the emitted `v-model` value.                            |
 | `disabledKey`     | `"disabled"` | Both       | Key for the per-option disabled flag.                           |
-| `childrenKey`     | `"children"` | VPick only | Key for nested tree options (reserved for future tree support). |
+| `childrenKey`     | `"children"` | VPick only | Key for nested children. Options with a non-empty `children` array enable tree mode. |
 | `groupOptionsKey` | `"options"`  | Both       | Key for the array of options inside a group.                    |
 
 All defaults match the base shape, so existing code keeps working with no changes.
@@ -84,6 +84,39 @@ const regions = [
     group-options-key="members"
   />
 </template>
+```
+
+## Tree data
+
+Options with a non-empty `children` array automatically enable tree mode in `VPick`. No extra prop is needed — the component detects nested data and renders expand/collapse chevrons.
+
+```ts
+const categories = [
+  {
+    label: "Electronics",
+    value: "electronics",
+    children: [
+      { label: "Phones", value: "phones" },
+      {
+        label: "Laptops",
+        value: "laptops",
+        children: [
+          { label: "Gaming", value: "gaming" },
+          { label: "Business", value: "business" },
+        ],
+      },
+    ],
+  },
+  { label: "Books", value: "books" }, // flat items can coexist
+]
+```
+
+Flat groups (`{ label, options: [] }`) and tree nodes (`{ label, value, children: [] }`) can be mixed at the top level. Empty `children: []` is treated as a leaf — no chevron is rendered.
+
+Use `childrenKey` if your API uses a different key name:
+
+```vue
+<VPick :options="data" children-key="subcategories" />
 ```
 
 ## Anything beyond key renaming
