@@ -1,5 +1,15 @@
 # vue-pick
 
+## 0.8.0
+
+### Minor Changes
+
+- 3ccf3e5: Add tree select to VPick. Pass options with a `children` array and tree mode activates automatically — no extra prop needed. Clicking the chevron expands or collapses a branch; clicking the row selects the node.
+
+  New VPick props: `childrenKey` (default `"children"`), `defaultExpandLevel`, `disableBranchNodes`.
+
+  Tree mode works with `searchable` (matching nodes auto-expand their ancestors) and `multiple` (independent node selection; cascade is planned for a future release).
+
 ## 0.7.0
 
 ### Minor Changes
