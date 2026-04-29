@@ -28,6 +28,10 @@ import ClearableExample from '../examples/vpick/clearable.vue'
 import ClearableCode from '../examples/vpick/clearable.vue?raw'
 import MultipleExample from '../examples/vpick/multiple.vue'
 import MultipleCode from '../examples/vpick/multiple.vue?raw'
+import TreeExample from '../examples/vpick/tree.vue'
+import TreeCode from '../examples/vpick/tree.vue?raw'
+import TreeSearchableExample from '../examples/vpick/tree-searchable.vue'
+import TreeSearchableCode from '../examples/vpick/tree-searchable.vue?raw'
 </script>
 
 # VPick
@@ -128,6 +132,34 @@ Use `multiple` to allow selecting more than one option. The trigger renders sele
   <MultipleExample />
 </Preview>
 
+### Tree select
+
+Pass options with a `children` array to enable tree mode. VPick detects nested data automatically — no extra prop needed. Click the chevron to expand or collapse a branch; clicking the row itself selects the node.
+
+<Preview :code="TreeCode">
+  <TreeExample />
+</Preview>
+
+Use `defaultExpandLevel` to pre-expand branches on open. A value of `1` expands top-level branches; `2` expands two levels deep, and so on.
+
+```vue
+<VPick :options="options" :default-expand-level="1" />
+```
+
+Use `disableBranchNodes` to make branch nodes non-selectable — only leaves can be picked.
+
+```vue
+<VPick :options="options" disable-branch-nodes />
+```
+
+Combine with `searchable` to filter the tree. Matching nodes auto-expand their ancestor branches so results are always visible, and expansion reverts when the query is cleared.
+
+<Preview :code="TreeSearchableCode">
+  <TreeSearchableExample />
+</Preview>
+
+`multiple` works with tree options for independent node selection. Cascade (selecting a parent auto-selects all children) is coming in a future release.
+
 ## Sizing
 
 By default, the trigger hugs its content (`--vpick-width: fit-content`) and the dropdown matches the trigger width at minimum. Give the trigger an explicit width and the dropdown will follow.
@@ -192,7 +224,9 @@ These props apply to both `VPickNative` and `VPick`:
 | `noResultsText` | `string`                     | `"No results"` | Text displayed when the search query matches no options.                                                          |
 | `teleportTo`    | `string \| HTMLElement`      | `"body"`       | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.            |
 | `bodyLock`      | `boolean \| null`            | `null`         | Locks body scroll while open. Defaults to `true` for button mode, `false` for searchable mode when set to `null`. |
-| `childrenKey`   | `string`                     | `"children"`   | Object key for nested children (reserved for future tree support).                                                |
+| `childrenKey`        | `string`                     | `"children"`   | Object key for nested children. Options with a non-empty `children` array enable tree mode automatically.     |
+| `defaultExpandLevel` | `number`                     | `undefined`    | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.   |
+| `disableBranchNodes` | `boolean`                    | `false`        | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                       |
 
 ## Slots
 
@@ -218,6 +252,8 @@ These props apply to both `VPickNative` and `VPick`:
 | `Arrow Up` / `Arrow Down` | Move focus between options                                                            |
 | `Home`                    | Focus first option                                                                    |
 | `End`                     | Focus last option                                                                     |
+| `Arrow Right`             | In tree mode, expand a collapsed branch and move to its first child.                  |
+| `Arrow Left`              | In tree mode, collapse an expanded branch; on a leaf or collapsed branch, jump to its parent. |
 | `Backspace`               | In `multiple` mode, removes the last selected chip when the search input is empty.    |
 | `Tab`                     | Close dropdown and move focus                                                         |
 

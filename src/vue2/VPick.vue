@@ -14,6 +14,7 @@ import {
 } from "vue"
 import {
   type OptionItem,
+  type OptionOrGroup,
   type FlatOption,
   flattenOptions,
   generateId,
@@ -25,6 +26,7 @@ import {
   unlockBodyScroll,
   setupScrollListeners,
   setupResizeObserver,
+  isOptionGroup,
 } from "../core"
 
 const props = withDefaults(
@@ -56,6 +58,8 @@ const props = withDefaults(
     noResultsText?: string
     clearable?: boolean
     multiple?: boolean
+    defaultExpandLevel?: number
+    disableBranchNodes?: boolean
   }>(),
   {
     value: undefined,
@@ -83,6 +87,8 @@ const props = withDefaults(
     noResultsText: "No results",
     clearable: false,
     multiple: false,
+    defaultExpandLevel: undefined,
+    disableBranchNodes: false,
   },
 )
 
@@ -121,14 +127,122 @@ const normalized = computed(() =>
   }),
 )
 
+// --- Tree support ---
+
+function hasAnyChildren(items: OptionOrGroup[]): boolean {
+  for (const item of items) {
+    if (isOptionGroup(item)) {
+      if (hasAnyChildren(item.options)) return true
+    } else {
+      if (item.children && item.children.length > 0) return true
+    }
+  }
+  return false
+}
+
+const isTreeMode = computed(() => hasAnyChildren(normalized.value))
+
+function collectInitialExpanded(
+  items: OptionOrGroup[],
+  maxDepth: number,
+  depth = 0,
+): Set<OptionItem["value"]> {
+  const set = new Set<OptionItem["value"]>()
+  if (depth >= maxDepth) return set
+  for (const item of items) {
+    if (isOptionGroup(item)) {
+      for (const v of collectInitialExpanded(
+        item.options as OptionOrGroup[],
+        maxDepth,
+        depth,
+      )) {
+        set.add(v)
+      }
+      continue
+    }
+    if (item.children && item.children.length > 0) {
+      set.add(item.value)
+      for (const v of collectInitialExpanded(
+        item.children as OptionOrGroup[],
+        maxDepth,
+        depth + 1,
+      )) {
+        set.add(v)
+      }
+    }
+  }
+  return set
+}
+
+const expandedSet = ref<Set<OptionItem["value"]>>(
+  props.defaultExpandLevel
+    ? collectInitialExpanded(normalized.value, props.defaultExpandLevel)
+    : new Set(),
+)
+
+// Snapshot taken on the first search keystroke; restored when search clears (D6)
+const preSearchExpandedSet = ref<Set<OptionItem["value"]> | null>(null)
+
+function toggleExpand(value: OptionItem["value"]) {
+  const next = new Set(expandedSet.value)
+  if (next.has(value)) {
+    next.delete(value)
+  } else {
+    next.add(value)
+  }
+  expandedSet.value = next
+}
+
+// Walk all nodes regardless of expansion to find ancestor values of matches.
+function autoExpandForSearch(q: string) {
+  const allFlat = flattenOptions(normalized.value, instanceId, "all")
+  const ancestorValues = new Set<OptionItem["value"]>()
+  for (const fo of allFlat) {
+    const matches = props.filter
+      ? props.filter(fo.option, q)
+      : fo.option.label.toLowerCase().includes(q)
+    if (!matches) continue
+    let parentVal = fo.parentValue
+    while (parentVal !== undefined) {
+      ancestorValues.add(parentVal)
+      const parentFo = allFlat.find((f) => f.option.value === parentVal)
+      parentVal = parentFo?.parentValue
+    }
+  }
+  const next = new Set(preSearchExpandedSet.value ?? expandedSet.value)
+  for (const v of ancestorValues) next.add(v)
+  expandedSet.value = next
+}
+
+// --- /Tree support ---
+
 const flat = computed<FlatOption[]>(() =>
-  flattenOptions(normalized.value, instanceId),
+  flattenOptions(normalized.value, instanceId, expandedSet.value),
+)
+
+// Full tree walk (no expansion gating) — used by the hidden select so the
+// selected value is always represented regardless of collapse state.
+const flatAll = computed<FlatOption[]>(() =>
+  isTreeMode.value
+    ? flattenOptions(normalized.value, instanceId, "all")
+    : flat.value,
 )
 
 const filteredFlat = computed<FlatOption[]>(() => {
   // Only filter when the user is actively typing. Opening the dropdown with a
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
+  if (isTreeMode.value) {
+    // Show expanded branch nodes (ancestors of matches) + matching nodes.
+    const q = searchQuery.value.trim().toLowerCase()
+    if (!q) return flat.value
+    return flat.value.filter((fo) => {
+      if (fo.hasChildren && fo.isExpanded) return true
+      return props.filter
+        ? props.filter(fo.option, searchQuery.value.trim())
+        : fo.option.label.toLowerCase().includes(q)
+    })
+  }
   if (props.filter) {
     return filterFlatWith(flat.value, searchQuery.value, props.filter)
   }
@@ -182,7 +296,7 @@ const selectedOptions = computed(() => {
 
 const selectedLabel = computed(() => {
   if (props.value == null) return ""
-  const found = flat.value.find((f) => f.option.value === props.value)
+  const found = flatAll.value.find((f) => f.option.value === props.value)
   return found?.option.label ?? ""
 })
 
@@ -250,6 +364,7 @@ const FORWARDED_VARS = [
   "--vpick-disabled-opacity",
   "--vpick-empty-color",
   "--vpick-empty-padding",
+  "--vpick-tree-indent",
 ]
 
 function forwardedVars(): Record<string, string> {
@@ -438,6 +553,11 @@ function close() {
 function onAfterLeave() {
   searchQuery.value = ""
   isUserSearching.value = false
+  // If dropdown closes while tree search was active, restore pre-search expansion (D6)
+  if (preSearchExpandedSet.value !== null) {
+    expandedSet.value = preSearchExpandedSet.value
+    preSearchExpandedSet.value = null
+  }
 }
 
 function toggle() {
@@ -475,6 +595,7 @@ function focusTrigger() {
 
 function selectOption(flatOption: FlatOption) {
   if (flatOption.option.disabled || flatOption.groupDisabled) return
+  if (props.disableBranchNodes && flatOption.hasChildren) return
   if (props.multiple) {
     const arr = Array.isArray(props.value) ? props.value : []
     const val = flatOption.option.value
@@ -520,6 +641,22 @@ function onInput(e: Event) {
   isUserSearching.value = true
   if (!isOpen.value) open()
   emit("search", value)
+
+  if (isTreeMode.value) {
+    const q = value.trim().toLowerCase()
+    if (q) {
+      // Snapshot expansion on first keystroke (D6)
+      if (preSearchExpandedSet.value === null) {
+        preSearchExpandedSet.value = new Set(expandedSet.value)
+      }
+      autoExpandForSearch(q)
+    } else if (preSearchExpandedSet.value !== null) {
+      // Query cleared: restore pre-search expansion (D6)
+      expandedSet.value = preSearchExpandedSet.value
+      preSearchExpandedSet.value = null
+    }
+  }
+
   nextTick(() => {
     const list = filteredFlat.value
     if (list.length === 0) {
@@ -658,6 +795,49 @@ function onKeydown(e: KeyboardEvent) {
       e.preventDefault()
       close()
       focusTrigger()
+      break
+    }
+    case "ArrowRight": {
+      if (!isTreeMode.value) return
+      e.preventDefault()
+      const fo = list[highlightedIndex.value]
+      if (!fo || !fo.hasChildren) return
+      if (!fo.isExpanded) {
+        toggleExpand(fo.option.value)
+        // Move focus to first child after expand
+        const newList = filteredFlat.value
+        const childIdx = newList.findIndex(
+          (f) =>
+            f.parentValue === fo.option.value &&
+            !f.option.disabled &&
+            !f.groupDisabled,
+        )
+        if (childIdx >= 0) highlightedIndex.value = childIdx
+      } else {
+        // Already expanded: move to first child
+        const childIdx = list.findIndex(
+          (f) =>
+            f.parentValue === fo.option.value &&
+            !f.option.disabled &&
+            !f.groupDisabled,
+        )
+        if (childIdx >= 0) highlightedIndex.value = childIdx
+      }
+      break
+    }
+    case "ArrowLeft": {
+      if (!isTreeMode.value) return
+      e.preventDefault()
+      const fo = list[highlightedIndex.value]
+      if (!fo) return
+      if (fo.hasChildren && fo.isExpanded) {
+        toggleExpand(fo.option.value)
+      } else if (fo.parentValue !== undefined) {
+        const parentIdx = list.findIndex(
+          (f) => f.option.value === fo.parentValue,
+        )
+        if (parentIdx >= 0) highlightedIndex.value = parentIdx
+      }
       break
     }
   }
@@ -1010,29 +1190,49 @@ onBeforeUnmount(() => {
               :id="item.fo.id"
               :key="item.fo.id"
               role="option"
+              :style="
+                isTreeMode && item.fo.depth > 0
+                  ? { '--vpick-option-depth': item.fo.depth }
+                  : undefined
+              "
               :class="[
                 'vpick-option',
                 {
+                  'vpick-option--tree': isTreeMode,
                   'vpick-option--multi': multiple,
                   'vpick-option--highlighted':
                     item.flatIdx === highlightedIndex,
                   'vpick-option--selected': isSelected(item.fo.option.value),
                   'vpick-option--disabled':
-                    item.fo.option.disabled || item.fo.groupDisabled,
+                    item.fo.option.disabled ||
+                    item.fo.groupDisabled ||
+                    (disableBranchNodes && item.fo.hasChildren),
                 },
               ]"
               :aria-selected="
                 isSelected(item.fo.option.value) ? 'true' : 'false'
               "
               :aria-disabled="
-                item.fo.option.disabled || item.fo.groupDisabled
+                item.fo.option.disabled ||
+                item.fo.groupDisabled ||
+                (disableBranchNodes && item.fo.hasChildren)
                   ? 'true'
+                  : undefined
+              "
+              :aria-expanded="
+                item.fo.hasChildren
+                  ? item.fo.isExpanded
+                    ? 'true'
+                    : 'false'
                   : undefined
               "
               @click="selectOption(item.fo)"
               @mouseenter="
-                !(item.fo.option.disabled || item.fo.groupDisabled) &&
-                (highlightedIndex = item.flatIdx)
+                !(
+                  item.fo.option.disabled ||
+                  item.fo.groupDisabled ||
+                  (disableBranchNodes && item.fo.hasChildren)
+                ) && (highlightedIndex = item.flatIdx)
               "
             >
               <span
@@ -1062,6 +1262,38 @@ onBeforeUnmount(() => {
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               </span>
+              <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
+              <button
+                v-if="isTreeMode && item.fo.hasChildren"
+                type="button"
+                :class="[
+                  'vpick-option-expand',
+                  { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                ]"
+                tabindex="-1"
+                aria-hidden="true"
+                @mousedown.prevent
+                @click.stop="toggleExpand(item.fo.option.value)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+              <span
+                v-else-if="isTreeMode"
+                class="vpick-option-expand-spacer"
+                aria-hidden="true"
+              />
               <span class="vpick-option-label">{{ item.fo.option.label }}</span>
               <span
                 v-if="!multiple"
@@ -1109,7 +1341,7 @@ onBeforeUnmount(() => {
     >
       <option v-if="!multiple" value="" />
       <option
-        v-for="item in flat"
+        v-for="item in flatAll"
         :key="String(item.option.value)"
         :value="String(item.option.value)"
       >

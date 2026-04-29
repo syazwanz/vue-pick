@@ -2,7 +2,13 @@
 import { computed, ref, watch } from "vue"
 import { VPick, VPickNative } from "../../src/vue3"
 
-import { timezones, options, sizeOptions, dataOptions } from "../data"
+import {
+  timezones,
+  options,
+  sizeOptions,
+  dataOptions,
+  treeOptions,
+} from "../data"
 
 import "../../src/style.css"
 import "../style.css"
@@ -14,6 +20,13 @@ const currentOptions = computed(() =>
 
 const currentTab = ref("vpick") // 'vpick' or 'native'
 const selectedValue = ref<unknown>(null)
+
+const treeValue = ref<unknown>(null)
+const treeMultiValue = ref<unknown[]>([])
+const treeSearchable = ref(false)
+const treeClearable = ref(true)
+const treeDisableBranches = ref(false)
+const treeDefaultExpandLevel = ref(0)
 
 const propsConfig = ref({
   disabled: false,
@@ -162,6 +175,110 @@ function toggleError(e: Event) {
         placeholder="Select a country"
         style="--vpick-width: 300px; --vpick-bg: white"
       />
+    </div>
+
+    <!-- Tree Select Demo -->
+    <div class="sandbox-section">
+      <h2 style="text-align: center; margin-bottom: 1rem">Tree Select</h2>
+      <div class="controls">
+        <label class="control-label">
+          <input v-model="treeSearchable" type="checkbox" />
+          <span>Searchable</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeClearable" type="checkbox" />
+          <span>Clearable</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeDisableBranches" type="checkbox" />
+          <span>Disable branch nodes</span>
+        </label>
+        <label class="control-label">
+          <span>Default expand level:</span>
+          <input
+            v-model.number="treeDefaultExpandLevel"
+            type="number"
+            min="0"
+            max="5"
+            style="width: 3rem; margin-left: 0.25rem"
+          />
+        </label>
+      </div>
+      <div
+        style="
+          display: flex;
+          gap: 2rem;
+          justify-content: center;
+          flex-wrap: wrap;
+          margin-top: 1rem;
+        "
+      >
+        <div>
+          <div
+            style="
+              text-align: center;
+              font-size: 0.75rem;
+              color: #737373;
+              margin-bottom: 0.5rem;
+            "
+          >
+            Single
+          </div>
+          <v-pick
+            v-model="treeValue"
+            :options="treeOptions"
+            :searchable="treeSearchable"
+            :clearable="treeClearable"
+            :disable-branch-nodes="treeDisableBranches"
+            :default-expand-level="treeDefaultExpandLevel || undefined"
+            placeholder="Select a category"
+            style="--vpick-width: 280px; --vpick-bg: white"
+          />
+          <div
+            style="
+              text-align: center;
+              margin-top: 0.5rem;
+              font-size: 0.75rem;
+              color: #737373;
+            "
+          >
+            <code>{{ JSON.stringify(treeValue) }}</code>
+          </div>
+        </div>
+        <div>
+          <div
+            style="
+              text-align: center;
+              font-size: 0.75rem;
+              color: #737373;
+              margin-bottom: 0.5rem;
+            "
+          >
+            Multiple (no cascade yet)
+          </div>
+          <v-pick
+            v-model="treeMultiValue"
+            :options="treeOptions"
+            :searchable="treeSearchable"
+            :clearable="treeClearable"
+            :disable-branch-nodes="treeDisableBranches"
+            :default-expand-level="treeDefaultExpandLevel || undefined"
+            multiple
+            placeholder="Select categories"
+            style="--vpick-width: 280px; --vpick-bg: white"
+          />
+          <div
+            style="
+              text-align: center;
+              margin-top: 0.5rem;
+              font-size: 0.75rem;
+              color: #737373;
+            "
+          >
+            <code>{{ JSON.stringify(treeMultiValue) }}</code>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div style="height: 400px" />

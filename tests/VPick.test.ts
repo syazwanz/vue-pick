@@ -1291,3 +1291,276 @@ describe("VPick — multiple selection", () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Tree select
+// ---------------------------------------------------------------------------
+
+const tree: OptionOrGroup[] = [
+  {
+    label: "Electronics",
+    value: "electronics",
+    children: [
+      { label: "Phones", value: "phones" },
+      {
+        label: "Laptops",
+        value: "laptops",
+        children: [
+          { label: "Gaming", value: "gaming" },
+          { label: "Business", value: "business" },
+        ],
+      },
+    ],
+  },
+  { label: "Books", value: "books" },
+]
+
+describe("VPick — tree select", () => {
+  it("D7: auto-detects tree mode — shows expand chevron on branch rows", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.find(".vpick-option-expand").exists()).toBe(true)
+  })
+
+  it("leaf rows render a spacer instead of a chevron", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const options = wrapper.findAll('[role="option"]')
+    const booksRow = options.find((o) => o.text().includes("Books"))
+    expect(booksRow?.find(".vpick-option-expand-spacer").exists()).toBe(true)
+    expect(booksRow?.find(".vpick-option-expand").exists()).toBe(false)
+  })
+
+  it("D10: empty children array renders as leaf — no chevron", async () => {
+    // Mix: one node with real children (triggers tree mode), one with empty children
+    const withEmpty: OptionOrGroup[] = [
+      {
+        label: "Branch",
+        value: "branch",
+        children: [{ label: "Child", value: "child" }],
+      },
+      { label: "Empty", value: "empty", children: [] },
+    ]
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const emptyRow = options.find((o) => o.text().includes("Empty"))
+    // Empty children → rendered as leaf: spacer but no expand button
+    expect(emptyRow?.find(".vpick-option-expand").exists()).toBe(false)
+    expect(emptyRow?.find(".vpick-option-expand-spacer").exists()).toBe(true)
+  })
+
+  it("clicking chevron expands branch without selecting", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const chevron = wrapper.find(".vpick-option-expand")
+    await chevron.trigger("click")
+    await nextTick()
+
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined()
+    const options = wrapper.findAll('[role="option"]')
+    const labels = options.map((o) => o.text())
+    expect(labels.some((l) => l.includes("Phones"))).toBe(true)
+  })
+
+  it("D9: clicking branch row label selects without expanding", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const electronicsRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Electronics"))
+    await electronicsRow!.trigger("click")
+    await nextTick()
+
+    expect(wrapper.emitted("update:modelValue")?.[0]).toEqual(["electronics"])
+    // Children should NOT have appeared (row click ≠ expand)
+    const options = wrapper.findAll('[role="option"]')
+    expect(options.some((o) => o.text().includes("Phones"))).toBe(false)
+  })
+
+  it("D3: disableBranchNodes prevents selecting branch", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, disableBranchNodes: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const electronicsRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Electronics"))
+    expect(electronicsRow?.classes()).toContain("vpick-option--disabled")
+
+    await electronicsRow!.trigger("click")
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined()
+  })
+
+  it("D4: defaultExpandLevel=1 pre-expands top-level branches", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const labels = options.map((o) => o.text())
+    expect(labels.some((l) => l.includes("Phones"))).toBe(true)
+    // depth-2 should not be visible (level 1 = top only)
+    expect(labels.some((l) => l.includes("Gaming"))).toBe(false)
+  })
+
+  it("D4: defaultExpandLevel=2 pre-expands two levels", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 2 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const labels = options.map((o) => o.text())
+    expect(labels.some((l) => l.includes("Gaming"))).toBe(true)
+  })
+
+  it("ArrowRight expands collapsed branch and moves to first child", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    // Electronics is highlighted by default (first enabled item)
+    await wrapper
+      .find('[role="combobox"]')
+      .trigger("keydown", { key: "ArrowRight" })
+    await nextTick()
+
+    const highlighted = wrapper.find(".vpick-option--highlighted")
+    expect(highlighted.text()).toContain("Phones")
+  })
+
+  it("ArrowLeft collapses expanded branch", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    // Electronics is highlighted by default (first enabled item) and already expanded
+    await wrapper
+      .find('[role="combobox"]')
+      .trigger("keydown", { key: "ArrowLeft" })
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    expect(options.some((o) => o.text().includes("Phones"))).toBe(false)
+  })
+
+  it("ArrowLeft on leaf jumps to parent", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    // Move down to Phones (index 1, child of Electronics)
+    await wrapper
+      .find('[role="combobox"]')
+      .trigger("keydown", { key: "ArrowDown" })
+    await nextTick()
+
+    // ArrowLeft on Phones (leaf) jumps to parent Electronics
+    await wrapper
+      .find('[role="combobox"]')
+      .trigger("keydown", { key: "ArrowLeft" })
+    await nextTick()
+
+    const highlighted = wrapper.find(".vpick-option--highlighted")
+    expect(highlighted.text()).toContain("Electronics")
+  })
+
+  it("tree depth CSS var is set on child rows", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const phonesRow = options.find((o) => o.text().includes("Phones"))
+    expect(phonesRow?.attributes("style")).toContain("--vpick-option-depth")
+  })
+
+  it("hidden select includes unexpanded branch nodes", async () => {
+    const form = document.createElement("form")
+    document.body.appendChild(form)
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, name: "cat" },
+      attachTo: form,
+    })
+    await nextTick()
+
+    const hiddenOptions = wrapper.findAll("select.vpick-hidden-select option")
+    const values = hiddenOptions.map((o) => o.attributes("value"))
+    // All nodes should be present, not just top-level
+    expect(values).toContain("electronics")
+    expect(values).toContain("phones")
+    expect(values).toContain("laptops")
+    expect(values).toContain("gaming")
+    expect(values).toContain("business")
+    expect(values).toContain("books")
+
+    wrapper.unmount()
+    form.remove()
+  })
+
+  it("D5: search auto-expands ancestors of matched nodes", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, searchable: true },
+    })
+    const input = wrapper.find("input.vpick-trigger-input")
+    await input.trigger("focus")
+    await nextTick()
+
+    await input.setValue("Gaming")
+    await input.trigger("input")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const labels = options.map((o) => o.text())
+    expect(labels.some((l) => l.includes("Electronics"))).toBe(true)
+    expect(labels.some((l) => l.includes("Laptops"))).toBe(true)
+    expect(labels.some((l) => l.includes("Gaming"))).toBe(true)
+  })
+
+  it("D6: clearing search restores pre-search expansion", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, searchable: true },
+    })
+    const input = wrapper.find("input.vpick-trigger-input")
+    await input.trigger("focus")
+    await nextTick()
+
+    // Note the initial state: nothing expanded
+    await input.setValue("Gaming")
+    await input.trigger("input")
+    await nextTick()
+
+    // Clear the query
+    await input.setValue("")
+    await input.trigger("input")
+    await nextTick()
+
+    const options = wrapper.findAll('[role="option"]')
+    const labels = options.map((o) => o.text())
+    // Phones and Laptops should be hidden again (collapsed back)
+    expect(labels.some((l) => l.includes("Phones"))).toBe(false)
+    expect(labels.some((l) => l.includes("Laptops"))).toBe(false)
+  })
+})

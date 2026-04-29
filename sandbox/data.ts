@@ -108,3 +108,47 @@ export const dataOptions = [
   { label: "Countries", value: "countries" },
   { label: "Timezones", value: "timezones" },
 ]
+
+export const treeOptions = [
+  {
+    label: "Electronics",
+    value: "electronics",
+    children: [
+      { label: "Phones", value: "phones" },
+      {
+        label: "Laptops",
+        value: "laptops",
+        children: [
+          { label: "Gaming", value: "gaming" },
+          { label: "Business", value: "business" },
+          { label: "Ultrabooks", value: "ultrabooks" },
+        ],
+      },
+      { label: "Tablets", value: "tablets" },
+    ],
+  },
+  {
+    label: "Clothing",
+    value: "clothing",
+    children: [
+      {
+        label: "Men",
+        value: "men",
+        children: [
+          { label: "Shirts", value: "shirts" },
+          { label: "Pants", value: "pants" },
+        ],
+      },
+      {
+        label: "Women",
+        value: "women",
+        children: [
+          { label: "Dresses", value: "dresses" },
+          { label: "Tops", value: "tops" },
+        ],
+      },
+    ],
+  },
+  { label: "Books", value: "books" },
+  { label: "Sports", value: "sports" },
+]
