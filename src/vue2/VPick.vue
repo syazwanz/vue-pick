@@ -465,9 +465,10 @@ const rootRef = ref<HTMLDivElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const listboxRef = ref<HTMLDivElement | null>(null)
+const positionerRef = ref<HTMLDivElement | null>(null)
 const hiddenSelectRef = ref<HTMLSelectElement | null>(null)
 
-const listboxStyle = ref<Record<string, string>>({})
+const positionerStyle = ref<Record<string, string>>({})
 const placement = ref<"top" | "bottom">("bottom")
 
 function getRootEl(): HTMLElement | null {
@@ -530,7 +531,7 @@ function resolveTeleportTarget(): HTMLElement {
   return document.body
 }
 
-async function updatePosition() {
+async function updatePosition(skipSecondPass = false) {
   const trigger = triggerRef.value
   if (!trigger) return
   const rect = trigger.getBoundingClientRect()
@@ -543,15 +544,18 @@ async function updatePosition() {
   placement.value = initial.placement
   const forwarded = forwardedVars()
 
-  const scrollX = typeof window !== "undefined" ? window.scrollX : 0
-  const scrollY = typeof window !== "undefined" ? window.scrollY : 0
-  listboxStyle.value = {
+  positionerStyle.value = {
     ...forwarded,
-    position: "absolute",
-    top: `${initial.top + scrollY}px`,
-    left: `${initial.left + scrollX}px`,
+    position: "fixed",
+    top: "0px",
+    left: "0px",
+    transform: `translate3d(${initial.left}px, ${initial.top}px, 0)`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
+  // During scroll the listbox height is already known, so the second-pass
+  // height correction (the nextTick remeasure below) only matters at open
+  // time. Skipping it removes a one-frame jitter on scroll.
+  if (skipSecondPass) return
   await nextTick()
   const el = listboxRef.value
   if (!el) return
@@ -562,11 +566,12 @@ async function updatePosition() {
     offset,
   )
   placement.value = measured.placement
-  listboxStyle.value = {
+  positionerStyle.value = {
     ...forwarded,
-    position: "absolute",
-    top: `${measured.top + scrollY}px`,
-    left: `${measured.left + scrollX}px`,
+    position: "fixed",
+    top: "0px",
+    left: "0px",
+    transform: `translate3d(${measured.left}px, ${measured.top}px, 0)`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
 }
@@ -574,8 +579,8 @@ async function updatePosition() {
 function onReposition(e?: Event) {
   if (!isOpen.value) return
   const target = e?.target
-  if (target instanceof Node && listboxRef.value?.contains(target)) return
-  updatePosition()
+  if (target instanceof Node && positionerRef.value?.contains(target)) return
+  updatePosition(true)
 }
 
 // Vue 2.7's `flush: "post"` fires before the hidden select's :value binding
@@ -1000,7 +1005,7 @@ function onKeydown(e: KeyboardEvent) {
 function onClickOutside(e: MouseEvent) {
   const target = e.target as Node
   if (getRootEl()?.contains(target)) return
-  if (listboxRef.value?.contains(target)) return
+  if (positionerRef.value?.contains(target)) return
   close()
 }
 
@@ -1010,10 +1015,11 @@ onMounted(async () => {
   isFormControl.value = !!getRootEl()?.closest("form")
   await nextTick()
   syncMultiSelectOptions()
-  // Move the listbox DOM node to the teleport target. Vue's vnode keeps the
-  // reference, so patching continues to work from the new location.
-  if (listboxRef.value) {
-    resolveTeleportTarget().appendChild(listboxRef.value)
+  // Move the positioner DOM node to the teleport target. Vue's vnode keeps
+  // the reference, so patching continues to work from the new location. The
+  // listbox is a child of the positioner and travels with it.
+  if (positionerRef.value) {
+    resolveTeleportTarget().appendChild(positionerRef.value)
   }
 })
 
@@ -1031,8 +1037,8 @@ onBeforeUnmount(() => {
     unlockBodyScroll()
     scrollLocked = false
   }
-  if (listboxRef.value?.parentNode) {
-    listboxRef.value.parentNode.removeChild(listboxRef.value)
+  if (positionerRef.value?.parentNode) {
+    positionerRef.value.parentNode.removeChild(positionerRef.value)
   }
 })
 </script>
@@ -1307,18 +1313,26 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- Dropdown listbox (portaled to body via DOM move on mount) -->
+    <!-- Dropdown positioner + listbox (portaled to body via DOM move on
+         mount). Positioner owns position (transform: translate3d on a
+         hardware-accelerated layer); listbox owns the enter-leave animation.
+         Splitting them is required because two transforms can't coexist on
+         the same element. -->
     <transition name="vpick-dropdown" @after-leave="onAfterLeave">
       <div
         v-show="isOpen"
+        ref="positionerRef"
+        class="vpick-positioner"
+        :style="positionerStyle"
+        :data-placement="placement"
+        @mousedown.prevent
+      >
+      <div
         :id="listboxId"
         ref="listboxRef"
         role="listbox"
         class="vpick-listbox"
         :aria-multiselectable="multiple ? 'true' : undefined"
-        :style="listboxStyle"
-        :data-placement="placement"
-        @mousedown.prevent
       >
         <div v-for="(section, si) in sections" :key="'s' + si">
           <div
@@ -1493,6 +1507,7 @@ onBeforeUnmount(() => {
         <div v-if="showEmpty" class="vpick-empty">
           <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
         </div>
+      </div>
       </div>
     </transition>
 

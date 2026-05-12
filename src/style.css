@@ -392,12 +392,24 @@ button.vpick-trigger--loading:disabled,
   background-color: var(--vpick-clear-hover-bg, var(--vpick-option-hover-bg));
 }
 
-/* Listbox / Dropdown */
+/* Positioner / Listbox / Dropdown */
+
+/* Positioner owns position (transform: translate3d, set inline by VPick).
+   GPU-composited so it tracks scroll without paint/layout per frame. The
+   inner listbox owns the enter-leave scale/fade — two transforms can't
+   coexist on one element. */
+.vpick-positioner {
+  z-index: var(--vpick-listbox-z-index);
+  pointer-events: none;
+}
+
+.vpick-positioner[data-placement="top"] {
+  --vpick-transform-origin: bottom center;
+}
 
 .vpick-listbox {
-  /* position/top/left set inline by VPick (portaled to body) */
   /* width: override --vpick-listbox-min-width to change behavior */
-  z-index: var(--vpick-listbox-z-index);
+  pointer-events: auto;
   box-sizing: border-box;
   min-width: var(--vpick-listbox-min-width, var(--vpick-trigger-width));
   max-width: var(--vpick-listbox-max-width, calc(100vw - 16px));
@@ -412,27 +424,26 @@ button.vpick-trigger--loading:disabled,
   transform-origin: var(--vpick-transform-origin, top center);
 }
 
-.vpick-listbox[data-placement="top"] {
-  --vpick-transform-origin: bottom center;
-}
+/* Enter/leave transition — 100ms fade + scale + slide from trigger side.
+   Targets .vpick-listbox inside the transition wrappers (which apply to the
+   positioner) so the listbox's scale/translateY doesn't collide with the
+   positioner's translate3d. */
 
-/* Enter/leave transition — 100ms fade + scale + slide from trigger side. */
-
-.vpick-dropdown-enter-active,
-.vpick-dropdown-leave-active {
+.vpick-dropdown-enter-active .vpick-listbox,
+.vpick-dropdown-leave-active .vpick-listbox {
   transition:
     opacity 100ms ease-out,
     transform 100ms ease-out;
 }
 
-.vpick-dropdown-enter-from,
-.vpick-dropdown-leave-to {
+.vpick-dropdown-enter-from .vpick-listbox,
+.vpick-dropdown-leave-to .vpick-listbox {
   opacity: 0;
   transform: scale(0.95) translateY(-8px);
 }
 
-.vpick-dropdown-enter-from[data-placement="top"],
-.vpick-dropdown-leave-to[data-placement="top"] {
+.vpick-dropdown-enter-from[data-placement="top"] .vpick-listbox,
+.vpick-dropdown-leave-to[data-placement="top"] .vpick-listbox {
   transform: scale(0.95) translateY(8px);
 }
 
