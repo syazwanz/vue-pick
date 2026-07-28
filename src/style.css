@@ -20,8 +20,9 @@
   --vpick-error-bg: rgba(220, 38, 38, 0.05);
   --vpick-error-ring-color: rgba(220, 38, 38, 0.2);
   --vpick-disabled-opacity: 0.5;
+  /* Control height. Set this to resize the trigger and native select;
+     1.75rem reproduces the old `size="sm"` preset. */
   --vpick-height-default: 2rem;
-  --vpick-height-sm: 1.75rem;
   --vpick-shadow: 0 0 0 0 transparent;
 }
 
@@ -75,12 +76,6 @@
     color 0.15s,
     background-color 0.15s,
     border-color 0.15s;
-}
-
-.vpick-native--sm {
-  height: var(--vpick-height-sm);
-  padding-top: 0.125rem;
-  padding-bottom: 0.125rem;
 }
 
 .vpick-native:focus-visible {
@@ -198,12 +193,6 @@
     color 0.15s,
     background-color 0.15s,
     border-color 0.15s;
-}
-
-.vpick-trigger--sm {
-  height: var(--vpick-height-sm);
-  padding-top: 0.125rem;
-  padding-bottom: 0.125rem;
 }
 
 /* Button trigger */

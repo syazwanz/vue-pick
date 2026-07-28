@@ -31,7 +31,6 @@ const props = withDefaults(
     required?: boolean
     loading?: boolean
     error?: string
-    size?: "sm" | "default"
     rotateIcon?: boolean
     separators?: boolean
     ariaLabel?: string
@@ -66,7 +65,6 @@ const props = withDefaults(
     required: false,
     loading: false,
     error: undefined,
-    size: "default",
     rotateIcon: false,
     separators: false,
     ariaLabel: undefined,
@@ -107,11 +105,6 @@ const isFormControl = ref(true)
 
 // Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
-
-// Combobox trigger ignores the size variants.
-const effectiveSize = computed(() =>
-  isSearchable.value ? "default" : (props.size ?? "default"),
-)
 
 // The generated fallback stays stable for the instance's lifetime, but an
 // explicit `id` prop has to win reactively: Vue reuses a single instance
@@ -1032,7 +1025,6 @@ onBeforeUnmount(() => {
       role="combobox"
       :class="[
         'vpick-trigger',
-        `vpick-trigger--${effectiveSize}`,
         { 'vpick-trigger--multi': multiple },
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },
@@ -1134,7 +1126,6 @@ onBeforeUnmount(() => {
       :class="[
         'vpick-trigger',
         'vpick-trigger--search',
-        `vpick-trigger--${effectiveSize}`,
         { 'vpick-trigger--multi': multiple },
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },

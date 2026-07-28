@@ -154,13 +154,6 @@ describe("VPickNative", () => {
     expect(select.attributes("aria-describedby")).toBe("help-text")
   })
 
-  it("applies size class", () => {
-    const wrapper = mount(VPickNative, {
-      props: { options: status, size: "sm" },
-    })
-    expect(wrapper.find(".vpick-native--sm").exists()).toBe(true)
-  })
-
   it("renders custom icon slot", () => {
     const wrapper = mount(VPickNative, {
       props: { options: status },

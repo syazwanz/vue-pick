@@ -99,11 +99,6 @@ export const options = [
   { label: "Vietnam", value: "vn" },
 ]
 
-export const sizeOptions = [
-  { label: "Default", value: "default" },
-  { label: "Small", value: "sm" },
-]
-
 export const dataOptions = [
   { label: "Countries", value: "countries" },
   { label: "Timezones", value: "timezones" },
