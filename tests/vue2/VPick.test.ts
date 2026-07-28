@@ -84,8 +84,42 @@ describe("VPick (Vue 2) — rendering", () => {
 
   it("listbox is hidden by default", () => {
     const wrapper = mount(VPick, { propsData: { options: status } })
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
+    expect(positioner.element.style.display).toBe("none")
+  })
+
+  it("positioner wraps the listbox", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status }, attachTo: document.body })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
+    const listbox = positioner.find<HTMLElement>('[role="listbox"]')
+    expect(positioner.exists()).toBe(true)
+    expect(listbox.exists()).toBe(true)
+    expect(positioner.element.contains(listbox.element)).toBe(true)
+    wrapper.destroy()
+  })
+
+  it("positioner uses translate3d for positioning", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status }, attachTo: document.body })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
+    expect(positioner.element.style.transform).toMatch(/translate3d\(/)
+    expect(positioner.element.style.position).toBe("fixed")
+    wrapper.destroy()
+  })
+
+  it("data-placement attribute lives on the positioner, not the listbox", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status }, attachTo: document.body })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
     const listbox = wrapper.find<HTMLElement>('[role="listbox"]')
-    expect(listbox.element.style.display).toBe("none")
+    expect(positioner.attributes("data-placement")).toBeDefined()
+    expect(listbox.attributes("data-placement")).toBeUndefined()
+    wrapper.destroy()
   })
 
   it("uses a custom id when provided", () => {

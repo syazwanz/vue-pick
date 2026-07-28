@@ -426,7 +426,9 @@ const selectedOptions = computed(() => {
   if (!props.multiple) return []
   const displayValues = isCascadeMode.value
     ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
-    : (Array.isArray(props.modelValue) ? props.modelValue : [])
+    : Array.isArray(props.modelValue)
+      ? props.modelValue
+      : []
   return displayValues
     .map((v) => flatAll.value.find((f) => f.option.value === v))
     .filter(Boolean) as FlatOption[]
@@ -459,9 +461,10 @@ const rootRef = ref<HTMLDivElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const listboxRef = ref<HTMLDivElement | null>(null)
+const positionerRef = ref<HTMLDivElement | null>(null)
 const hiddenSelectRef = ref<HTMLSelectElement | null>(null)
 
-const listboxStyle = ref<Record<string, string>>({})
+const positionerStyle = ref<Record<string, string>>({})
 const placement = ref<"top" | "bottom">("bottom")
 
 // Forward listbox CSS vars from the root so they reach the teleported listbox,
@@ -513,7 +516,7 @@ function forwardedVars(): Record<string, string> {
   return out
 }
 
-async function updatePosition() {
+async function updatePosition(skipSecondPass = false) {
   const trigger = triggerRef.value
   if (!trigger) return
   const rect = trigger.getBoundingClientRect()
@@ -527,15 +530,18 @@ async function updatePosition() {
   placement.value = initial.placement
   const forwarded = forwardedVars()
 
-  const scrollX = typeof window !== "undefined" ? window.scrollX : 0
-  const scrollY = typeof window !== "undefined" ? window.scrollY : 0
-  listboxStyle.value = {
+  positionerStyle.value = {
     ...forwarded,
-    position: "absolute",
-    top: `${initial.top + scrollY}px`,
-    left: `${initial.left + scrollX}px`,
+    position: "fixed",
+    top: "0px",
+    left: "0px",
+    transform: `translate3d(${initial.left}px, ${initial.top}px, 0)`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
+  // During scroll the listbox height is already known, so the second-pass
+  // height correction (the nextTick remeasure below) only matters at open
+  // time. Skipping it removes a one-frame jitter on scroll.
+  if (skipSecondPass) return
   await nextTick()
   const el = listboxRef.value
   if (!el) return
@@ -546,11 +552,12 @@ async function updatePosition() {
     offset,
   )
   placement.value = measured.placement
-  listboxStyle.value = {
+  positionerStyle.value = {
     ...forwarded,
-    position: "absolute",
-    top: `${measured.top + scrollY}px`,
-    left: `${measured.left + scrollX}px`,
+    position: "fixed",
+    top: "0px",
+    left: "0px",
+    transform: `translate3d(${measured.left}px, ${measured.top}px, 0)`,
     "--vpick-trigger-width": `${rect.width}px`,
   }
 }
@@ -559,8 +566,8 @@ function onReposition(e?: Event) {
   if (!isOpen.value) return
   // Ignore scroll events originating from the listbox's own scroll container.
   const target = e?.target
-  if (target instanceof Node && listboxRef.value?.contains(target)) return
-  updatePosition()
+  if (target instanceof Node && positionerRef.value?.contains(target)) return
+  updatePosition(true)
 }
 
 // Bubble value changes to parent form handlers.
@@ -716,7 +723,10 @@ function selectOption(flatOption: FlatOption) {
       const arr = Array.isArray(props.modelValue) ? props.modelValue : []
       const val = flatOption.option.value
       if (selectedValues.value.has(val)) {
-        emit("update:modelValue", arr.filter((v) => v !== val))
+        emit(
+          "update:modelValue",
+          arr.filter((v) => v !== val),
+        )
       } else {
         emit("update:modelValue", [...arr, val])
       }
@@ -973,7 +983,7 @@ function onKeydown(e: KeyboardEvent) {
 function onClickOutside(e: MouseEvent) {
   const target = e.target as Node
   if (rootRef.value?.contains(target)) return
-  if (listboxRef.value?.contains(target)) return
+  if (positionerRef.value?.contains(target)) return
   close()
 }
 
@@ -1270,189 +1280,202 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- Dropdown listbox (portaled to body by default) -->
+    <!-- Dropdown positioner + listbox (portaled to body by default).
+         Positioner owns position (transform: translate3d on a
+         hardware-accelerated layer); listbox owns the enter-leave animation.
+         Splitting them is required because two transforms can't coexist on
+         the same element. -->
     <Teleport :to="teleportTo ?? 'body'">
       <Transition name="vpick-dropdown" @after-leave="onAfterLeave">
         <div
           v-show="isOpen"
-          :id="listboxId"
-          ref="listboxRef"
-          role="listbox"
-          class="vpick-listbox"
-          :aria-multiselectable="multiple || undefined"
-          :style="listboxStyle"
+          ref="positionerRef"
+          class="vpick-positioner"
+          :style="positionerStyle"
           :data-placement="placement"
           @mousedown.prevent
         >
-          <template v-for="(section, si) in sections" :key="'s' + si">
-            <div
-              v-if="separators && si > 0"
-              role="separator"
-              class="vpick-separator"
-              aria-hidden="true"
-            />
-            <div
-              class="vpick-group"
-              :role="section.label ? 'group' : undefined"
-              :aria-labelledby="section.labelId"
-            >
+          <div
+            :id="listboxId"
+            ref="listboxRef"
+            role="listbox"
+            class="vpick-listbox"
+            :aria-multiselectable="multiple || undefined"
+          >
+            <template v-for="(section, si) in sections" :key="'s' + si">
               <div
-                v-if="section.label"
-                :id="section.labelId"
-                class="vpick-group-label"
-              >
-                {{ section.label }}
-              </div>
+                v-if="separators && si > 0"
+                role="separator"
+                class="vpick-separator"
+                aria-hidden="true"
+              />
               <div
-                v-for="item in section.items"
-                :id="item.fo.id"
-                :key="item.fo.id"
-                role="option"
-                :style="
-                  isTreeMode && item.fo.depth > 0
-                    ? {
-                        '--vpick-option-depth': item.fo.depth,
-                      }
-                    : undefined
-                "
-                :class="[
-                  'vpick-option',
-                  {
-                    'vpick-option--tree': isTreeMode,
-                    'vpick-option--multi': multiple,
-                    'vpick-option--highlighted':
-                      item.flatIdx === highlightedIndex,
-                    'vpick-option--selected': isSelected(item.fo.option.value),
-                    'vpick-option--disabled':
-                      item.fo.option.disabled ||
-                      item.fo.groupDisabled ||
-                      (disableBranchNodes && item.fo.hasChildren),
-                  },
-                ]"
-                :aria-selected="
-                  multiple
-                    ? isCascadeChecked(item.fo)
-                    : isSelected(item.fo.option.value)
-                "
-                :aria-disabled="
-                  item.fo.option.disabled ||
-                  item.fo.groupDisabled ||
-                  (disableBranchNodes && item.fo.hasChildren) ||
-                  undefined
-                "
-                :aria-expanded="
-                  item.fo.hasChildren ? item.fo.isExpanded : undefined
-                "
-                @click="selectOption(item.fo)"
-                @mouseenter="
-                  !(
-                    item.fo.option.disabled ||
-                    item.fo.groupDisabled ||
-                    (disableBranchNodes && item.fo.hasChildren)
-                  ) && (highlightedIndex = item.flatIdx)
-                "
+                class="vpick-group"
+                :role="section.label ? 'group' : undefined"
+                :aria-labelledby="section.labelId"
               >
-                <span
-                  v-if="multiple"
+                <div
+                  v-if="section.label"
+                  :id="section.labelId"
+                  class="vpick-group-label"
+                >
+                  {{ section.label }}
+                </div>
+                <div
+                  v-for="item in section.items"
+                  :id="item.fo.id"
+                  :key="item.fo.id"
+                  role="option"
+                  :style="
+                    isTreeMode && item.fo.depth > 0
+                      ? {
+                          '--vpick-option-depth': item.fo.depth,
+                        }
+                      : undefined
+                  "
                   :class="[
-                    'vpick-option-checkbox',
+                    'vpick-option',
                     {
-                      'vpick-option-checkbox--checked': isCascadeChecked(item.fo),
-                      'vpick-option-checkbox--indeterminate':
-                        isCascadeIndeterminate(item.fo),
+                      'vpick-option--tree': isTreeMode,
+                      'vpick-option--multi': multiple,
+                      'vpick-option--highlighted':
+                        item.flatIdx === highlightedIndex,
+                      'vpick-option--selected': isSelected(
+                        item.fo.option.value,
+                      ),
+                      'vpick-option--disabled':
+                        item.fo.option.disabled ||
+                        item.fo.groupDisabled ||
+                        (disableBranchNodes && item.fo.hasChildren),
                     },
                   ]"
-                  aria-hidden="true"
+                  :aria-selected="
+                    multiple
+                      ? isCascadeChecked(item.fo)
+                      : isSelected(item.fo.option.value)
+                  "
+                  :aria-disabled="
+                    item.fo.option.disabled ||
+                    item.fo.groupDisabled ||
+                    (disableBranchNodes && item.fo.hasChildren) ||
+                    undefined
+                  "
+                  :aria-expanded="
+                    item.fo.hasChildren ? item.fo.isExpanded : undefined
+                  "
+                  @click="selectOption(item.fo)"
+                  @mouseenter="
+                    !(
+                      item.fo.option.disabled ||
+                      item.fo.groupDisabled ||
+                      (disableBranchNodes && item.fo.hasChildren)
+                    ) && (highlightedIndex = item.flatIdx)
+                  "
                 >
-                  <svg
-                    v-if="isCascadeChecked(item.fo)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                  <span
+                    v-if="multiple"
+                    :class="[
+                      'vpick-option-checkbox',
+                      {
+                        'vpick-option-checkbox--checked': isCascadeChecked(
+                          item.fo,
+                        ),
+                        'vpick-option-checkbox--indeterminate':
+                          isCascadeIndeterminate(item.fo),
+                      },
+                    ]"
+                    aria-hidden="true"
                   >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                  <svg
-                    v-else-if="isCascadeIndeterminate(item.fo)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    <svg
+                      v-if="isCascadeChecked(item.fo)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    <svg
+                      v-else-if="isCascadeIndeterminate(item.fo)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M5 12h14" />
+                    </svg>
+                  </span>
+                  <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
+                  <button
+                    v-if="isTreeMode && item.fo.hasChildren"
+                    type="button"
+                    :class="[
+                      'vpick-option-expand',
+                      { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                    ]"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    @mousedown.prevent
+                    @click.stop="toggleExpand(item.fo.option.value)"
                   >
-                    <path d="M5 12h14" />
-                  </svg>
-                </span>
-                <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
-                <button
-                  v-if="isTreeMode && item.fo.hasChildren"
-                  type="button"
-                  :class="[
-                    'vpick-option-expand',
-                    { 'vpick-option-expand--expanded': item.fo.isExpanded },
-                  ]"
-                  tabindex="-1"
-                  aria-hidden="true"
-                  @mousedown.prevent
-                  @click.stop="toggleExpand(item.fo.option.value)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                  <span
+                    v-else-if="isTreeMode"
+                    class="vpick-option-expand-spacer"
+                    aria-hidden="true"
+                  />
+                  <span class="vpick-option-label">{{
+                    item.fo.option.label
+                  }}</span>
+                  <span
+                    v-if="!multiple"
+                    class="vpick-option-check"
+                    aria-hidden="true"
                   >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-                <span
-                  v-else-if="isTreeMode"
-                  class="vpick-option-expand-spacer"
-                  aria-hidden="true"
-                />
-                <span class="vpick-option-label">{{
-                  item.fo.option.label
-                }}</span>
-                <span
-                  v-if="!multiple"
-                  class="vpick-option-check"
-                  aria-hidden="true"
-                >
-                  <svg
-                    v-if="isSelected(item.fo.option.value)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                </span>
+                    <svg
+                      v-if="isSelected(item.fo.option.value)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                </div>
               </div>
+            </template>
+            <div v-if="showEmpty" class="vpick-empty">
+              <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
             </div>
-          </template>
-          <div v-if="showEmpty" class="vpick-empty">
-            <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
           </div>
         </div>
       </Transition>
