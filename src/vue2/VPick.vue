@@ -424,7 +424,9 @@ const selectedOptions = computed(() => {
   if (!props.multiple) return []
   const displayValues = isCascadeMode.value
     ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
-    : (Array.isArray(props.value) ? props.value : [])
+    : Array.isArray(props.value)
+      ? props.value
+      : []
   return displayValues
     .map((v) => flatAll.value.find((f) => f.option.value === v))
     .filter(Boolean) as FlatOption[]
@@ -751,7 +753,10 @@ function selectOption(flatOption: FlatOption) {
       const arr = Array.isArray(props.value) ? props.value : []
       const val = flatOption.option.value
       if (selectedValues.value.has(val)) {
-        emit("input", arr.filter((v) => v !== val))
+        emit(
+          "input",
+          arr.filter((v) => v !== val),
+        )
       } else {
         emit("input", [...arr, val])
       }
@@ -1327,187 +1332,193 @@ onBeforeUnmount(() => {
         :data-placement="placement"
         @mousedown.prevent
       >
-      <div
-        :id="listboxId"
-        ref="listboxRef"
-        role="listbox"
-        class="vpick-listbox"
-        :aria-multiselectable="multiple ? 'true' : undefined"
-      >
-        <div v-for="(section, si) in sections" :key="'s' + si">
-          <div
-            v-if="separators && si > 0"
-            role="separator"
-            class="vpick-separator"
-            aria-hidden="true"
-          />
-          <div
-            class="vpick-group"
-            :role="section.label ? 'group' : undefined"
-            :aria-labelledby="section.labelId"
-          >
+        <div
+          :id="listboxId"
+          ref="listboxRef"
+          role="listbox"
+          class="vpick-listbox"
+          :aria-multiselectable="multiple ? 'true' : undefined"
+        >
+          <div v-for="(section, si) in sections" :key="'s' + si">
             <div
-              v-if="section.label"
-              :id="section.labelId"
-              class="vpick-group-label"
+              v-if="separators && si > 0"
+              role="separator"
+              class="vpick-separator"
+              aria-hidden="true"
+            />
+            <div
+              class="vpick-group"
+              :role="section.label ? 'group' : undefined"
+              :aria-labelledby="section.labelId"
             >
-              {{ section.label }}
-            </div>
-            <div
-              v-for="item in section.items"
-              :id="item.fo.id"
-              :key="item.fo.id"
-              role="option"
-              :style="
-                isTreeMode && item.fo.depth > 0
-                  ? { '--vpick-option-depth': item.fo.depth }
-                  : undefined
-              "
-              :class="[
-                'vpick-option',
-                {
-                  'vpick-option--tree': isTreeMode,
-                  'vpick-option--multi': multiple,
-                  'vpick-option--highlighted':
-                    item.flatIdx === highlightedIndex,
-                  'vpick-option--selected': isSelected(item.fo.option.value),
-                  'vpick-option--disabled':
-                    item.fo.option.disabled ||
-                    item.fo.groupDisabled ||
-                    (disableBranchNodes && item.fo.hasChildren),
-                },
-              ]"
-              :aria-selected="
-                (multiple
-                  ? isCascadeChecked(item.fo)
-                  : isSelected(item.fo.option.value))
-                  ? 'true'
-                  : 'false'
-              "
-              :aria-disabled="
-                item.fo.option.disabled ||
-                item.fo.groupDisabled ||
-                (disableBranchNodes && item.fo.hasChildren)
-                  ? 'true'
-                  : undefined
-              "
-              :aria-expanded="
-                item.fo.hasChildren
-                  ? item.fo.isExpanded
+              <div
+                v-if="section.label"
+                :id="section.labelId"
+                class="vpick-group-label"
+              >
+                {{ section.label }}
+              </div>
+              <div
+                v-for="item in section.items"
+                :id="item.fo.id"
+                :key="item.fo.id"
+                role="option"
+                :style="
+                  isTreeMode && item.fo.depth > 0
+                    ? { '--vpick-option-depth': item.fo.depth }
+                    : undefined
+                "
+                :class="[
+                  'vpick-option',
+                  {
+                    'vpick-option--tree': isTreeMode,
+                    'vpick-option--multi': multiple,
+                    'vpick-option--highlighted':
+                      item.flatIdx === highlightedIndex,
+                    'vpick-option--selected': isSelected(item.fo.option.value),
+                    'vpick-option--disabled':
+                      item.fo.option.disabled ||
+                      item.fo.groupDisabled ||
+                      (disableBranchNodes && item.fo.hasChildren),
+                  },
+                ]"
+                :aria-selected="
+                  (
+                    multiple
+                      ? isCascadeChecked(item.fo)
+                      : isSelected(item.fo.option.value)
+                  )
                     ? 'true'
                     : 'false'
-                  : undefined
-              "
-              @click="selectOption(item.fo)"
-              @mouseenter="
-                !(
+                "
+                :aria-disabled="
                   item.fo.option.disabled ||
                   item.fo.groupDisabled ||
                   (disableBranchNodes && item.fo.hasChildren)
-                ) && (highlightedIndex = item.flatIdx)
-              "
-            >
-              <span
-                v-if="multiple"
-                :class="[
-                  'vpick-option-checkbox',
-                  {
-                    'vpick-option-checkbox--checked': isCascadeChecked(item.fo),
-                    'vpick-option-checkbox--indeterminate':
-                      isCascadeIndeterminate(item.fo),
-                  },
-                ]"
-                aria-hidden="true"
+                    ? 'true'
+                    : undefined
+                "
+                :aria-expanded="
+                  item.fo.hasChildren
+                    ? item.fo.isExpanded
+                      ? 'true'
+                      : 'false'
+                    : undefined
+                "
+                @click="selectOption(item.fo)"
+                @mouseenter="
+                  !(
+                    item.fo.option.disabled ||
+                    item.fo.groupDisabled ||
+                    (disableBranchNodes && item.fo.hasChildren)
+                  ) && (highlightedIndex = item.flatIdx)
+                "
               >
-                <svg
-                  v-if="isCascadeChecked(item.fo)"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                <span
+                  v-if="multiple"
+                  :class="[
+                    'vpick-option-checkbox',
+                    {
+                      'vpick-option-checkbox--checked': isCascadeChecked(
+                        item.fo,
+                      ),
+                      'vpick-option-checkbox--indeterminate':
+                        isCascadeIndeterminate(item.fo),
+                    },
+                  ]"
+                  aria-hidden="true"
                 >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                <svg
-                  v-else-if="isCascadeIndeterminate(item.fo)"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  <svg
+                    v-if="isCascadeChecked(item.fo)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  <svg
+                    v-else-if="isCascadeIndeterminate(item.fo)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M5 12h14" />
+                  </svg>
+                </span>
+                <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
+                <button
+                  v-if="isTreeMode && item.fo.hasChildren"
+                  type="button"
+                  :class="[
+                    'vpick-option-expand',
+                    { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                  ]"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  @mousedown.prevent
+                  @click.stop="toggleExpand(item.fo.option.value)"
                 >
-                  <path d="M5 12h14" />
-                </svg>
-              </span>
-              <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
-              <button
-                v-if="isTreeMode && item.fo.hasChildren"
-                type="button"
-                :class="[
-                  'vpick-option-expand',
-                  { 'vpick-option-expand--expanded': item.fo.isExpanded },
-                ]"
-                tabindex="-1"
-                aria-hidden="true"
-                @mousedown.prevent
-                @click.stop="toggleExpand(item.fo.option.value)"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+                <span
+                  v-else-if="isTreeMode"
+                  class="vpick-option-expand-spacer"
+                  aria-hidden="true"
+                />
+                <span class="vpick-option-label">{{
+                  item.fo.option.label
+                }}</span>
+                <span
+                  v-if="!multiple"
+                  class="vpick-option-check"
+                  aria-hidden="true"
                 >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </button>
-              <span
-                v-else-if="isTreeMode"
-                class="vpick-option-expand-spacer"
-                aria-hidden="true"
-              />
-              <span class="vpick-option-label">{{ item.fo.option.label }}</span>
-              <span
-                v-if="!multiple"
-                class="vpick-option-check"
-                aria-hidden="true"
-              >
-                <svg
-                  v-if="isSelected(item.fo.option.value)"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-              </span>
+                  <svg
+                    v-if="isSelected(item.fo.option.value)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                </span>
+              </div>
             </div>
           </div>
+          <div v-if="showEmpty" class="vpick-empty">
+            <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
+          </div>
         </div>
-        <div v-if="showEmpty" class="vpick-empty">
-          <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
-        </div>
-      </div>
       </div>
     </transition>
 
