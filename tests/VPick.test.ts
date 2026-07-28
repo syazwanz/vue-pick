@@ -89,7 +89,10 @@ describe("VPick — rendering", () => {
   })
 
   it("positioner wraps the listbox", async () => {
-    const wrapper = mount(VPick, { props: { options: status }, attachTo: document.body })
+    const wrapper = mount(VPick, {
+      props: { options: status },
+      attachTo: document.body,
+    })
     await wrapper.find('[role="combobox"]').trigger("click")
     await nextTick()
     const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
@@ -101,7 +104,10 @@ describe("VPick — rendering", () => {
   })
 
   it("positioner uses translate3d for positioning", async () => {
-    const wrapper = mount(VPick, { props: { options: status }, attachTo: document.body })
+    const wrapper = mount(VPick, {
+      props: { options: status },
+      attachTo: document.body,
+    })
     await wrapper.find('[role="combobox"]').trigger("click")
     await nextTick()
     await nextTick()
@@ -112,7 +118,10 @@ describe("VPick — rendering", () => {
   })
 
   it("data-placement attribute lives on the positioner, not the listbox", async () => {
-    const wrapper = mount(VPick, { props: { options: status }, attachTo: document.body })
+    const wrapper = mount(VPick, {
+      props: { options: status },
+      attachTo: document.body,
+    })
     await wrapper.find('[role="combobox"]').trigger("click")
     await nextTick()
     const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
@@ -523,6 +532,53 @@ describe("VPick — ARIA", () => {
     const trigger = wrapper.find('[role="combobox"]')
     expect(trigger.attributes("aria-label")).toBe("Status picker")
     expect(trigger.attributes("aria-describedby")).toBe("status-help")
+  })
+})
+
+describe("VPick — instance id reactivity", () => {
+  it("trigger id follows a changing id prop", async () => {
+    const wrapper = mount(VPick, { props: { options: status, id: "actor" } })
+    expect(wrapper.find('[role="combobox"]').attributes("id")).toBe("actor")
+    await wrapper.setProps({ id: "provider" })
+    expect(wrapper.find('[role="combobox"]').attributes("id")).toBe("provider")
+  })
+
+  it("derived listbox id follows a changing id prop", async () => {
+    const wrapper = mount(VPick, { props: { options: status, id: "actor" } })
+    await wrapper.setProps({ id: "provider" })
+    expect(wrapper.find('[role="combobox"]').attributes("aria-controls")).toBe(
+      "provider-listbox",
+    )
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find('[role="listbox"]').attributes("id")).toBe(
+      "provider-listbox",
+    )
+  })
+
+  it("option ids follow a changing id prop", async () => {
+    const wrapper = mount(VPick, { props: { options: status, id: "actor" } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find('[role="option"]').attributes("id")).toBe("actor-opt-0")
+    await wrapper.setProps({ id: "provider" })
+    expect(wrapper.find('[role="option"]').attributes("id")).toBe(
+      "provider-opt-0",
+    )
+  })
+
+  it("generated id stays stable across unrelated prop changes", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const generated = wrapper.find('[role="combobox"]').attributes("id")
+    expect(generated).toBeTruthy()
+    await wrapper.setProps({ placeholder: "Pick one" })
+    expect(wrapper.find('[role="combobox"]').attributes("id")).toBe(generated)
+  })
+
+  it("falls back to the generated id when the id prop is removed", async () => {
+    const wrapper = mount(VPick, { props: { options: status, id: "actor" } })
+    await wrapper.setProps({ id: undefined })
+    const fallback = wrapper.find('[role="combobox"]').attributes("id")
+    expect(fallback).toBeTruthy()
+    expect(fallback).not.toBe("actor")
   })
 })
 
