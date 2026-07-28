@@ -48,6 +48,20 @@ const disabledGroup: OptionOrGroup[] = [
   },
 ]
 
+function rectAt(top: number): DOMRect {
+  return {
+    top,
+    bottom: top + 36,
+    left: 20,
+    right: 220,
+    width: 200,
+    height: 36,
+    x: 20,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect
+}
+
 beforeEach(() => {
   resetIdCounter()
 })
@@ -129,6 +143,49 @@ describe("VPick (Vue 2) — rendering", () => {
     expect(positioner.attributes("data-placement")).toBeDefined()
     expect(listbox.attributes("data-placement")).toBeUndefined()
     wrapper.destroy()
+  })
+
+  // The listbox stays attached to body even when the trigger sits inside a
+  // scroll container. It tracks by recomputing fixed coordinates from the
+  // trigger's viewport rect, so it must never be reparented into the container
+  // — doing that would expose it to the container's own clipping, which is the
+  // whole reason we move it out in the first place.
+  it("tracks the trigger when a scrollable ancestor scrolls", async () => {
+    const container = document.createElement("div")
+    container.style.overflowY = "auto"
+    container.style.height = "200px"
+    document.body.appendChild(container)
+    const host = document.createElement("div")
+    container.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attachTo: host,
+    })
+
+    // happy-dom does no layout, so drive the trigger's rect by hand.
+    let top = 100
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.parentElement).toBe(document.body)
+    expect(positioner.style.position).toBe("fixed")
+    expect(positioner.style.transform).toBe("translate3d(20px, 140px, 0)")
+
+    // Scrolling the container moves the trigger up the viewport by 60px.
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await nextTick()
+
+    expect(positioner.style.transform).toBe("translate3d(20px, 80px, 0)")
+
+    wrapper.destroy()
+    container.remove()
   })
 
   it("uses a custom id when provided", () => {
