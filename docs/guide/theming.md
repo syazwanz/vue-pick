@@ -58,7 +58,6 @@ These apply to both `VPickNative` and `VPick`.
 | `--vpick-error-ring-color`   | `rgba(220, 38, 38, 0.2)`   |
 | `--vpick-disabled-opacity`   | `0.5`                      |
 | `--vpick-height-default`     | `2rem`                     |
-| `--vpick-height-sm`          | `1.75rem`                  |
 | `--vpick-shadow`             | `0 0 0 0 transparent`      |
 
 ## VPickNative variables

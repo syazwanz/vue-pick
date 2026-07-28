@@ -16,8 +16,8 @@ const options = [
     <VPickNative
       v-model="selectedA"
       :options="options"
-      size="sm"
-      placeholder="Small"
+      placeholder="Compact"
+      style="--vpick-height-default: 1.75rem"
     />
     <VPickNative v-model="selectedB" :options="options" placeholder="Default" />
   </div>

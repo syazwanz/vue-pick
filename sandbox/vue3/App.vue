@@ -2,13 +2,7 @@
 import { computed, ref, watch } from "vue"
 import { VPick, VPickNative } from "../../src/vue3"
 
-import {
-  timezones,
-  options,
-  sizeOptions,
-  dataOptions,
-  treeOptions,
-} from "../data"
+import { timezones, options, dataOptions, treeOptions } from "../data"
 
 import "../../src/style.css"
 import "../style.css"
@@ -39,7 +33,6 @@ const propsConfig = ref({
   searchable: true,
   clearable: true,
   error: "",
-  size: "default" as "default" | "sm",
   rotateIcon: false,
   separators: false,
   bodyLock: undefined as boolean | undefined,
@@ -144,14 +137,6 @@ function toggleError(e: Event) {
             style="--vpick-width: 140px"
           />
         </label>
-        <label class="control-label">
-          <span>Size:</span>
-          <v-pick-native
-            v-model="propsConfig.size"
-            :options="sizeOptions"
-            style="--vpick-width: 120px"
-          />
-        </label>
       </div>
     </div>
 
@@ -175,7 +160,6 @@ function toggleError(e: Event) {
         :loading="propsConfig.loading"
         :required="propsConfig.required"
         :error="propsConfig.error"
-        :size="propsConfig.size"
         placeholder="Select a country"
         style="--vpick-width: 300px; --vpick-bg: white"
       />
@@ -219,7 +203,10 @@ function toggleError(e: Event) {
               { label: 'LEAF_PRIORITY', value: 'LEAF_PRIORITY' },
               { label: 'ALL', value: 'ALL' },
               { label: 'BRANCH_PRIORITY', value: 'BRANCH_PRIORITY' },
-              { label: 'ALL_WITH_INDETERMINATE', value: 'ALL_WITH_INDETERMINATE' },
+              {
+                label: 'ALL_WITH_INDETERMINATE',
+                value: 'ALL_WITH_INDETERMINATE',
+              },
             ]"
             style="--vpick-width: 200px; margin-left: 0.25rem"
           />
@@ -324,7 +311,6 @@ function toggleError(e: Event) {
         :loading="propsConfig.loading"
         :required="propsConfig.required"
         :error="propsConfig.error"
-        :size="propsConfig.size"
         placeholder="Select a country"
         style="--vpick-width: 300px; --vpick-bg: white"
       />

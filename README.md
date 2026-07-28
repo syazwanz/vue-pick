@@ -58,6 +58,31 @@ const options = [
 
 For Vue 2.7, change the import path to `vue-pick/vue2`.
 
+## Theming
+
+Styling is driven entirely by CSS custom properties, so there are no size or
+variant props to learn. Set the variables anywhere in scope, on the component
+itself or on an ancestor, and every VPick below inherits them.
+
+```vue
+<VPick
+  v-model="selected"
+  :options="options"
+  style="--vpick-height-default: 1.75rem; --vpick-width: 18rem"
+/>
+```
+
+The most common ones:
+
+| Variable                     | Default       | Controls                      |
+| ---------------------------- | ------------- | ----------------------------- |
+| `--vpick-height-default`     | `2rem`        | Control height                |
+| `--vpick-width`              | `fit-content` | Trigger width                 |
+| `--vpick-border-radius`      | `0.625rem`    | Corner radius                 |
+| `--vpick-listbox-max-height` | `16rem`       | Dropdown height before scroll |
+
+See the [theming guide](https://vue-pick.js.org/guide/theming) for the full list.
+
 ## Documentation
 
 Full docs, live examples, and API reference at **[vue-pick.js.org](https://vue-pick.js.org)**.

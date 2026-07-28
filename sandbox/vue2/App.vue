@@ -5,7 +5,7 @@ import VueSelect from "vue-select"
 import { VPick, VPickNative } from "../../src/vue2"
 import { isOptionGroup, type OptionItem } from "../../src/core"
 
-import { timezones, options, sizeOptions, dataOptions } from "../data"
+import { timezones, options, dataOptions } from "../data"
 
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import "vue-select/dist/vue-select.css"
@@ -38,7 +38,6 @@ const propsConfig = ref({
   searchable: true,
   clearable: true,
   error: "",
-  size: "default" as "default" | "sm",
   rotateIcon: false,
   separators: false,
   bodyLock: undefined as boolean | undefined,
@@ -143,14 +142,6 @@ function toggleError(e: Event) {
             style="--vpick-width: 140px"
           />
         </label>
-        <label class="control-label">
-          <span>Size:</span>
-          <v-pick-native
-            v-model="propsConfig.size"
-            :options="sizeOptions"
-            style="--vpick-width: 120px"
-          />
-        </label>
       </div>
     </div>
 
@@ -173,7 +164,6 @@ function toggleError(e: Event) {
         :loading="propsConfig.loading"
         :required="propsConfig.required"
         :error="propsConfig.error"
-        :size="propsConfig.size"
         placeholder="Select a country"
         style="--vpick-width: 300px; --vpick-bg: white"
       />
@@ -232,7 +222,6 @@ function toggleError(e: Event) {
           :loading="propsConfig.loading"
           :required="propsConfig.required"
           :error="propsConfig.error"
-          :size="propsConfig.size"
           placeholder="Select a country"
           style="--vpick-width: 300px; --vpick-bg: white"
         />

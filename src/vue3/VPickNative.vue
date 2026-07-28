@@ -14,7 +14,6 @@ const props = defineProps<{
   required?: boolean
   loading?: boolean
   error?: string
-  size?: "sm" | "default"
   ariaLabel?: string
   ariaDescribedby?: string
   labelKey?: string
@@ -68,10 +67,7 @@ function onChange(event: Event) {
       :id="id"
       :name="name"
       class="vpick-native"
-      :class="[
-        `vpick-native--${size ?? 'default'}`,
-        { 'vpick-native--error': error },
-      ]"
+      :class="{ 'vpick-native--error': error }"
       :value="String(modelValue ?? '')"
       :disabled="disabled || loading"
       :required="required"
