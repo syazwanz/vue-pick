@@ -113,8 +113,13 @@ const effectiveSize = computed(() =>
   isSearchable.value ? "default" : (props.size ?? "default"),
 )
 
-const instanceId = props.id ?? generateId()
-const listboxId = `${instanceId}-listbox`
+// The generated fallback stays stable for the instance's lifetime, but an
+// explicit `id` prop has to win reactively: Vue reuses a single instance
+// across sibling v-if branches, and a frozen id would leave a label's `for`
+// pointing at whichever control rendered first.
+const fallbackId = generateId()
+const instanceId = computed(() => props.id ?? fallbackId)
+const listboxId = computed(() => `${instanceId.value}-listbox`)
 
 const normalized = computed(() =>
   normalizeOptions(props.options, {
@@ -194,7 +199,7 @@ function toggleExpand(value: OptionItem["value"]) {
 
 // Walk all nodes regardless of expansion to find ancestor values of matches.
 function autoExpandForSearch(q: string) {
-  const allFlat = flattenOptions(normalized.value, instanceId, "all")
+  const allFlat = flattenOptions(normalized.value, instanceId.value, "all")
   const ancestorValues = new Set<OptionItem["value"]>()
   for (const fo of allFlat) {
     const matches = props.filter
@@ -351,14 +356,14 @@ function isCascadeIndeterminate(fo: FlatOption): boolean {
 // --- /Tree support ---
 
 const flat = computed<FlatOption[]>(() =>
-  flattenOptions(normalized.value, instanceId, expandedSet.value),
+  flattenOptions(normalized.value, instanceId.value, expandedSet.value),
 )
 
 // Full tree walk (no expansion gating) — used by the hidden select so the
 // selected value is always represented regardless of collapse state.
 const flatAll = computed<FlatOption[]>(() =>
   isTreeMode.value
-    ? flattenOptions(normalized.value, instanceId, "all")
+    ? flattenOptions(normalized.value, instanceId.value, "all")
     : flat.value,
 )
 
@@ -397,7 +402,9 @@ const sections = computed<Section[]>(() => {
     if (!current || (current.label ?? "") !== key) {
       current = {
         label: fo.groupLabel,
-        labelId: fo.groupLabel ? `${instanceId}-grp-${flatIdx}` : undefined,
+        labelId: fo.groupLabel
+          ? `${instanceId.value}-grp-${flatIdx}`
+          : undefined,
         items: [],
       }
       result.push(current)
