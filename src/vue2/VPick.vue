@@ -66,6 +66,7 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    alwaysOpen?: boolean
     flattenSearchResults?: boolean
     valueFormat?: "id" | "object"
     sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX"
@@ -102,6 +103,7 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    alwaysOpen: false,
     flattenSearchResults: false,
     valueFormat: "id",
     sortValueBy: "ORDER_SELECTED",
@@ -162,7 +164,7 @@ function toEmit(v: OptionItem["value"] | OptionItem["value"][]): unknown {
   return Array.isArray(v) ? v.map(expand) : v == null ? v : expand(v)
 }
 
-const isOpen = ref(false)
+const isOpen = ref(props.alwaysOpen && !props.disabled)
 const highlightedIndex = ref(-1)
 const searchQuery = ref("")
 // True only while the user is actively typing into the input. Drives both the
@@ -173,6 +175,12 @@ const isFormControl = ref(true)
 
 // Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
+
+// `alwaysOpen` renders the listbox in flow instead of as a dropdown: no
+// teleport, no fixed positioning, no scroll tracking, no body lock.
+const isInline = computed(() => props.alwaysOpen)
+// A disabled control still closes, so the panel does not sit there inert.
+const stayOpen = computed(() => props.alwaysOpen && !props.disabled)
 
 // The generated fallback stays stable for the instance's lifetime, but an
 // explicit `id` prop has to win reactively: Vue reuses a single instance
@@ -638,6 +646,8 @@ function resolveTeleportTarget(): HTMLElement {
 }
 
 async function updatePosition(skipSecondPass = false) {
+  // In flow: the browser lays the panel out, nothing to compute.
+  if (isInline.value) return
   const trigger = triggerRef.value
   if (!trigger) return
   const rect = trigger.getBoundingClientRect()
@@ -755,6 +765,8 @@ function open() {
   if (isOpen.value) return
   isOpen.value = true
   highlightDefault()
+  // Rendered in flow, so none of the dropdown machinery applies.
+  if (isInline.value) return
   // Default: lock body scroll for button mode (select-like, modal feel),
   // leave unlocked for searchable mode (combobox, persistent typeahead).
   const shouldLock = props.bodyLock ?? !isSearchable.value
@@ -778,6 +790,7 @@ function open() {
 }
 
 function close() {
+  if (stayOpen.value) return
   if (!isOpen.value) return
   isOpen.value = false
   highlightedIndex.value = -1
@@ -985,6 +998,14 @@ watch(highlightedIndex, () => {
   nextTick(scrollHighlightedIntoView)
 })
 
+// `alwaysOpen` and `disabled` can both change after mount. Without this a
+// control disabled and then re-enabled would stay shut for good, since inline
+// mode hides the chevron and refuses ordinary open requests.
+watch(stayOpen, (shouldStayOpen) => {
+  if (shouldStayOpen) open()
+  else if (isOpen.value) close()
+})
+
 function onKeydown(e: KeyboardEvent) {
   // Backspace on empty search input removes last chip in multi mode
   if (
@@ -1137,7 +1158,7 @@ onMounted(async () => {
   // Move the positioner DOM node to the teleport target. Vue's vnode keeps
   // the reference, so patching continues to work from the new location. The
   // listbox is a child of the positioner and travels with it.
-  if (positionerRef.value) {
+  if (positionerRef.value && !isInline.value) {
     resolveTeleportTarget().appendChild(positionerRef.value)
   }
 })
@@ -1165,7 +1186,10 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="rootRef"
-    :class="['vpick', { 'vpick--rotate-icon': rotateIcon }]"
+    :class="[
+      'vpick',
+      { 'vpick--rotate-icon': rotateIcon, 'vpick--inline': isInline },
+    ]"
     role="none"
   >
     <!-- Button trigger (non-searchable) -->
@@ -1258,7 +1282,7 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span v-else class="vpick-trigger-icon" aria-hidden="true">
+      <span v-else-if="!isInline" class="vpick-trigger-icon" aria-hidden="true">
         <slot name="icon">
           <svg
             xmlns="http://www.w3.org/2000/svg"

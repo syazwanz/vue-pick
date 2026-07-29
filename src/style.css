@@ -385,6 +385,22 @@ button.vpick-trigger--loading:disabled,
   background-color: var(--vpick-clear-hover-bg, var(--vpick-option-hover-bg));
 }
 
+/* Inline mode (alwaysOpen): the panel sits in the page rather than floating,
+   so it drops the elevation a dropdown needs and just follows the trigger. */
+.vpick--inline .vpick-positioner {
+  z-index: auto;
+  margin-top: 0.25rem;
+}
+
+.vpick--inline .vpick-listbox {
+  position: static;
+  box-shadow: none;
+  border: 1px solid var(--vpick-border-color);
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+}
+
 /* Positioner / Listbox / Dropdown */
 
 /* Positioner owns position (transform: translate3d, set inline by VPick).

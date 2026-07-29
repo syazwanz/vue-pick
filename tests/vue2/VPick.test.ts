@@ -1881,3 +1881,78 @@ describe("VPick (Vue 2) — flattenSearchResults", () => {
     expect(wrapper.emitted("input")[0][0]).toBe("gaming")
   })
 })
+
+describe("VPick (Vue 2) — alwaysOpen", () => {
+  it("starts open and refuses to close", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+    await trigger.trigger("keydown", { key: "Escape" })
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+
+  it("renders in flow rather than moving the panel to body", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    const positioner = wrapper.find(".vpick-positioner").element
+    expect(wrapper.element.contains(positioner)).toBe(true)
+    expect(positioner.parentElement).not.toBe(document.body)
+    wrapper.destroy()
+  })
+
+  it("skips fixed positioning", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    await nextTick()
+    const positioner = wrapper.find(".vpick-positioner").element as HTMLElement
+    expect(positioner.style.position).toBe("")
+    expect(positioner.style.transform).toBe("")
+    wrapper.destroy()
+  })
+
+  it("tags the root and hides the chevron", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+    })
+    expect(wrapper.classes()).toContain("vpick--inline")
+    expect(wrapper.find(".vpick-trigger-icon").exists()).toBe(false)
+  })
+
+  it("still selects", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+    })
+    await wrapper.findAll('[role="option"]').at(1).trigger("click")
+    expect(wrapper.emitted("input")[0][0]).toBe("in-progress")
+  })
+
+  it("re-enabling reopens it", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true, disabled: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+    await wrapper.setProps({ disabled: false })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+
+  it("closes when disabled", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true, disabled: true },
+    })
+    expect(wrapper.find('[role="combobox"]').attributes("aria-expanded")).toBe(
+      "false",
+    )
+  })
+})
