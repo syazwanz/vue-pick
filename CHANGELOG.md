@@ -1,5 +1,32 @@
 # vue-pick
 
+## 0.14.0
+
+### Minor Changes
+
+- cfd307b: Add a `flattenSearchResults` prop. In tree mode, search then shows only the nodes matching the query, flat and without their ancestors.
+
+  ```vue
+  <VPick :options="options" searchable flatten-search-results />
+  ```
+
+  Searching "gaming" in `Electronics > Laptops > Gaming` shows just `Gaming`. Matches inside collapsed branches are found, and expansion state is left untouched. Default behavior is unchanged.
+
+- 15d59e9: Add a `valueFormat` prop. Set it to `"object"` and `v-model` holds your original option objects instead of plain values.
+
+  ```js
+  // "id" (default, unchanged)
+  selected = ["apple", "banana"]
+
+  // "object"
+  selected = [
+    { id: "apple", label: "Apple" },
+    { id: "banana", label: "Banana" },
+  ]
+  ```
+
+  Objects passed back in are matched by `valueKey`, so a rebuilt literal like `{ id: "apple" }` still resolves. The hidden `<select>` used for form submission always posts plain values.
+
 ## 0.13.2
 
 ### Patch Changes
