@@ -142,6 +142,9 @@ Pass options with a `children` array to enable tree mode. VPick detects nested d
   <TreeExample />
 </Preview>
 
+Opening a tree with a value already selected expands whatever branches are
+needed to reveal it, and scrolls it into view.
+
 Use `defaultExpandLevel` to pre-expand branches on open. A value of `1` expands top-level branches; `2` expands two levels deep, and so on.
 
 ```vue

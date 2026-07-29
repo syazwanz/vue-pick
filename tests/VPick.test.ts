@@ -2736,3 +2736,59 @@ describe("VPick — disabling an open dropdown", () => {
     expect(wrapper.emitted("update:modelValue")).toBeFalsy()
   })
 })
+
+describe("VPick — revealing the selection on open", () => {
+  // tree: Electronics > [Phones, Laptops > [Gaming, Business]], Books
+  it("expands collapsed ancestors to reveal a deep selection", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: "gaming" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toContain("Gaming")
+    // and it is the highlighted row, so the existing scroll-into-view reaches it
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain(
+      "Gaming",
+    )
+  })
+
+  it("does the same in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, multiple: true, modelValue: ["business"] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.findAll('[role="option"]').map((o) => o.text())).toContain(
+      "Business",
+    )
+  })
+
+  it("leaves the tree collapsed when nothing is selected", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toEqual(["Electronics", "Books"])
+  })
+
+  it("leaves a top-level selection alone", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: "books" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toEqual(["Electronics", "Books"])
+  })
+
+  it("does not disturb a flat list", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, modelValue: "done" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(3)
+  })
+})

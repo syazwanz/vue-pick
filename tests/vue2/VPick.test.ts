@@ -1979,3 +1979,42 @@ describe("VPick (Vue 2) — disabling an open dropdown", () => {
     expect(wrapper.emitted("input")).toBeFalsy()
   })
 })
+
+describe("VPick (Vue 2) — revealing the selection on open", () => {
+  const deep: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "electronics",
+      children: [
+        {
+          label: "Laptops",
+          value: "laptops",
+          children: [{ label: "Gaming", value: "gaming" }],
+        },
+      ],
+    },
+    { label: "Books", value: "books" },
+  ]
+
+  it("expands collapsed ancestors to reveal a deep selection", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: deep, value: "gaming" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((o) => o.text())
+    expect(labels).toContain("Gaming")
+  })
+
+  it("leaves the tree collapsed when nothing is selected", async () => {
+    const wrapper = mount(VPick, { propsData: { options: deep } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((o) => o.text())
+    expect(labels).toEqual(["Electronics", "Books"])
+  })
+})

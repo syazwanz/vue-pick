@@ -264,23 +264,47 @@ function toggleExpand(value: OptionItem["value"]) {
   expandedSet.value = next
 }
 
-// Walk all nodes regardless of expansion to find ancestor values of matches.
-function autoExpandForSearch(q: string) {
+// Ancestor values of every node the predicate accepts. Walks the whole tree
+// rather than the visible rows, so it reaches inside collapsed branches.
+function collectAncestors(
+  predicate: (fo: FlatOption) => boolean,
+): Set<OptionItem["value"]> {
   const allFlat = flattenOptions(normalized.value, instanceId.value, "all")
-  const ancestorValues = new Set<OptionItem["value"]>()
+  const out = new Set<OptionItem["value"]>()
   for (const fo of allFlat) {
-    const matches = props.filter
-      ? props.filter(fo.option, q)
-      : fo.option.label.toLowerCase().includes(q)
-    if (!matches) continue
+    if (!predicate(fo)) continue
     let parentVal = fo.parentValue
     while (parentVal !== undefined) {
-      ancestorValues.add(parentVal)
-      const parentFo = allFlat.find((f) => f.option.value === parentVal)
-      parentVal = parentFo?.parentValue
+      out.add(parentVal)
+      parentVal = allFlat.find((f) => f.option.value === parentVal)?.parentValue
     }
   }
+  return out
+}
+
+function autoExpandForSearch(q: string) {
+  const ancestorValues = collectAncestors((fo) =>
+    props.filter
+      ? props.filter(fo.option, q)
+      : fo.option.label.toLowerCase().includes(q),
+  )
   const next = new Set(preSearchExpandedSet.value ?? expandedSet.value)
+  for (const v of ancestorValues) next.add(v)
+  expandedSet.value = next
+}
+
+// Reveal the selection when the dropdown opens. A selected node inside a
+// collapsed branch is otherwise invisible: it cannot be highlighted or
+// scrolled to, so the tree looks as though nothing is selected.
+function expandToSelected() {
+  if (!isTreeMode.value) return
+  const selected = props.multiple
+    ? effectiveLeafSet.value
+    : new Set(model.value == null ? [] : [model.value])
+  if (!selected.size) return
+  const ancestorValues = collectAncestors((fo) => selected.has(fo.option.value))
+  if (!ancestorValues.size) return
+  const next = new Set(expandedSet.value)
   for (const v of ancestorValues) next.add(v)
   expandedSet.value = next
 }
@@ -741,6 +765,7 @@ function open() {
   if (props.disabled || props.loading) return
   if (isOpen.value) return
   isOpen.value = true
+  expandToSelected()
   highlightDefault()
   // Rendered in flow, so none of the dropdown machinery applies.
   if (isInline.value) return
