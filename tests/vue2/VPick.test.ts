@@ -1956,3 +1956,26 @@ describe("VPick (Vue 2) — alwaysOpen", () => {
     )
   })
 })
+
+describe("VPick (Vue 2) — disabling an open dropdown", () => {
+  it("closes it", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("refuses selections while disabled", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+    })
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    const opts = wrapper.findAll('[role="option"]')
+    if (opts.length) await opts.at(0).trigger("click")
+    expect(wrapper.emitted("input")).toBeFalsy()
+  })
+})

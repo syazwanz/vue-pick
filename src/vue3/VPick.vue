@@ -832,6 +832,7 @@ function focusTrigger() {
 }
 
 function selectOption(flatOption: FlatOption) {
+  if (props.disabled || props.loading) return
   if (flatOption.isEmptyMessage) return
   if (flatOption.option.disabled || flatOption.groupDisabled) return
   // A branch that cannot be selected has nothing else the row click could
@@ -983,6 +984,15 @@ watch(highlightedIndex, () => {
 // `alwaysOpen` and `disabled` can both change after mount. Without this a
 // control disabled and then re-enabled would stay shut for good, since inline
 // mode hides the chevron and refuses ordinary open requests.
+// An open dropdown must not survive being disabled: its options stay
+// clickable and the trigger can no longer be used to close it.
+watch(
+  () => props.disabled || props.loading,
+  (off) => {
+    if (off && isOpen.value) close()
+  },
+)
+
 watch(stayOpen, (shouldStayOpen) => {
   if (shouldStayOpen) open()
   else if (isOpen.value) close()

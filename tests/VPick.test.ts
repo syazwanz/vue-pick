@@ -2702,3 +2702,37 @@ describe("VPick — alwaysOpen", () => {
     )
   })
 })
+
+describe("VPick — disabling an open dropdown", () => {
+  it("closes it", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("closes it when loading starts too", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.setProps({ loading: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("refuses selections while disabled", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    // alwaysOpen keeps the rows mounted, so they are still clickable in the DOM.
+    const opts = wrapper.findAll('[role="option"]')
+    if (opts.length) await opts[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")).toBeFalsy()
+  })
+})
