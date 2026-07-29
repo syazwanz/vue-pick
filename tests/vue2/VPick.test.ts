@@ -1480,6 +1480,58 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     )
   })
 
+  it("tags branch and leaf rows for CSS, with depth", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const rows = wrapper.findAll('[role="option"]')
+    const branch = rows.filter((o) => o.text().includes("Branch")).at(0)
+    const leaf = rows.filter((o) => o.text().includes("Child")).at(0)
+
+    expect(branch.classes()).toContain("vpick-option--branch")
+    expect(branch.attributes("data-depth")).toBe("0")
+    expect(leaf.classes()).toContain("vpick-option--leaf")
+    expect(leaf.attributes("data-depth")).toBe("1")
+  })
+
+  it("no-children slot overrides the placeholder text", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, defaultExpandLevel: 1 },
+      scopedSlots: {
+        "no-children": '<span class="custom-empty">nothing in here</span>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.find(".custom-empty").exists()).toBe(true)
+    expect(placeholder.text()).toBe("nothing in here")
+  })
+
+  it("clicking an unselectable branch row toggles expansion", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, disableBranchNodes: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const row = () =>
+      wrapper
+        .findAll('[role="option"]')
+        .filter((o) => o.text().includes("Branch"))
+        .at(0)
+    expect(row().attributes("aria-expanded")).toBe("false")
+
+    await row().trigger("click")
+    await nextTick()
+    expect(row().attributes("aria-expanded")).toBe("true")
+    expect(wrapper.emitted("input")).toBeFalsy()
+  })
+
   it("disableBranchNodes blocks selecting an empty branch", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: withEmpty, disableBranchNodes: true },

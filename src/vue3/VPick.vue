@@ -738,7 +738,13 @@ function focusTrigger() {
 function selectOption(flatOption: FlatOption) {
   if (flatOption.isEmptyMessage) return
   if (flatOption.option.disabled || flatOption.groupDisabled) return
-  if (props.disableBranchNodes && flatOption.isBranch) return
+  // A branch that cannot be selected has nothing else the row click could
+  // mean, so it expands. D9 keeps row-selects/chevron-expands only where the
+  // branch IS selectable, which is the genuinely ambiguous case.
+  if (props.disableBranchNodes && flatOption.isBranch) {
+    toggleExpand(flatOption.option.value)
+    return
+  }
   const source = sourceOf(flatOption.option)
   if (props.multiple) {
     if (isCascadeMode.value) {
@@ -1358,12 +1364,15 @@ onBeforeUnmount(() => {
                     class="vpick-option-empty"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
                   >
-                    {{ noChildrenText }}
+                    <slot name="no-children" :option="item.fo.option">{{
+                      noChildrenText
+                    }}</slot>
                   </div>
                   <div
                     v-else
                     :id="item.fo.id"
                     role="option"
+                    :data-depth="isTreeMode ? item.fo.depth : undefined"
                     :style="
                       isTreeMode && item.fo.depth > 0
                         ? {
@@ -1375,6 +1384,8 @@ onBeforeUnmount(() => {
                       'vpick-option',
                       {
                         'vpick-option--tree': isTreeMode,
+                        'vpick-option--branch': item.fo.isBranch,
+                        'vpick-option--leaf': isTreeMode && !item.fo.isBranch,
                         'vpick-option--multi': multiple,
                         'vpick-option--highlighted':
                           item.flatIdx === highlightedIndex,
@@ -1382,9 +1393,7 @@ onBeforeUnmount(() => {
                           item.fo.option.value,
                         ),
                         'vpick-option--disabled':
-                          item.fo.option.disabled ||
-                          item.fo.groupDisabled ||
-                          (disableBranchNodes && item.fo.isBranch),
+                          item.fo.option.disabled || item.fo.groupDisabled,
                       },
                     ]"
                     :aria-selected="
@@ -1403,11 +1412,8 @@ onBeforeUnmount(() => {
                     "
                     @click="selectOption(item.fo)"
                     @mouseenter="
-                      !(
-                        item.fo.option.disabled ||
-                        item.fo.groupDisabled ||
-                        (disableBranchNodes && item.fo.isBranch)
-                      ) && (highlightedIndex = item.flatIdx)
+                      !(item.fo.option.disabled || item.fo.groupDisabled) &&
+                      (highlightedIndex = item.flatIdx)
                     "
                   >
                     <span
