@@ -364,6 +364,10 @@ button.vpick-trigger--loading:disabled,
 /* Clear button */
 
 .vpick-clear {
+  /* Neutralise native button styling: this renders as a <button> in searchable
+     and multiple modes, and as a <span role="button"> inside the button
+     trigger, where a nested button would be invalid HTML. */
+  font: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;

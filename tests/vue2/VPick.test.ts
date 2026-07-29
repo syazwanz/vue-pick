@@ -1660,3 +1660,116 @@ describe("VPick (Vue 2) — sortValueBy and value-label slot", () => {
     expect(wrapper.find(".nick").text()).toBe("Al")
   })
 })
+
+// Mirrors the Vue 3 contract tests. Element identity is part of the a11y API,
+// and parity between adapters is non-negotiable, so it gets pinned in both.
+describe("VPick (Vue 2) — accessibility element contract", () => {
+  it("non-searchable trigger is a real button with combobox semantics", () => {
+    const wrapper = mount(VPick, { propsData: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.element.tagName).toBe("BUTTON")
+    expect(trigger.attributes("type")).toBe("button")
+    expect(trigger.attributes("aria-haspopup")).toBe("listbox")
+  })
+
+  it("searchable trigger puts combobox semantics on the input itself", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, searchable: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.element.tagName).toBe("INPUT")
+    expect(trigger.attributes("type")).toBe("text")
+    expect(trigger.attributes("aria-autocomplete")).toBe("list")
+  })
+
+  it("listbox carries multiselectable only when multi", async () => {
+    const single = mount(VPick, { propsData: { options: status } })
+    await single.find('[role="combobox"]').trigger("click")
+    expect(
+      single.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBeUndefined()
+
+    const multi = mount(VPick, {
+      propsData: { options: status, multiple: true, value: [] },
+    })
+    await multi.find('[role="combobox"]').trigger("click")
+    expect(
+      multi.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBe("true")
+  })
+
+  it("options carry role and selected state", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, value: "todo" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const opts = wrapper.findAll('[role="option"]')
+    expect(opts.length).toBe(3)
+    expect(opts.at(0).attributes("aria-selected")).toBe("true")
+    expect(opts.at(1).attributes("aria-selected")).toBe("false")
+  })
+
+  it("hidden form control is a real select, multiple only when multi", () => {
+    const single = mount(VPick, { propsData: { options: status } })
+    expect(single.find("select").exists()).toBe(true)
+    expect(single.find("select").attributes("multiple")).toBeUndefined()
+
+    const multi = mount(VPick, {
+      propsData: { options: status, multiple: true, value: [] },
+    })
+    expect(multi.find("select").attributes("multiple")).toBeDefined()
+  })
+
+  it("chip remove is a real button with an accessible name", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["todo"] },
+    })
+    const remove = wrapper.find(".vpick-chip-remove")
+    expect(remove.element.tagName).toBe("BUTTON")
+    expect(remove.attributes("aria-label")).toBe("Remove Todo")
+  })
+
+  it("searchable clear is a real button", () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: status,
+        searchable: true,
+        clearable: true,
+        value: "todo",
+      },
+    })
+    const clear = wrapper.find(".vpick-clear")
+    expect(clear.element.tagName).toBe("BUTTON")
+    expect(clear.attributes("type")).toBe("button")
+  })
+
+  // Deliberate exception: nested inside the <button> trigger, where a real
+  // button would be invalid HTML.
+  it("non-searchable clear stays a span, since it nests inside the trigger button", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, clearable: true, value: "todo" },
+    })
+    const clear = wrapper.find(".vpick-clear")
+    expect(clear.element.tagName).toBe("SPAN")
+    expect(clear.attributes("role")).toBe("button")
+    expect(clear.element.closest("button")).not.toBe(null)
+  })
+
+  it("tree expand control is a button that never takes tab focus", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: [
+          {
+            label: "Branch",
+            value: "branch",
+            children: [{ label: "Child", value: "child" }],
+          },
+        ],
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const expand = wrapper.find(".vpick-option-expand")
+    expect(expand.element.tagName).toBe("BUTTON")
+    expect(expand.attributes("tabindex")).toBe("-1")
+  })
+})

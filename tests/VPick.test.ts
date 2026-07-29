@@ -2252,3 +2252,128 @@ describe("VPick — value-label slot", () => {
     expect(wrapper.find(".vpick-trigger-label").text()).toBe("Pick someone")
   })
 })
+
+// These pin element identity, not behavior. Behavior tests pass whether a
+// control is a <button> or a <div>, which is how the chip remove sat as a
+// <span role="button"> unnoticed. Assert the tag wherever it is interactive,
+// carries a role users depend on, or is announced differently by tag.
+describe("VPick — accessibility element contract", () => {
+  it("non-searchable trigger is a real button with combobox semantics", () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.element.tagName).toBe("BUTTON")
+    expect(trigger.attributes("type")).toBe("button")
+    expect(trigger.attributes("aria-haspopup")).toBe("listbox")
+  })
+
+  it("searchable trigger puts combobox semantics on the input itself", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, searchable: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.element.tagName).toBe("INPUT")
+    expect(trigger.attributes("type")).toBe("text")
+    expect(trigger.attributes("aria-autocomplete")).toBe("list")
+    // The button trigger must not also be present.
+    expect(wrapper.find("button[role='combobox']").exists()).toBe(false)
+  })
+
+  it("listbox carries the listbox role, and multiselectable only when multi", async () => {
+    const single = mount(VPick, { props: { options: status } })
+    await single.find('[role="combobox"]').trigger("click")
+    expect(
+      single.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBeUndefined()
+
+    const multi = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    await multi.find('[role="combobox"]').trigger("click")
+    expect(
+      multi.find('[role="listbox"]').attributes("aria-multiselectable"),
+    ).toBe("true")
+  })
+
+  it("options carry role and selected state", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, modelValue: "todo" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const opts = wrapper.findAll('[role="option"]')
+    expect(opts.length).toBe(3)
+    expect(opts[0].attributes("aria-selected")).toBe("true")
+    expect(opts[1].attributes("aria-selected")).toBe("false")
+    // Every option must be addressable by aria-activedescendant.
+    expect(opts.every((o) => !!o.attributes("id"))).toBe(true)
+  })
+
+  it("hidden form control is a real select, multiple only when multi", () => {
+    const single = mount(VPick, { props: { options: status } })
+    const s = single.find("select")
+    expect(s.exists()).toBe(true)
+    expect(s.attributes("multiple")).toBeUndefined()
+
+    const multi = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    expect(multi.find("select").attributes("multiple")).toBeDefined()
+  })
+
+  it("chip remove is a real button with an accessible name", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo"] },
+    })
+    const remove = wrapper.find(".vpick-chip-remove")
+    expect(remove.element.tagName).toBe("BUTTON")
+    expect(remove.attributes("type")).toBe("button")
+    expect(remove.attributes("aria-label")).toBe("Remove Todo")
+  })
+
+  it("searchable clear is a real button", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        searchable: true,
+        clearable: true,
+        modelValue: "todo",
+      },
+    })
+    const clear = wrapper.find(".vpick-clear")
+    expect(clear.element.tagName).toBe("BUTTON")
+    expect(clear.attributes("type")).toBe("button")
+    expect(clear.attributes("aria-label")).toBe("Clear selection")
+  })
+
+  // Deliberate exception: this clear renders inside the <button> trigger, and
+  // a button nested in a button is invalid HTML. role="button" is the correct
+  // workaround here, so this asserts the exception rather than the rule.
+  it("non-searchable clear stays a span, since it nests inside the trigger button", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, clearable: true, modelValue: "todo" },
+    })
+    const clear = wrapper.find(".vpick-clear")
+    expect(clear.element.tagName).toBe("SPAN")
+    expect(clear.attributes("role")).toBe("button")
+    expect(clear.element.closest("button")).not.toBe(null)
+  })
+
+  it("searchable chevron is a real button, disabled with the control", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, searchable: true, disabled: true },
+    })
+    const icon = wrapper.find(".vpick-trigger-icon--button")
+    expect(icon.element.tagName).toBe("BUTTON")
+    expect(icon.attributes("type")).toBe("button")
+    expect(icon.attributes("disabled")).toBeDefined()
+  })
+
+  it("tree expand control is a button that never takes tab focus", async () => {
+    const wrapper = mount(VPick, { props: { options: tree, modelValue: null } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const expand = wrapper.find(".vpick-option-expand")
+    expect(expand.element.tagName).toBe("BUTTON")
+    expect(expand.attributes("type")).toBe("button")
+    // Arrow keys drive the tree, so the chevron must stay out of the tab order.
+    expect(expand.attributes("tabindex")).toBe("-1")
+  })
+})
