@@ -1,5 +1,23 @@
 # vue-pick
 
+## 0.15.0
+
+### Minor Changes
+
+- e73c669: Add an `alwaysOpen` prop. The list renders permanently in the page instead of as a dropdown, and cannot be closed.
+
+  ```vue
+  <VPick v-model="selected" :options="options" always-open multiple />
+  ```
+
+  Useful inside a filter panel where the list is the content rather than something to reveal. The panel is laid out in normal flow, so it is not teleported, not positioned, and does not lock body scroll. The chevron is hidden and the root gains a `vpick--inline` class for styling. Search, selection and keyboard navigation are unchanged. A disabled control still closes.
+
+### Patch Changes
+
+- f9d6be0: Close the dropdown when the control becomes disabled or starts loading, and ignore selections while it is.
+
+  An open dropdown previously stayed open after `disabled` was set. Its options remained clickable and still emitted `update:modelValue`, while the trigger could no longer be used to close it.
+
 ## 0.14.0
 
 ### Minor Changes
