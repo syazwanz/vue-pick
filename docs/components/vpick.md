@@ -329,6 +329,26 @@ markup rather than plain text:
 </VPick>
 ```
 
+## Flattening search results
+
+By default, searching a tree keeps the hierarchy: matching nodes stay nested and
+their ancestor branches auto-expand so results are visible in context.
+
+`flattenSearchResults` drops that. Only nodes that match the query themselves
+are shown, as a flat list with no indent and no ancestors:
+
+```vue
+<VPick :options="options" searchable flatten-search-results />
+```
+
+Searching "gaming" in `Electronics > Laptops > Gaming` shows just `Gaming`,
+rather than all three rows. A branch that matches the query is still listed,
+since it is a direct match like any other.
+
+Useful when the tree is deep and users want to scan results rather than navigate
+to them. Clearing the query restores the tree, and expansion state is left
+untouched throughout, since nothing needs expanding to reveal a match.
+
 ## Object values
 
 By default `v-model` holds plain values:

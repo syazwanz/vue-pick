@@ -1824,3 +1824,60 @@ describe("VPick (Vue 2) — valueFormat", () => {
     expect(wrapper.find("select").element.value).toBe("2")
   })
 })
+
+describe("VPick (Vue 2) — flattenSearchResults", () => {
+  const smallTree: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "electronics",
+      children: [
+        { label: "Phones", value: "phones" },
+        { label: "Gaming Laptop", value: "gaming" },
+      ],
+    },
+    { label: "Books", value: "books" },
+  ]
+
+  async function openAndType(query: string, flatten = false) {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: smallTree,
+        searchable: true,
+        ...(flatten ? { flattenSearchResults: true } : {}),
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const input = wrapper.find("input")
+    input.element.value = query
+    await input.trigger("input")
+    return wrapper
+  }
+
+  it("by default shows matches nested under their ancestors", async () => {
+    const wrapper = await openAndType("gaming")
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((o) => o.text())
+    expect(labels).toContain("Electronics")
+    expect(labels).toContain("Gaming Laptop")
+  })
+
+  it("flattened shows only direct matches, no ancestors", async () => {
+    const wrapper = await openAndType("gaming", true)
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((o) => o.text())
+    expect(labels).toEqual(["Gaming Laptop"])
+  })
+
+  it("flattened drops the indent", async () => {
+    const wrapper = await openAndType("gaming", true)
+    expect(wrapper.find('[role="option"]').attributes("data-depth")).toBe("0")
+  })
+
+  it("flattened options remain selectable", async () => {
+    const wrapper = await openAndType("gaming", true)
+    await wrapper.find('[role="option"]').trigger("click")
+    expect(wrapper.emitted("input")[0][0]).toBe("gaming")
+  })
+})

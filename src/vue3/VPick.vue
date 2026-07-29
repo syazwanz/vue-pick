@@ -63,6 +63,7 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    flattenSearchResults?: boolean
     valueFormat?: "id" | "object"
     sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX"
     clearOnSelect?: boolean
@@ -98,6 +99,7 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    flattenSearchResults: false,
     valueFormat: "id",
     sortValueBy: "ORDER_SELECTED",
     clearOnSelect: true,
@@ -458,15 +460,27 @@ const filteredFlat = computed<FlatOption[]>(() => {
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
   if (isTreeMode.value) {
-    // Show expanded branch nodes (ancestors of matches) + matching nodes.
     const q = searchQuery.value.trim().toLowerCase()
     if (!q) return flat.value
+    const matches = (fo: FlatOption) =>
+      props.filter
+        ? props.filter(fo.option, searchQuery.value.trim())
+        : fo.option.label.toLowerCase().includes(q)
+
+    if (props.flattenSearchResults) {
+      // Direct matches only, ancestors excluded. Walk every node rather than
+      // only the expanded ones, and drop the indent: a nested match has no
+      // visible parent here, so keeping its depth would leave it floating.
+      return flatAll.value
+        .filter((fo) => !fo.isEmptyMessage && matches(fo))
+        .map((fo) => ({ ...fo, depth: 0, isExpanded: false }))
+    }
+
+    // Show expanded branch nodes (ancestors of matches) + matching nodes.
     return flat.value.filter((fo) => {
       if (fo.isEmptyMessage) return false
       if (fo.hasChildren && fo.isExpanded) return true
-      return props.filter
-        ? props.filter(fo.option, searchQuery.value.trim())
-        : fo.option.label.toLowerCase().includes(q)
+      return matches(fo)
     })
   }
   if (props.filter) {
@@ -893,6 +907,8 @@ function onInput(e: Event) {
   if (isTreeMode.value) {
     const q = value.trim().toLowerCase()
     if (q) {
+      // Nothing to expand when ancestors are not rendered.
+      if (props.flattenSearchResults) return
       // Snapshot expansion on first keystroke (D6)
       if (preSearchExpandedSet.value === null) {
         preSearchExpandedSet.value = new Set(expandedSet.value)
