@@ -25,6 +25,7 @@ const treeCascade = ref(true)
 const treeClearOnSelect = ref(true)
 const treeCloseOnSelect = ref(false)
 const treeNoChildrenText = ref("No sub-options")
+const treeAlwaysOpen = ref(false)
 const treeEventLog = ref<string[]>([])
 
 function logTreeEvent(kind: string, option: unknown) {
@@ -203,6 +204,10 @@ function toggleError(e: Event) {
           <input v-model="treeCloseOnSelect" type="checkbox" />
           <span>Close on select</span>
         </label>
+        <label class="control-label">
+          <input v-model="treeAlwaysOpen" type="checkbox" />
+          <span>Always open</span>
+        </label>
       </div>
       <div class="controls">
         <label class="control-label">
@@ -248,6 +253,7 @@ function toggleError(e: Event) {
             :clear-on-select="treeClearOnSelect"
             :close-on-select="treeCloseOnSelect"
             :no-children-text="treeNoChildrenText"
+            :always-open="treeAlwaysOpen"
             placeholder="Select a category"
             style="--vpick-width: 280px; --vpick-bg: white"
             @select="logTreeEvent('select', $event)"
@@ -271,6 +277,7 @@ function toggleError(e: Event) {
             :clear-on-select="treeClearOnSelect"
             :close-on-select="treeCloseOnSelect"
             :no-children-text="treeNoChildrenText"
+            :always-open="treeAlwaysOpen"
             multiple
             placeholder="Select categories"
             style="--vpick-width: 280px; --vpick-bg: white"

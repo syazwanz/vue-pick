@@ -63,6 +63,7 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    alwaysOpen?: boolean
     flattenSearchResults?: boolean
     valueFormat?: "id" | "object"
     sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX"
@@ -99,6 +100,7 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    alwaysOpen: false,
     flattenSearchResults: false,
     valueFormat: "id",
     sortValueBy: "ORDER_SELECTED",
@@ -159,7 +161,7 @@ function toEmit(v: OptionItem["value"] | OptionItem["value"][]): unknown {
   return Array.isArray(v) ? v.map(expand) : v == null ? v : expand(v)
 }
 
-const isOpen = ref(false)
+const isOpen = ref(props.alwaysOpen && !props.disabled)
 const highlightedIndex = ref(-1)
 const searchQuery = ref("")
 // True only while the user is actively typing into the input. Drives both the
@@ -171,6 +173,12 @@ const isFormControl = ref(true)
 
 // Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
+
+// `alwaysOpen` renders the listbox in flow instead of as a dropdown: no
+// teleport, no fixed positioning, no scroll tracking, no body lock.
+const isInline = computed(() => props.alwaysOpen)
+// A disabled control still closes, so the panel does not sit there inert.
+const stayOpen = computed(() => props.alwaysOpen && !props.disabled)
 
 // The generated fallback stays stable for the instance's lifetime, but an
 // explicit `id` prop has to win reactively: Vue reuses a single instance
@@ -628,6 +636,8 @@ function forwardedVars(): Record<string, string> {
 }
 
 async function updatePosition(skipSecondPass = false) {
+  // In flow: the browser lays the panel out, nothing to compute.
+  if (isInline.value) return
   const trigger = triggerRef.value
   if (!trigger) return
   const rect = trigger.getBoundingClientRect()
@@ -732,6 +742,8 @@ function open() {
   if (isOpen.value) return
   isOpen.value = true
   highlightDefault()
+  // Rendered in flow, so none of the dropdown machinery applies.
+  if (isInline.value) return
   // Default: lock body scroll for button mode (select-like, modal feel),
   // leave unlocked for searchable mode (combobox, persistent typeahead).
   const shouldLock = props.bodyLock ?? !isSearchable.value
@@ -755,6 +767,7 @@ function open() {
 }
 
 function close() {
+  if (stayOpen.value) return
   if (!isOpen.value) return
   isOpen.value = false
   highlightedIndex.value = -1
@@ -819,6 +832,7 @@ function focusTrigger() {
 }
 
 function selectOption(flatOption: FlatOption) {
+  if (props.disabled || props.loading) return
   if (flatOption.isEmptyMessage) return
   if (flatOption.option.disabled || flatOption.groupDisabled) return
   // A branch that cannot be selected has nothing else the row click could
@@ -965,6 +979,23 @@ function scrollHighlightedIntoView() {
 
 watch(highlightedIndex, () => {
   nextTick(scrollHighlightedIntoView)
+})
+
+// `alwaysOpen` and `disabled` can both change after mount. Without this a
+// control disabled and then re-enabled would stay shut for good, since inline
+// mode hides the chevron and refuses ordinary open requests.
+// An open dropdown must not survive being disabled: its options stay
+// clickable and the trigger can no longer be used to close it.
+watch(
+  () => props.disabled || props.loading,
+  (off) => {
+    if (off && isOpen.value) close()
+  },
+)
+
+watch(stayOpen, (shouldStayOpen) => {
+  if (shouldStayOpen) open()
+  else if (isOpen.value) close()
 })
 
 function onKeydown(e: KeyboardEvent) {
@@ -1137,7 +1168,10 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="rootRef"
-    :class="['vpick', { 'vpick--rotate-icon': rotateIcon }]"
+    :class="[
+      'vpick',
+      { 'vpick--rotate-icon': rotateIcon, 'vpick--inline': isInline },
+    ]"
     role="none"
   >
     <!-- Button trigger (non-searchable) -->
@@ -1230,7 +1264,7 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span v-else class="vpick-trigger-icon" aria-hidden="true">
+      <span v-else-if="!isInline" class="vpick-trigger-icon" aria-hidden="true">
         <slot name="icon">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -1417,7 +1451,7 @@ onBeforeUnmount(() => {
          hardware-accelerated layer); listbox owns the enter-leave animation.
          Splitting them is required because two transforms can't coexist on
          the same element. -->
-    <Teleport :to="teleportTo ?? 'body'">
+    <Teleport :to="teleportTo ?? 'body'" :disabled="isInline">
       <Transition name="vpick-dropdown" @after-leave="onAfterLeave">
         <div
           v-show="isOpen"

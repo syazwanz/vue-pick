@@ -2568,3 +2568,171 @@ describe("VPick — flattenSearchResults", () => {
     expect(labels).toContain("Phones")
   })
 })
+
+describe("VPick — alwaysOpen", () => {
+  it("starts open and stays open", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    await trigger.trigger("keydown", { key: "Escape" })
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+
+  it("survives a click outside", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+      attachTo: document.body,
+    })
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await nextTick()
+    expect(wrapper.find('[role="combobox"]').attributes("aria-expanded")).toBe(
+      "true",
+    )
+    wrapper.unmount()
+  })
+
+  it("renders in flow rather than teleporting", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+    await nextTick()
+    // The panel is inside the component root, not moved to <body>.
+    expect(wrapper.element.querySelector(".vpick-positioner")).not.toBe(null)
+    wrapper.unmount()
+  })
+
+  it("skips fixed positioning", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    await nextTick()
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.style.position).toBe("")
+    expect(positioner.style.transform).toBe("")
+    wrapper.unmount()
+  })
+
+  it("tags the root so the panel can be styled in flow", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    expect(wrapper.classes()).toContain("vpick--inline")
+  })
+
+  it("hides the chevron", () => {
+    const inline = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    expect(inline.find(".vpick-trigger-icon").exists()).toBe(false)
+
+    const normal = mount(VPick, { props: { options: status } })
+    expect(normal.find(".vpick-trigger-icon").exists()).toBe(true)
+  })
+
+  it("still selects", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    await wrapper.findAll('[role="option"]')[1].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toBe("in-progress")
+  })
+
+  it("keyboard navigation still works", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    // Nothing is highlighted until the user acts: the panel being visible is
+    // not the same as it having keyboard focus.
+    expect(wrapper.find(".vpick-option--highlighted").exists()).toBe(false)
+
+    await trigger.trigger("keydown", { key: "ArrowDown" })
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+
+    await trigger.trigger("keydown", { key: "ArrowDown" })
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain(
+      "In Progress",
+    )
+  })
+
+  it("re-enabling reopens it, rather than leaving it shut with no chevron", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true, disabled: true },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+
+    await wrapper.setProps({ disabled: false })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+
+  it("follows the prop when it changes after mount", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: false },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+
+    await wrapper.setProps({ alwaysOpen: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    await wrapper.setProps({ alwaysOpen: false })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("closes when disabled, so the panel is not left sitting there inert", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true, disabled: true },
+    })
+    expect(wrapper.find('[role="combobox"]').attributes("aria-expanded")).toBe(
+      "false",
+    )
+  })
+})
+
+describe("VPick — disabling an open dropdown", () => {
+  it("closes it", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("closes it when loading starts too", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.setProps({ loading: true })
+    await nextTick()
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("refuses selections while disabled", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    await wrapper.setProps({ disabled: true })
+    await nextTick()
+    // alwaysOpen keeps the rows mounted, so they are still clickable in the DOM.
+    const opts = wrapper.findAll('[role="option"]')
+    if (opts.length) await opts[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")).toBeFalsy()
+  })
+})

@@ -329,6 +329,27 @@ markup rather than plain text:
 </VPick>
 ```
 
+## Always open
+
+`alwaysOpen` renders the list in the page rather than as a dropdown. It cannot
+be closed, and the chevron is hidden.
+
+```vue
+<VPick v-model="selected" :options="options" always-open multiple />
+```
+
+Useful inside a filter panel or popover, where the list is the content rather
+than something to reveal.
+
+The panel is laid out by the browser in normal flow, so it is not teleported,
+not positioned, and does not lock body scroll. The root gains a
+`vpick--inline` class for styling. Everything else is unchanged: search,
+selection, chips and keyboard navigation all behave the same.
+
+Nothing is highlighted until the user presses a key, since a visible list is
+not the same as a focused one. A disabled control closes, so the panel is not
+left sitting there inert.
+
 ## Flattening search results
 
 By default, searching a tree keeps the hierarchy: matching nodes stay nested and
