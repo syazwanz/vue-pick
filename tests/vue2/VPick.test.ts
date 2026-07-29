@@ -1592,3 +1592,71 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     expect(trigger.attributes("aria-expanded")).toBe("false")
   })
 })
+
+describe("VPick (Vue 2) — sortValueBy and value-label slot", () => {
+  const smallTree: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "electronics",
+      children: [
+        { label: "Phones", value: "phones" },
+        { label: "Laptops", value: "laptops" },
+      ],
+    },
+    { label: "Books", value: "books" },
+  ]
+
+  it("INDEX orders the emitted value by tree position", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: smallTree,
+        multiple: true,
+        cascade: false,
+        defaultExpandLevel: 2,
+        sortValueBy: "INDEX",
+        value: ["books"],
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll('[role="option"]')
+    await rows
+      .filter((o) => o.text().includes("Phones"))
+      .at(0)
+      .trigger("click")
+    const e = wrapper.emitted("input")
+    expect(e[e.length - 1][0]).toEqual(["phones", "books"])
+  })
+
+  it("LEVEL puts shallower values first", () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: smallTree,
+        multiple: true,
+        cascade: false,
+        sortValueBy: "LEVEL",
+        value: ["phones", "books"],
+      },
+    })
+    const chips = wrapper
+      .findAll(".vpick-chip-label")
+      .wrappers.map((c) => c.text())
+    expect(chips).toEqual(["Books", "Phones"])
+  })
+
+  it("value-label slot overrides the trigger label", () => {
+    const users = [{ id: 1, name: "Alice", nickname: "Al" }]
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        value: 1,
+      },
+      scopedSlots: {
+        "value-label": '<b class="nick">{{ props.option.raw.nickname }}</b>',
+      },
+    })
+    expect(wrapper.find(".nick").text()).toBe("Al")
+  })
+})

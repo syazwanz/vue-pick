@@ -269,6 +269,7 @@ These props apply to both `VPickNative` and `VPick`:
 | `clear`       | —                        | Custom clear button content. Shown when `clearable` and a value is selected.                         |
 | `empty`       | `{ query: string }`      | Custom empty state when no options match the search query.                                           |
 | `no-children` | `{ option: OptionItem }` | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
+| `value-label` | `{ option: OptionItem }` | Custom label for the selected value: the trigger label in single mode, each chip in `multiple` mode. |
 
 ## Events
 
@@ -327,6 +328,37 @@ markup rather than plain text:
   </template>
 </VPick>
 ```
+
+## Ordering selected values
+
+By default the emitted array keeps the order options were picked in. Use
+`sortValueBy` to order by the tree instead:
+
+| Value                        | Order                                           |
+| ---------------------------- | ----------------------------------------------- |
+| `"ORDER_SELECTED"` (default) | The order the user picked them                  |
+| `"INDEX"`                    | Position in the tree, top to bottom as rendered |
+| `"LEVEL"`                    | Shallowest first, ties broken by position       |
+
+This applies to both `v-model` and the chips, so a value handed in unsorted is
+still displayed in order.
+
+## Customising the selected label
+
+The `value-label` slot replaces the trigger label in single mode and each chip
+in `multiple` mode. It receives the option, including `raw`, which is the exact
+object you passed in `options`:
+
+```vue
+<VPick v-model="selected" :options="users" label-key="name" value-key="id">
+  <template #value-label="{ option }">
+    {{ option.raw.nickname || option.label }}
+  </template>
+</VPick>
+```
+
+Useful when the display label is derived rather than a single field, which
+`labelKey` cannot express.
 
 ## Styling branch and leaf rows
 

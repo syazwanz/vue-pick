@@ -2120,3 +2120,135 @@ describe("VPick — select / deselect events", () => {
     expect(wrapper.emitted("select")).toBeFalsy()
   })
 })
+
+describe("VPick — sortValueBy", () => {
+  // Document order of `tree`: electronics(0), phones(1), laptops(1),
+  // gaming(2), business(2), books(0). Numbers in brackets are depth.
+  function lastEmitted(w: ReturnType<typeof mount>) {
+    const e = w.emitted("update:modelValue")
+    return e![e!.length - 1][0] as string[]
+  }
+
+  function openAll(modelValue: string[], sortValueBy?: string) {
+    return mount(VPick, {
+      props: {
+        options: tree,
+        multiple: true,
+        cascade: false,
+        defaultExpandLevel: 2,
+        modelValue,
+        ...(sortValueBy ? { sortValueBy } : {}),
+      },
+    })
+  }
+
+  it("ORDER_SELECTED keeps click order (default)", async () => {
+    const wrapper = openAll(["books", "business"])
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll('[role="option"]')
+    await rows.find((o) => o.text().includes("Phones"))!.trigger("click")
+    expect(lastEmitted(wrapper)).toEqual(["books", "business", "phones"])
+  })
+
+  it("INDEX sorts by position in the tree", async () => {
+    const wrapper = openAll(["books", "business"], "INDEX")
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll('[role="option"]')
+    await rows.find((o) => o.text().includes("Phones"))!.trigger("click")
+    // phones(1) < business(4) < books(5)
+    expect(lastEmitted(wrapper)).toEqual(["phones", "business", "books"])
+  })
+
+  it("LEVEL sorts shallowest first, ties broken by tree order", async () => {
+    const wrapper = openAll(["gaming"], "LEVEL")
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll('[role="option"]')
+    await rows.find((o) => o.text().includes("Books"))!.trigger("click")
+    // books is depth 0, gaming is depth 2
+    expect(lastEmitted(wrapper)).toEqual(["books", "gaming"])
+  })
+
+  it("orders the chips too, not just the emitted value", () => {
+    const wrapper = openAll(["books", "gaming"], "INDEX")
+    const chips = wrapper.findAll(".vpick-chip-label").map((c) => c.text())
+    expect(chips).toEqual(["Gaming", "Books"])
+  })
+
+  it("leaves order untouched by default", () => {
+    const wrapper = openAll(["books", "gaming"])
+    const chips = wrapper.findAll(".vpick-chip-label").map((c) => c.text())
+    expect(chips).toEqual(["Books", "Gaming"])
+  })
+})
+
+describe("VPick — value-label slot", () => {
+  const users = [
+    { id: 1, name: "Alice", nickname: "Al" },
+    { id: 2, name: "Bob", nickname: "Bobby" },
+  ]
+
+  it("overrides the single-select trigger label", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        modelValue: 1,
+      },
+      slots: {
+        "value-label":
+          '<template #default="{ option }"><b class="nick">{{ option.raw.nickname }}</b></template>',
+      },
+    })
+    expect(wrapper.find(".nick").text()).toBe("Al")
+  })
+
+  it("overrides chip labels in multi mode", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        modelValue: [1, 2],
+      },
+      slots: {
+        "value-label":
+          '<template #default="{ option }"><span class="nick">{{ option.raw.nickname }}</span></template>',
+      },
+    })
+    expect(wrapper.findAll(".nick").map((n) => n.text())).toEqual([
+      "Al",
+      "Bobby",
+    ])
+  })
+
+  it("falls back to the label when no slot is given", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        modelValue: 1,
+      },
+    })
+    expect(wrapper.find(".vpick-trigger-label").text()).toBe("Alice")
+  })
+
+  it("still shows the placeholder when nothing is selected", () => {
+    const wrapper = mount(VPick, {
+      props: { options: users, labelKey: "name", valueKey: "id" },
+      slots: {
+        "value-label":
+          '<template #default="{ option }"><b class="nick">{{ option.raw.nickname }}</b></template>',
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      attrs: { placeholder: "Pick someone" } as any,
+    })
+    expect(wrapper.find(".nick").exists()).toBe(false)
+    expect(wrapper.find(".vpick-trigger-label").text()).toBe("Pick someone")
+  })
+})

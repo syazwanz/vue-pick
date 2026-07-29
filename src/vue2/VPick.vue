@@ -66,6 +66,7 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX"
     clearOnSelect?: boolean
     closeOnSelect?: boolean
     noChildrenText?: string
@@ -99,6 +100,7 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    sortValueBy: "ORDER_SELECTED",
     clearOnSelect: true,
     // undefined means "close in single, stay open in multi". An explicit value
     // wins in both modes so the prop never silently does nothing.
@@ -294,7 +296,36 @@ const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
   return set
 })
 
+// Order the emitted array and the chips. `flatAll` is a full document-order
+// walk of the tree, so a value's position in it is its tree order; that spares
+// us carrying an index path on every node.
+function sortValues(values: OptionItem["value"][]): OptionItem["value"][] {
+  if (props.sortValueBy === "ORDER_SELECTED") return values
+  const pos = new Map<OptionItem["value"], number>()
+  const depth = new Map<OptionItem["value"], number>()
+  flatAll.value.forEach((fo, i) => {
+    if (!pos.has(fo.option.value)) {
+      pos.set(fo.option.value, i)
+      depth.set(fo.option.value, fo.depth)
+    }
+  })
+  const at = (v: OptionItem["value"]) => pos.get(v) ?? Number.MAX_SAFE_INTEGER
+  const lvl = (v: OptionItem["value"]) =>
+    depth.get(v) ?? Number.MAX_SAFE_INTEGER
+  return [...values].sort((a, b) =>
+    props.sortValueBy === "LEVEL" && lvl(a) !== lvl(b)
+      ? lvl(a) - lvl(b)
+      : at(a) - at(b),
+  )
+}
+
 function emitFromLeafSet(
+  newLeafSet: ReadonlySet<OptionItem["value"]>,
+): OptionItem["value"][] {
+  return sortValues(collectEmitValues(newLeafSet))
+}
+
+function collectEmitValues(
   newLeafSet: ReadonlySet<OptionItem["value"]>,
 ): OptionItem["value"][] {
   switch (props.valueConsistsOf) {
@@ -448,16 +479,19 @@ const selectedOptions = computed(() => {
     : Array.isArray(props.value)
       ? props.value
       : []
-  return displayValues
+  return sortValues(displayValues)
     .map((v) => flatAll.value.find((f) => f.option.value === v))
     .filter(Boolean) as FlatOption[]
 })
 
-const selectedLabel = computed(() => {
-  if (props.value == null) return ""
-  const found = flatAll.value.find((f) => f.option.value === props.value)
-  return found?.option.label ?? ""
+const selectedOption = computed<OptionItem | null>(() => {
+  if (props.value == null) return null
+  return (
+    flatAll.value.find((f) => f.option.value === props.value)?.option ?? null
+  )
 })
+
+const selectedLabel = computed(() => selectedOption.value?.label ?? "")
 
 const showEmpty = computed(
   () =>
@@ -786,13 +820,10 @@ function selectOption(flatOption: FlatOption) {
       const arr = Array.isArray(props.value) ? props.value : []
       const val = flatOption.option.value
       if (selectedValues.value.has(val)) {
-        emit(
-          "input",
-          arr.filter((v) => v !== val),
-        )
+        emit("input", sortValues(arr.filter((v) => v !== val)))
         emit("deselect", source)
       } else {
-        emit("input", [...arr, val])
+        emit("input", sortValues([...arr, val]))
         emit("select", source)
       }
     }
@@ -1120,7 +1151,13 @@ onBeforeUnmount(() => {
         class="vpick-trigger-label"
         :class="{ 'vpick-trigger-placeholder': !selectedLabel }"
       >
-        {{ selectedLabel || placeholder || "\u00A0" }}
+        <slot
+          v-if="selectedOption"
+          name="value-label"
+          :option="selectedOption"
+          >{{ selectedLabel }}</slot
+        >
+        <template v-else>{{ placeholder || "\u00A0" }}</template>
       </span>
       <span
         v-if="loading"
@@ -1210,7 +1247,11 @@ onBeforeUnmount(() => {
         :key="String(fo.option.value)"
         class="vpick-chip"
       >
-        <span class="vpick-chip-label">{{ fo.option.label }}</span>
+        <span class="vpick-chip-label"
+          ><slot name="value-label" :option="fo.option">{{
+            fo.option.label
+          }}</slot></span
+        >
         <button
           type="button"
           class="vpick-chip-remove"
