@@ -2481,3 +2481,90 @@ describe("VPick — valueFormat", () => {
     expect(wrapper.find("select").element.value).toBe("2")
   })
 })
+
+describe("VPick — flattenSearchResults", () => {
+  // tree: Electronics > [Phones, Laptops > [Gaming, Business]], Books
+  function openAndType(query: string, flatten = false) {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        searchable: true,
+        modelValue: null,
+        ...(flatten ? { flattenSearchResults: true } : {}),
+      },
+    })
+    return wrapper
+      .find('[role="combobox"]')
+      .trigger("click")
+      .then(() => wrapper.find("input").setValue(query))
+      .then(() => wrapper)
+  }
+
+  it("by default shows matches nested under their ancestors", async () => {
+    const wrapper = await openAndType("gaming")
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    // Electronics and Laptops are ancestors of the match, so they appear too.
+    expect(labels).toContain("Electronics")
+    expect(labels).toContain("Laptops")
+    expect(labels).toContain("Gaming")
+  })
+
+  it("flattened shows only direct matches, no ancestors", async () => {
+    const wrapper = await openAndType("gaming", true)
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toEqual(["Gaming"])
+  })
+
+  it("flattened finds matches inside collapsed branches", async () => {
+    // Nothing is expanded, so this only works by walking the whole tree.
+    const wrapper = await openAndType("business", true)
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toEqual(["Business"])
+  })
+
+  it("flattened drops the indent, since parents are not shown", async () => {
+    const wrapper = await openAndType("gaming", true)
+    const row = wrapper.find('[role="option"]')
+    expect(row.attributes("data-depth")).toBe("0")
+  })
+
+  it("flattened still includes branch nodes that match themselves", async () => {
+    const wrapper = await openAndType("laptops", true)
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toEqual(["Laptops"])
+  })
+
+  it("flattened options remain selectable", async () => {
+    const wrapper = await openAndType("gaming", true)
+    await wrapper.find('[role="option"]').trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toBe("gaming")
+  })
+
+  it("clearing the query restores the tree", async () => {
+    const wrapper = await openAndType("gaming", true)
+    await wrapper.find("input").setValue("")
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    // Back to the collapsed top level.
+    expect(labels).toContain("Electronics")
+    expect(labels).toContain("Books")
+    expect(labels).not.toContain("Gaming")
+  })
+
+  it("does not disturb expansion state while searching", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        searchable: true,
+        modelValue: null,
+        flattenSearchResults: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.find("input").setValue("gaming")
+    await wrapper.find("input").setValue("")
+    // Electronics was pre-expanded and should still be.
+    const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
+    expect(labels).toContain("Phones")
+  })
+})
