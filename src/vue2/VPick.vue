@@ -66,6 +66,7 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    valueFormat?: "id" | "object"
     sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX"
     clearOnSelect?: boolean
     closeOnSelect?: boolean
@@ -100,6 +101,7 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    valueFormat: "id",
     sortValueBy: "ORDER_SELECTED",
     clearOnSelect: true,
     // undefined means "close in single, stay open in multi". An explicit value
@@ -123,6 +125,39 @@ const shouldCloseOnSelect = computed(
 // Hand back what the caller passed in, not our normalized copy.
 function sourceOf(option: OptionItem): unknown {
   return toRaw(option.raw ?? option)
+}
+
+// `valueFormat="object"` is handled purely at the boundary. Everything inside
+// the component keeps running on plain values, so selection sets, cascade math
+// and the hidden <select> need no knowledge of it.
+
+// Incoming: reduce an option object back to its value. Matching is by the
+// value key rather than identity, so a caller handing back a fresh object
+// literal still resolves.
+function toValue(v: unknown): OptionItem["value"] {
+  if (props.valueFormat !== "object") return v
+  if (v && typeof v === "object") {
+    return (v as Record<string, unknown>)[props.valueKey ?? "value"]
+  }
+  return v
+}
+
+const model = computed(() => {
+  const v = props.value
+  if (props.valueFormat !== "object") return v
+  return Array.isArray(v) ? v.map(toValue) : toValue(v)
+})
+
+// Outgoing: expand values back into the caller's original objects. A value with
+// no matching option is passed through untouched, same as an unknown value is
+// today.
+function toEmit(v: OptionItem["value"] | OptionItem["value"][]): unknown {
+  if (props.valueFormat !== "object") return v
+  const expand = (x: OptionItem["value"]) => {
+    const found = flatAll.value.find((f) => f.option.value === x)
+    return found ? sourceOf(found.option) : x
+  }
+  return Array.isArray(v) ? v.map(expand) : v == null ? v : expand(v)
 }
 
 const isOpen = ref(false)
@@ -281,7 +316,7 @@ const isCascadeMode = computed(
 
 const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
   if (!isCascadeMode.value) return selectedValues.value
-  const arr = Array.isArray(props.value) ? props.value : []
+  const arr = Array.isArray(model.value) ? model.value : []
   if (props.valueConsistsOf === "LEAF_PRIORITY") return new Set(arr)
   const set = new Set<OptionItem["value"]>()
   for (const v of arr) {
@@ -460,13 +495,13 @@ const sections = computed<Section[]>(() => {
 // Set of selected values for O(1) lookups in multi mode
 const selectedValues = computed<Set<OptionItem["value"]>>(() => {
   if (!props.multiple) return new Set()
-  const arr = Array.isArray(props.value) ? props.value : []
+  const arr = Array.isArray(model.value) ? model.value : []
   return new Set(arr)
 })
 
 function isSelected(value: OptionItem["value"]): boolean {
   if (props.multiple) return selectedValues.value.has(value)
-  return props.value === value
+  return model.value === value
 }
 
 // Ordered list of selected option objects for rendering chips.
@@ -476,8 +511,8 @@ const selectedOptions = computed(() => {
   if (!props.multiple) return []
   const displayValues = isCascadeMode.value
     ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
-    : Array.isArray(props.value)
-      ? props.value
+    : Array.isArray(model.value)
+      ? model.value
       : []
   return sortValues(displayValues)
     .map((v) => flatAll.value.find((f) => f.option.value === v))
@@ -485,9 +520,9 @@ const selectedOptions = computed(() => {
 })
 
 const selectedOption = computed<OptionItem | null>(() => {
-  if (props.value == null) return null
+  if (model.value == null) return null
   return (
-    flatAll.value.find((f) => f.option.value === props.value)?.option ?? null
+    flatAll.value.find((f) => f.option.value === model.value)?.option ?? null
   )
 })
 
@@ -504,17 +539,17 @@ const showEmpty = computed(
 
 const hiddenSelectValue = computed<string | string[]>(() => {
   if (props.multiple) {
-    return Array.isArray(props.value) ? props.value.map(String) : []
+    return Array.isArray(model.value) ? model.value.map(String) : []
   }
-  return String(props.value ?? "")
+  return String(model.value ?? "")
 })
 
 const canClear = computed(() => {
   if (!props.clearable || props.disabled || props.loading) return false
   if (props.multiple) {
-    return Array.isArray(props.value) && props.value.length > 0
+    return Array.isArray(model.value) && model.value.length > 0
   }
-  return props.value != null
+  return model.value != null
 })
 
 const instance = getCurrentInstance()
@@ -651,14 +686,14 @@ function syncMultiSelectOptions() {
   if (!props.multiple) return
   const select = hiddenSelectRef.value
   if (!select) return
-  const arr = Array.isArray(props.value) ? props.value.map(String) : []
+  const arr = Array.isArray(model.value) ? model.value.map(String) : []
   for (const opt of Array.from(select.options)) {
     opt.selected = arr.includes(opt.value)
   }
 }
 
 watch(
-  () => props.value,
+  () => model.value,
   async () => {
     await nextTick()
     const select = hiddenSelectRef.value
@@ -692,7 +727,7 @@ function highlightDefault() {
     return
   }
   const idx = list.findIndex(
-    (f) => f.option.value === props.value && !f.option.disabled,
+    (f) => f.option.value === model.value && !f.option.disabled,
   )
   highlightedIndex.value = idx >= 0 ? idx : list.findIndex(isNavigable)
 }
@@ -813,17 +848,17 @@ function selectOption(flatOption: FlatOption) {
       } else {
         for (const v of leaves) newLeafSet.add(v)
       }
-      emit("input", emitFromLeafSet(newLeafSet))
+      emit("input", toEmit(emitFromLeafSet(newLeafSet)))
       if (wasChecked) emit("deselect", source)
       else emit("select", source)
     } else {
-      const arr = Array.isArray(props.value) ? props.value : []
+      const arr = Array.isArray(model.value) ? model.value : []
       const val = flatOption.option.value
       if (selectedValues.value.has(val)) {
-        emit("input", sortValues(arr.filter((v) => v !== val)))
+        emit("input", toEmit(sortValues(arr.filter((v) => v !== val))))
         emit("deselect", source)
       } else {
-        emit("input", sortValues([...arr, val]))
+        emit("input", toEmit(sortValues([...arr, val])))
         emit("select", source)
       }
     }
@@ -835,7 +870,7 @@ function selectOption(flatOption: FlatOption) {
     if (shouldCloseOnSelect.value) close()
     return
   }
-  emit("input", flatOption.option.value)
+  emit("input", toEmit(flatOption.option.value))
   emit("select", source)
   if (shouldCloseOnSelect.value) close()
 }
@@ -848,10 +883,10 @@ function removeChip(value: OptionItem["value"]) {
       const leaves = getLeafDescendants(fo.option)
       const newLeafSet = new Set(effectiveLeafSet.value)
       for (const v of leaves) newLeafSet.delete(v)
-      emit("input", emitFromLeafSet(newLeafSet))
+      emit("input", toEmit(emitFromLeafSet(newLeafSet)))
     }
   } else {
-    const arr = Array.isArray(props.value) ? props.value : []
+    const arr = Array.isArray(model.value) ? model.value : []
     emit(
       "input",
       arr.filter((v) => v !== value),
@@ -862,7 +897,7 @@ function removeChip(value: OptionItem["value"]) {
 
 function onClear() {
   if (!canClear.value) return
-  emit("input", props.multiple ? [] : undefined)
+  emit("input", toEmit(props.multiple ? [] : undefined))
   searchQuery.value = ""
   isUserSearching.value = false
   focusTrigger()

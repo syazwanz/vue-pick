@@ -1773,3 +1773,54 @@ describe("VPick (Vue 2) — accessibility element contract", () => {
     expect(expand.attributes("tabindex")).toBe("-1")
   })
 })
+
+describe("VPick (Vue 2) — valueFormat", () => {
+  const users = [
+    { id: 1, name: "Alice" },
+    { id: 2, name: "Bob" },
+  ]
+
+  function mountUsers(props = {}) {
+    return mount(VPick, {
+      propsData: { options: users, labelKey: "name", valueKey: "id", ...props },
+    })
+  }
+
+  it("emits plain values by default", async () => {
+    const wrapper = mountUsers()
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]').at(0).trigger("click")
+    expect(wrapper.emitted("input")[0][0]).toBe(1)
+  })
+
+  it("emits the caller's original object in single mode", async () => {
+    const wrapper = mountUsers({ valueFormat: "object" })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]').at(0).trigger("click")
+    expect(wrapper.emitted("input")[0][0]).toBe(users[0])
+  })
+
+  it("understands objects coming back in, matched by value key", () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      value: { id: 2, name: "Bob" },
+    })
+    expect(wrapper.find(".vpick-trigger-label").text()).toBe("Bob")
+  })
+
+  it("emits an array of objects in multi mode", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      multiple: true,
+      value: [],
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]').at(1).trigger("click")
+    expect(wrapper.emitted("input")[0][0]).toEqual([users[1]])
+  })
+
+  it("keeps the hidden select working on plain values", () => {
+    const wrapper = mountUsers({ valueFormat: "object", value: users[1] })
+    expect(wrapper.find("select").element.value).toBe("2")
+  })
+})
