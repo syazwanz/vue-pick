@@ -329,6 +329,46 @@ markup rather than plain text:
 </VPick>
 ```
 
+## Object values
+
+By default `v-model` holds plain values:
+
+```js
+selected = ["apple", "banana"]
+```
+
+Set `valueFormat="object"` and it holds your original option objects instead:
+
+```js
+selected = [
+  { id: "apple", label: "Apple", price: 3 },
+  { id: "banana", label: "Banana", price: 2 },
+]
+```
+
+Useful when you need other fields off the selection and would otherwise look
+them up yourself.
+
+```vue
+<VPick
+  v-model="selected"
+  :options="fruit"
+  label-key="label"
+  value-key="id"
+  value-format="object"
+/>
+```
+
+Objects you pass back in are matched by `valueKey`, not by identity, so a
+rebuilt object literal still resolves:
+
+```js
+selected = { id: "apple" } // matches the Apple option
+```
+
+The hidden `<select>` used for form submission always posts plain values, since
+a form field cannot carry an object.
+
 ## Ordering selected values
 
 By default the emitted array keeps the order options were picked in. Use

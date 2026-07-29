@@ -2377,3 +2377,107 @@ describe("VPick — accessibility element contract", () => {
     expect(expand.attributes("tabindex")).toBe("-1")
   })
 })
+
+describe("VPick — valueFormat", () => {
+  const users = [
+    { id: 1, name: "Alice" },
+    { id: 2, name: "Bob" },
+  ]
+
+  function mountUsers(props: Record<string, unknown> = {}) {
+    return mount(VPick, {
+      props: { options: users, labelKey: "name", valueKey: "id", ...props },
+    })
+  }
+
+  it("emits plain values by default", async () => {
+    const wrapper = mountUsers()
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toBe(1)
+  })
+
+  it("emits the caller's original object in single mode", async () => {
+    const wrapper = mountUsers({ valueFormat: "object" })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toBe(users[0])
+  })
+
+  it("emits an array of objects in multi mode", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      multiple: true,
+      modelValue: [],
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[1].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toEqual([users[1]])
+  })
+
+  it("understands objects coming back in", () => {
+    const wrapper = mountUsers({ valueFormat: "object", modelValue: users[1] })
+    expect(wrapper.find(".vpick-trigger-label").text()).toBe("Bob")
+  })
+
+  it("matches a fresh object literal by value key, not identity", () => {
+    // The parent may hand back a reconstructed object rather than ours.
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      modelValue: { id: 2, name: "Bob" },
+    })
+    expect(wrapper.find(".vpick-trigger-label").text()).toBe("Bob")
+  })
+
+  it("marks the right option selected from an object model", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      multiple: true,
+      modelValue: [{ id: 1 }],
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const opts = wrapper.findAll('[role="option"]')
+    expect(opts[0].attributes("aria-selected")).toBe("true")
+    expect(opts[1].attributes("aria-selected")).toBe("false")
+  })
+
+  it("deselecting emits the remaining objects", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      multiple: true,
+      modelValue: [{ id: 1 }, { id: 2 }],
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toEqual([users[1]])
+  })
+
+  it("passes an unknown value through instead of throwing", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      multiple: true,
+      modelValue: [{ id: 999 }],
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    const emitted = wrapper.emitted("update:modelValue")![0][0] as unknown[]
+    // 999 has no matching option, so it survives as the bare value.
+    expect(emitted).toContain(999)
+    expect(emitted).toContain(users[0])
+  })
+
+  it("clearing still empties the model", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      clearable: true,
+      modelValue: users[0],
+    })
+    await wrapper.find(".vpick-clear").trigger("click")
+    expect(wrapper.emitted("update:modelValue")![0][0]).toBeUndefined()
+  })
+
+  it("keeps the hidden select working on plain values", () => {
+    const wrapper = mountUsers({ valueFormat: "object", modelValue: users[1] })
+    expect(wrapper.find("select").element.value).toBe("2")
+  })
+})
