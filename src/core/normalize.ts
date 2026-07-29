@@ -50,6 +50,14 @@ function normalizeItem(item: unknown, k: OptionKeys): OptionOrGroup {
     label: obj[k.label] as string,
     value: obj[k.value],
   }
+  // Non-enumerable so the normalized shape still deep-equals and serializes
+  // like a plain option. Consumers can still read `option.raw`.
+  Object.defineProperty(normalized, "raw", {
+    value: item,
+    enumerable: false,
+    writable: false,
+    configurable: true,
+  })
   if (obj[k.disabled] !== undefined) {
     normalized.disabled = Boolean(obj[k.disabled])
   }

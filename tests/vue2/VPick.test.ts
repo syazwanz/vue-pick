@@ -1416,3 +1416,127 @@ describe("VPick (Vue 2) — multiple selection", () => {
     })
   })
 })
+
+describe("VPick (Vue 2) — empty branches and new select options", () => {
+  const withEmpty: OptionOrGroup[] = [
+    {
+      label: "Branch",
+      value: "branch",
+      children: [{ label: "Child", value: "child" }],
+    },
+    { label: "Empty", value: "empty", children: [] },
+  ]
+
+  it("empty children array stays a branch and keeps its chevron", async () => {
+    const wrapper = mount(VPick, { propsData: { options: withEmpty } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .filter((o) => o.text().includes("Empty"))
+      .at(0)
+    expect(emptyRow.find(".vpick-option-expand").exists()).toBe(true)
+  })
+
+  it("expanding an empty branch shows noChildrenText in an inert row", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, noChildrenText: "Nothing here" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .filter((o) => o.text().includes("Empty"))
+      .at(0)
+    await emptyRow.find(".vpick-option-expand").trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.exists()).toBe(true)
+    expect(placeholder.text()).toBe("Nothing here")
+    expect(placeholder.attributes("role")).toBeUndefined()
+  })
+
+  it("arrow keys skip the empty-branch placeholder row", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, defaultExpandLevel: 1 },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await nextTick()
+
+    for (let i = 0; i < 6; i++) {
+      await trigger.trigger("keydown", { key: "ArrowDown" })
+    }
+    await nextTick()
+
+    const highlighted = wrapper.find(".vpick-option--highlighted")
+    expect(highlighted.exists()).toBe(true)
+    expect(highlighted.text()).toContain("Empty")
+    expect(wrapper.find(".vpick-option-empty").classes()).not.toContain(
+      "vpick-option--highlighted",
+    )
+  })
+
+  it("disableBranchNodes blocks selecting an empty branch", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, disableBranchNodes: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .filter((o) => o.text().includes("Empty"))
+      .at(0)
+    await emptyRow.trigger("click")
+    expect(wrapper.emitted("input")).toBeFalsy()
+  })
+
+  it("select hands back the caller's original object", async () => {
+    const users = [
+      { id: 1, name: "Alice" },
+      { id: 2, name: "Bob" },
+    ]
+    const wrapper = mount(VPick, {
+      propsData: { options: users, labelKey: "name", valueKey: "id" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]').at(0).trigger("click")
+    expect(wrapper.emitted("select")[0][0]).toBe(users[0])
+  })
+
+  it("clearOnSelect false keeps the query after picking", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        value: [],
+        clearOnSelect: false,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const input = wrapper.find("input")
+    input.element.value = "do"
+    await input.trigger("input")
+    await wrapper.findAll('[role="option"]').at(0).trigger("click")
+    expect(input.element.value).toBe("do")
+  })
+
+  it("closeOnSelect true closes after picking in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        value: [],
+        closeOnSelect: true,
+      },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.findAll('[role="option"]').at(0).trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+})

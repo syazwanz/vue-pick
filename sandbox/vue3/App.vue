@@ -22,6 +22,16 @@ const treeClearable = ref(true)
 const treeDisableBranches = ref(false)
 const treeDefaultExpandLevel = ref(0)
 const treeCascade = ref(true)
+const treeClearOnSelect = ref(true)
+const treeCloseOnSelect = ref(false)
+const treeNoChildrenText = ref("No sub-options")
+const treeEventLog = ref<string[]>([])
+
+function logTreeEvent(kind: string, option: unknown) {
+  const o = option as { label?: string }
+  treeEventLog.value.unshift(`${kind}: ${o?.label ?? JSON.stringify(option)}`)
+  treeEventLog.value = treeEventLog.value.slice(0, 6)
+}
 const treeValueConsistsOf = ref<
   "LEAF_PRIORITY" | "ALL" | "BRANCH_PRIORITY" | "ALL_WITH_INDETERMINATE"
 >("LEAF_PRIORITY")
@@ -167,7 +177,7 @@ function toggleError(e: Event) {
 
     <!-- Tree Select Demo -->
     <div class="sandbox-section">
-      <h2 style="text-align: center; margin-bottom: 1rem">Tree Select</h2>
+      <h2 class="section-title">Tree Select</h2>
       <div class="controls">
         <label class="control-label">
           <input v-model="treeSearchable" type="checkbox" />
@@ -182,21 +192,34 @@ function toggleError(e: Event) {
           <span>Disable branch nodes</span>
         </label>
         <label class="control-label">
+          <input v-model="treeCascade" type="checkbox" />
+          <span>Cascade</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeClearOnSelect" type="checkbox" />
+          <span>Clear on select</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeCloseOnSelect" type="checkbox" />
+          <span>Close on select</span>
+        </label>
+      </div>
+      <div class="controls">
+        <label class="control-label">
           <span>Default expand level:</span>
           <input
             v-model.number="treeDefaultExpandLevel"
             type="number"
             min="0"
             max="5"
-            style="width: 3rem; margin-left: 0.25rem"
           />
         </label>
         <label class="control-label">
-          <input v-model="treeCascade" type="checkbox" />
-          <span>Cascade</span>
+          <span>No children text:</span>
+          <input v-model="treeNoChildrenText" type="text" />
         </label>
         <label class="control-label">
-          <span>valueConsistsOf:</span>
+          <span>Value consists of:</span>
           <v-pick-native
             v-model="treeValueConsistsOf"
             :options="[
@@ -208,30 +231,13 @@ function toggleError(e: Event) {
                 value: 'ALL_WITH_INDETERMINATE',
               },
             ]"
-            style="--vpick-width: 200px; margin-left: 0.25rem"
+            style="--vpick-width: 200px"
           />
         </label>
       </div>
-      <div
-        style="
-          display: flex;
-          gap: 2rem;
-          justify-content: center;
-          flex-wrap: wrap;
-          margin-top: 1rem;
-        "
-      >
-        <div>
-          <div
-            style="
-              text-align: center;
-              font-size: 0.75rem;
-              color: #737373;
-              margin-bottom: 0.5rem;
-            "
-          >
-            Single
-          </div>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="demo-label">Single</div>
           <v-pick
             v-model="treeValue"
             :options="treeOptions"
@@ -239,31 +245,20 @@ function toggleError(e: Event) {
             :clearable="treeClearable"
             :disable-branch-nodes="treeDisableBranches"
             :default-expand-level="treeDefaultExpandLevel || undefined"
+            :clear-on-select="treeClearOnSelect"
+            :close-on-select="treeCloseOnSelect"
+            :no-children-text="treeNoChildrenText"
             placeholder="Select a category"
             style="--vpick-width: 280px; --vpick-bg: white"
+            @select="logTreeEvent('select', $event)"
+            @deselect="logTreeEvent('deselect', $event)"
           />
-          <div
-            style="
-              text-align: center;
-              margin-top: 0.5rem;
-              font-size: 0.75rem;
-              color: #737373;
-            "
-          >
+          <div class="demo-value">
             <code>{{ JSON.stringify(treeValue) }}</code>
           </div>
         </div>
-        <div>
-          <div
-            style="
-              text-align: center;
-              font-size: 0.75rem;
-              color: #737373;
-              margin-bottom: 0.5rem;
-            "
-          >
-            Multiple
-          </div>
+        <div class="demo-item">
+          <div class="demo-label">Multiple</div>
           <v-pick
             v-model="treeMultiValue"
             :options="treeOptions"
@@ -273,25 +268,40 @@ function toggleError(e: Event) {
             :default-expand-level="treeDefaultExpandLevel || undefined"
             :cascade="treeCascade"
             :value-consists-of="treeValueConsistsOf"
+            :clear-on-select="treeClearOnSelect"
+            :close-on-select="treeCloseOnSelect"
+            :no-children-text="treeNoChildrenText"
             multiple
             placeholder="Select categories"
             style="--vpick-width: 280px; --vpick-bg: white"
+            @select="logTreeEvent('select', $event)"
+            @deselect="logTreeEvent('deselect', $event)"
           />
-          <div
-            style="
-              text-align: center;
-              margin-top: 0.5rem;
-              font-size: 0.75rem;
-              color: #737373;
-            "
-          >
+          <div class="demo-value">
             <code>{{ JSON.stringify(treeMultiValue) }}</code>
           </div>
         </div>
       </div>
+      <div class="event-log">
+        <div class="event-log-title">
+          select / deselect
+          <span>&mdash; payload is your original option object</span>
+        </div>
+        <pre
+          class="event-log-body"
+          :class="{ 'is-empty': !treeEventLog.length }"
+          >{{ treeEventLog.join("\n") || "No events yet" }}</pre
+        >
+      </div>
     </div>
 
-    <div style="height: 400px" />
+    <!-- Deliberate gap: scroll the trigger below to the viewport edge and
+         confirm the dropdown flips above it. -->
+    <div class="scroll-spacer">
+      <span
+        >scroll space &mdash; tests dropdown flip near the viewport edge</span
+      >
+    </div>
 
     <div class="component-wrapper">
       <v-pick

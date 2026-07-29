@@ -6,7 +6,12 @@ export interface OptionItem {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any
   disabled?: boolean
+  // An array (even an empty one) marks this node as a branch. Omit the key
+  // entirely for a leaf.
   children?: OptionItem[]
+  // The caller's original object, kept so `select`/`deselect` can hand back
+  // what was passed in rather than our converted shape.
+  raw?: unknown
 }
 
 export interface OptionGroup {
