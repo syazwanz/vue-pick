@@ -5,7 +5,7 @@ import VueSelect from "vue-select"
 import { VPick, VPickNative } from "../../src/vue2"
 import { isOptionGroup, type OptionItem } from "../../src/core"
 
-import { timezones, options, dataOptions } from "../data"
+import { timezones, options, dataOptions, treeOptions } from "../data"
 
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import "vue-select/dist/vue-select.css"
@@ -43,6 +43,27 @@ const propsConfig = ref({
   bodyLock: undefined as boolean | undefined,
   multiple: false,
 })
+
+const treeValue = ref<unknown>(null)
+const treeMultiValue = ref<unknown[]>([])
+const treeSearchable = ref(false)
+const treeClearable = ref(true)
+const treeDisableBranches = ref(false)
+const treeDefaultExpandLevel = ref(0)
+const treeCascade = ref(true)
+const treeClearOnSelect = ref(true)
+const treeCloseOnSelect = ref(false)
+const treeNoChildrenText = ref("No sub-options")
+const treeValueConsistsOf = ref<
+  "LEAF_PRIORITY" | "ALL" | "BRANCH_PRIORITY" | "ALL_WITH_INDETERMINATE"
+>("LEAF_PRIORITY")
+const treeEventLog = ref<string[]>([])
+
+function logTreeEvent(kind: string, option: unknown) {
+  const o = option as { label?: string }
+  treeEventLog.value.unshift(`${kind}: ${o?.label ?? JSON.stringify(option)}`)
+  treeEventLog.value = treeEventLog.value.slice(0, 6)
+}
 
 // Reset value shape when toggling multiple mode
 watch(
@@ -167,6 +188,126 @@ function toggleError(e: Event) {
         placeholder="Select a country"
         style="--vpick-width: 300px; --vpick-bg: white"
       />
+    </div>
+
+    <!-- Tree Select Demo -->
+    <div class="sandbox-section">
+      <h2 class="section-title">Tree Select</h2>
+      <div class="controls">
+        <label class="control-label">
+          <input v-model="treeSearchable" type="checkbox" />
+          <span>Searchable</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeClearable" type="checkbox" />
+          <span>Clearable</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeDisableBranches" type="checkbox" />
+          <span>Disable branch nodes</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeCascade" type="checkbox" />
+          <span>Cascade</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeClearOnSelect" type="checkbox" />
+          <span>Clear on select</span>
+        </label>
+        <label class="control-label">
+          <input v-model="treeCloseOnSelect" type="checkbox" />
+          <span>Close on select</span>
+        </label>
+      </div>
+      <div class="controls">
+        <label class="control-label">
+          <span>Default expand level:</span>
+          <input
+            v-model.number="treeDefaultExpandLevel"
+            type="number"
+            min="0"
+            max="5"
+          />
+        </label>
+        <label class="control-label">
+          <span>No children text:</span>
+          <input v-model="treeNoChildrenText" type="text" />
+        </label>
+        <label class="control-label">
+          <span>Value consists of:</span>
+          <v-pick-native
+            v-model="treeValueConsistsOf"
+            :options="[
+              { label: 'LEAF_PRIORITY', value: 'LEAF_PRIORITY' },
+              { label: 'ALL', value: 'ALL' },
+              { label: 'BRANCH_PRIORITY', value: 'BRANCH_PRIORITY' },
+              {
+                label: 'ALL_WITH_INDETERMINATE',
+                value: 'ALL_WITH_INDETERMINATE',
+              },
+            ]"
+            style="--vpick-width: 200px"
+          />
+        </label>
+      </div>
+      <div class="demo-row">
+        <div class="demo-item">
+          <div class="demo-label">Single</div>
+          <v-pick
+            v-model="treeValue"
+            :options="treeOptions"
+            :searchable="treeSearchable"
+            :clearable="treeClearable"
+            :disable-branch-nodes="treeDisableBranches"
+            :default-expand-level="treeDefaultExpandLevel || undefined"
+            :clear-on-select="treeClearOnSelect"
+            :close-on-select="treeCloseOnSelect"
+            :no-children-text="treeNoChildrenText"
+            placeholder="Select a category"
+            style="--vpick-width: 280px; --vpick-bg: white"
+            @select="logTreeEvent('select', $event)"
+            @deselect="logTreeEvent('deselect', $event)"
+          />
+          <div class="demo-value">
+            <code>{{ JSON.stringify(treeValue) }}</code>
+          </div>
+        </div>
+        <div class="demo-item">
+          <div class="demo-label">Multiple</div>
+          <v-pick
+            v-model="treeMultiValue"
+            :options="treeOptions"
+            :searchable="treeSearchable"
+            :clearable="treeClearable"
+            :disable-branch-nodes="treeDisableBranches"
+            :default-expand-level="treeDefaultExpandLevel || undefined"
+            :cascade="treeCascade"
+            :value-consists-of="treeValueConsistsOf"
+            :clear-on-select="treeClearOnSelect"
+            :close-on-select="treeCloseOnSelect"
+            :no-children-text="treeNoChildrenText"
+            multiple
+            placeholder="Select categories"
+            style="--vpick-width: 280px; --vpick-bg: white"
+            @select="logTreeEvent('select', $event)"
+            @deselect="logTreeEvent('deselect', $event)"
+          />
+          <div class="demo-value">
+            <code>{{ JSON.stringify(treeMultiValue) }}</code>
+          </div>
+        </div>
+      </div>
+      <div class="event-log">
+        <div class="event-log-title">
+          select / deselect
+          <span>&mdash; payload is your original option object</span>
+        </div>
+        <pre
+          class="event-log-body"
+          :class="{ 'is-empty': !treeEventLog.length }"
+          >{{ treeEventLog.join("\n") || "No events yet" }}</pre
+        >
+      </div>
     </div>
 
     <div class="comparison-section">

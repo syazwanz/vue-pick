@@ -144,6 +144,10 @@ export const treeOptions = [
       },
     ],
   },
+  // Explicit empty children: a branch that currently has nothing under it.
+  // Expand it to see `noChildrenText`. Contrast with Books/Sports below, which
+  // omit the key entirely and are therefore leaves.
+  { label: "Archived", value: "archived", children: [] },
   { label: "Books", value: "books" },
   { label: "Sports", value: "sports" },
 ]

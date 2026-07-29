@@ -166,3 +166,148 @@ body {
     text-align: center;
   }
 }
+
+/* ---- Demo sections ---- */
+
+.sandbox-section {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  margin: 60px 0;
+  width: 100%;
+  max-width: 760px;
+  box-sizing: border-box;
+}
+
+.section-title {
+  margin: 0 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.control-label input[type="text"],
+.control-label input[type="number"] {
+  font: inherit;
+  color: #0f172a;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.control-label input[type="text"] {
+  width: 9rem;
+}
+
+.control-label input[type="number"] {
+  width: 3.5rem;
+}
+
+.control-label input[type="text"]:focus,
+.control-label input[type="number"]:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+/* ---- Demo output ---- */
+
+.demo-row {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 20px;
+}
+
+.demo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  text-align: center;
+}
+
+.demo-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  word-break: break-all;
+  max-width: 280px;
+}
+
+.event-log {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.event-log-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.event-log-title span {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.event-log-body {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-height: 76px;
+  white-space: pre-wrap;
+}
+
+.event-log-body:empty::before,
+.event-log-body.is-empty {
+  color: #cbd5e1;
+}
+
+/* Deliberate vertical gap so the trigger below can be scrolled to the viewport
+   edge, which is how you check that the dropdown flips above the trigger. */
+.scroll-spacer {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px dashed #e2e8f0;
+  border-bottom: 1px dashed #e2e8f0;
+  margin-bottom: 60px;
+}
+
+.scroll-spacer span {
+  font-size: 12px;
+  color: #cbd5e1;
+}

@@ -11,6 +11,7 @@ import {
   watch,
   nextTick,
   getCurrentInstance,
+  toRaw,
 } from "vue"
 import {
   type OptionItem,
@@ -65,6 +66,9 @@ const props = withDefaults(
       | "ALL"
       | "BRANCH_PRIORITY"
       | "ALL_WITH_INDETERMINATE"
+    clearOnSelect?: boolean
+    closeOnSelect?: boolean
+    noChildrenText?: string
   }>(),
   {
     value: undefined,
@@ -95,13 +99,29 @@ const props = withDefaults(
     disableBranchNodes: false,
     cascade: true,
     valueConsistsOf: "LEAF_PRIORITY",
+    clearOnSelect: true,
+    // undefined means "close in single, stay open in multi". An explicit value
+    // wins in both modes so the prop never silently does nothing.
+    closeOnSelect: undefined,
+    noChildrenText: "No sub-options",
   },
 )
 
 const emit = defineEmits<{
   (e: "input", value: OptionItem["value"] | OptionItem["value"][]): void
   (e: "search", query: string): void
+  (e: "select", option: unknown): void
+  (e: "deselect", option: unknown): void
 }>()
+
+const shouldCloseOnSelect = computed(
+  () => props.closeOnSelect ?? !props.multiple,
+)
+
+// Hand back what the caller passed in, not our normalized copy.
+function sourceOf(option: OptionItem): unknown {
+  return toRaw(option.raw ?? option)
+}
 
 const isOpen = ref(false)
 const highlightedIndex = ref(-1)
@@ -140,7 +160,7 @@ function hasAnyChildren(items: OptionOrGroup[]): boolean {
     if (isOptionGroup(item)) {
       if (hasAnyChildren(item.options)) return true
     } else {
-      if (item.children && item.children.length > 0) return true
+      if (Array.isArray(item.children)) return true
     }
   }
   return false
@@ -166,7 +186,7 @@ function collectInitialExpanded(
       }
       continue
     }
-    if (item.children && item.children.length > 0) {
+    if (Array.isArray(item.children)) {
       set.add(item.value)
       for (const v of collectInitialExpanded(
         item.children as OptionOrGroup[],
@@ -367,6 +387,7 @@ const filteredFlat = computed<FlatOption[]>(() => {
     const q = searchQuery.value.trim().toLowerCase()
     if (!q) return flat.value
     return flat.value.filter((fo) => {
+      if (fo.isEmptyMessage) return false
       if (fo.hasChildren && fo.isExpanded) return true
       return props.filter
         ? props.filter(fo.option, searchQuery.value.trim())
@@ -623,22 +644,23 @@ watch(
   },
 )
 
+// Placeholder rows under empty branches are inert: never highlighted, never
+// reachable by arrow keys.
+function isNavigable(f: FlatOption): boolean {
+  return !f.isEmptyMessage && !f.option.disabled && !f.groupDisabled
+}
+
 function highlightDefault() {
   const list = filteredFlat.value
   if (props.multiple) {
     // In multi mode, always highlight first enabled option
-    highlightedIndex.value = list.findIndex(
-      (f) => !f.option.disabled && !f.groupDisabled,
-    )
+    highlightedIndex.value = list.findIndex(isNavigable)
     return
   }
   const idx = list.findIndex(
     (f) => f.option.value === props.value && !f.option.disabled,
   )
-  highlightedIndex.value =
-    idx >= 0
-      ? idx
-      : list.findIndex((f) => !f.option.disabled && !f.groupDisabled)
+  highlightedIndex.value = idx >= 0 ? idx : list.findIndex(isNavigable)
 }
 
 let scrollLocked = false
@@ -737,18 +759,23 @@ function focusTrigger() {
 }
 
 function selectOption(flatOption: FlatOption) {
+  if (flatOption.isEmptyMessage) return
   if (flatOption.option.disabled || flatOption.groupDisabled) return
-  if (props.disableBranchNodes && flatOption.hasChildren) return
+  if (props.disableBranchNodes && flatOption.isBranch) return
+  const source = sourceOf(flatOption.option)
   if (props.multiple) {
     if (isCascadeMode.value) {
       const leaves = getLeafDescendants(flatOption.option)
       const newLeafSet = new Set(effectiveLeafSet.value)
-      if (isCascadeChecked(flatOption)) {
+      const wasChecked = isCascadeChecked(flatOption)
+      if (wasChecked) {
         for (const v of leaves) newLeafSet.delete(v)
       } else {
         for (const v of leaves) newLeafSet.add(v)
       }
       emit("input", emitFromLeafSet(newLeafSet))
+      if (wasChecked) emit("deselect", source)
+      else emit("select", source)
     } else {
       const arr = Array.isArray(props.value) ? props.value : []
       const val = flatOption.option.value
@@ -757,18 +784,23 @@ function selectOption(flatOption: FlatOption) {
           "input",
           arr.filter((v) => v !== val),
         )
+        emit("deselect", source)
       } else {
         emit("input", [...arr, val])
+        emit("select", source)
       }
     }
-    // Keep dropdown open in multi mode; clear search after each pick
-    searchQuery.value = ""
-    isUserSearching.value = false
-    emit("search", "")
+    if (props.clearOnSelect) {
+      searchQuery.value = ""
+      isUserSearching.value = false
+      emit("search", "")
+    }
+    if (shouldCloseOnSelect.value) close()
     return
   }
   emit("input", flatOption.option.value)
-  close()
+  emit("select", source)
+  if (shouldCloseOnSelect.value) close()
 }
 
 function removeChip(value: OptionItem["value"]) {
@@ -828,15 +860,9 @@ function onInput(e: Event) {
       return
     }
     const cur = highlightedIndex.value
-    const valid =
-      cur >= 0 &&
-      cur < list.length &&
-      !list[cur].option.disabled &&
-      !list[cur].groupDisabled
+    const valid = cur >= 0 && cur < list.length && isNavigable(list[cur])
     if (!valid) {
-      highlightedIndex.value = list.findIndex(
-        (f) => !f.option.disabled && !f.groupDisabled,
-      )
+      highlightedIndex.value = list.findIndex(isNavigable)
     }
   })
 }
@@ -907,7 +933,7 @@ function onKeydown(e: KeyboardEvent) {
 
   const list = filteredFlat.value
   const enabledIndices = list
-    .map((f, i) => (!f.option.disabled && !f.groupDisabled ? i : -1))
+    .map((f, i) => (isNavigable(f) ? i : -1))
     .filter((i) => i >= 0)
 
   switch (e.key) {
@@ -965,7 +991,7 @@ function onKeydown(e: KeyboardEvent) {
       if (!isTreeMode.value) return
       e.preventDefault()
       const fo = list[highlightedIndex.value]
-      if (!fo || !fo.hasChildren) return
+      if (!fo || !fo.isBranch) return
       if (!fo.isExpanded) {
         toggleExpand(fo.option.value)
         // Move focus to first child after expand
@@ -994,7 +1020,7 @@ function onKeydown(e: KeyboardEvent) {
       e.preventDefault()
       const fo = list[highlightedIndex.value]
       if (!fo) return
-      if (fo.hasChildren && fo.isExpanded) {
+      if (fo.isBranch && fo.isExpanded) {
         toggleExpand(fo.option.value)
       } else if (fo.parentValue !== undefined) {
         const parentIdx = list.findIndex(
@@ -1356,161 +1382,173 @@ onBeforeUnmount(() => {
               >
                 {{ section.label }}
               </div>
-              <div
-                v-for="item in section.items"
-                :id="item.fo.id"
-                :key="item.fo.id"
-                role="option"
-                :style="
-                  isTreeMode && item.fo.depth > 0
-                    ? { '--vpick-option-depth': item.fo.depth }
-                    : undefined
-                "
-                :class="[
-                  'vpick-option',
-                  {
-                    'vpick-option--tree': isTreeMode,
-                    'vpick-option--multi': multiple,
-                    'vpick-option--highlighted':
-                      item.flatIdx === highlightedIndex,
-                    'vpick-option--selected': isSelected(item.fo.option.value),
-                    'vpick-option--disabled':
-                      item.fo.option.disabled ||
-                      item.fo.groupDisabled ||
-                      (disableBranchNodes && item.fo.hasChildren),
-                  },
-                ]"
-                :aria-selected="
-                  (
-                    multiple
-                      ? isCascadeChecked(item.fo)
-                      : isSelected(item.fo.option.value)
-                  )
-                    ? 'true'
-                    : 'false'
-                "
-                :aria-disabled="
-                  item.fo.option.disabled ||
-                  item.fo.groupDisabled ||
-                  (disableBranchNodes && item.fo.hasChildren)
-                    ? 'true'
-                    : undefined
-                "
-                :aria-expanded="
-                  item.fo.hasChildren
-                    ? item.fo.isExpanded
-                      ? 'true'
-                      : 'false'
-                    : undefined
-                "
-                @click="selectOption(item.fo)"
-                @mouseenter="
-                  !(
-                    item.fo.option.disabled ||
-                    item.fo.groupDisabled ||
-                    (disableBranchNodes && item.fo.hasChildren)
-                  ) && (highlightedIndex = item.flatIdx)
-                "
-              >
-                <span
-                  v-if="multiple"
+              <template v-for="item in section.items">
+                <div
+                  v-if="item.fo.isEmptyMessage"
+                  :key="item.fo.id"
+                  class="vpick-option-empty"
+                  :style="{ '--vpick-option-depth': item.fo.depth }"
+                >
+                  {{ noChildrenText }}
+                </div>
+                <div
+                  v-else
+                  :id="item.fo.id"
+                  :key="item.fo.id"
+                  role="option"
+                  :style="
+                    isTreeMode && item.fo.depth > 0
+                      ? { '--vpick-option-depth': item.fo.depth }
+                      : undefined
+                  "
                   :class="[
-                    'vpick-option-checkbox',
+                    'vpick-option',
                     {
-                      'vpick-option-checkbox--checked': isCascadeChecked(
-                        item.fo,
+                      'vpick-option--tree': isTreeMode,
+                      'vpick-option--multi': multiple,
+                      'vpick-option--highlighted':
+                        item.flatIdx === highlightedIndex,
+                      'vpick-option--selected': isSelected(
+                        item.fo.option.value,
                       ),
-                      'vpick-option-checkbox--indeterminate':
-                        isCascadeIndeterminate(item.fo),
+                      'vpick-option--disabled':
+                        item.fo.option.disabled ||
+                        item.fo.groupDisabled ||
+                        (disableBranchNodes && item.fo.isBranch),
                     },
                   ]"
-                  aria-hidden="true"
+                  :aria-selected="
+                    (
+                      multiple
+                        ? isCascadeChecked(item.fo)
+                        : isSelected(item.fo.option.value)
+                    )
+                      ? 'true'
+                      : 'false'
+                  "
+                  :aria-disabled="
+                    item.fo.option.disabled ||
+                    item.fo.groupDisabled ||
+                    (disableBranchNodes && item.fo.isBranch)
+                      ? 'true'
+                      : undefined
+                  "
+                  :aria-expanded="
+                    item.fo.hasChildren
+                      ? item.fo.isExpanded
+                        ? 'true'
+                        : 'false'
+                      : undefined
+                  "
+                  @click="selectOption(item.fo)"
+                  @mouseenter="
+                    !(
+                      item.fo.option.disabled ||
+                      item.fo.groupDisabled ||
+                      (disableBranchNodes && item.fo.isBranch)
+                    ) && (highlightedIndex = item.flatIdx)
+                  "
                 >
-                  <svg
-                    v-if="isCascadeChecked(item.fo)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                  <span
+                    v-if="multiple"
+                    :class="[
+                      'vpick-option-checkbox',
+                      {
+                        'vpick-option-checkbox--checked': isCascadeChecked(
+                          item.fo,
+                        ),
+                        'vpick-option-checkbox--indeterminate':
+                          isCascadeIndeterminate(item.fo),
+                      },
+                    ]"
+                    aria-hidden="true"
                   >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                  <svg
-                    v-else-if="isCascadeIndeterminate(item.fo)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    <svg
+                      v-if="isCascadeChecked(item.fo)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    <svg
+                      v-else-if="isCascadeIndeterminate(item.fo)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M5 12h14" />
+                    </svg>
+                  </span>
+                  <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
+                  <button
+                    v-if="isTreeMode && item.fo.isBranch"
+                    type="button"
+                    :class="[
+                      'vpick-option-expand',
+                      { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                    ]"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    @mousedown.prevent
+                    @click.stop="toggleExpand(item.fo.option.value)"
                   >
-                    <path d="M5 12h14" />
-                  </svg>
-                </span>
-                <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
-                <button
-                  v-if="isTreeMode && item.fo.hasChildren"
-                  type="button"
-                  :class="[
-                    'vpick-option-expand',
-                    { 'vpick-option-expand--expanded': item.fo.isExpanded },
-                  ]"
-                  tabindex="-1"
-                  aria-hidden="true"
-                  @mousedown.prevent
-                  @click.stop="toggleExpand(item.fo.option.value)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                  <span
+                    v-else-if="isTreeMode"
+                    class="vpick-option-expand-spacer"
+                    aria-hidden="true"
+                  />
+                  <span class="vpick-option-label">{{
+                    item.fo.option.label
+                  }}</span>
+                  <span
+                    v-if="!multiple"
+                    class="vpick-option-check"
+                    aria-hidden="true"
                   >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-                <span
-                  v-else-if="isTreeMode"
-                  class="vpick-option-expand-spacer"
-                  aria-hidden="true"
-                />
-                <span class="vpick-option-label">{{
-                  item.fo.option.label
-                }}</span>
-                <span
-                  v-if="!multiple"
-                  class="vpick-option-check"
-                  aria-hidden="true"
-                >
-                  <svg
-                    v-if="isSelected(item.fo.option.value)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                </span>
-              </div>
+                    <svg
+                      v-if="isSelected(item.fo.option.value)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
           <div v-if="showEmpty" class="vpick-empty">

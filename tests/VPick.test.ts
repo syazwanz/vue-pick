@@ -1423,27 +1423,120 @@ describe("VPick — tree select", () => {
     expect(booksRow?.find(".vpick-option-expand").exists()).toBe(false)
   })
 
-  it("D10: empty children array renders as leaf — no chevron", async () => {
-    // Mix: one node with real children (triggers tree mode), one with empty children
-    const withEmpty: OptionOrGroup[] = [
-      {
-        label: "Branch",
-        value: "branch",
-        children: [{ label: "Child", value: "child" }],
-      },
-      { label: "Empty", value: "empty", children: [] },
-    ]
+  // Revised D10: an explicit `children: []` is the author declaring a branch
+  // that happens to be empty, so it stays a branch. Omitting the key entirely
+  // is what makes a leaf.
+  const withEmpty: OptionOrGroup[] = [
+    {
+      label: "Branch",
+      value: "branch",
+      children: [{ label: "Child", value: "child" }],
+    },
+    { label: "Empty", value: "empty", children: [] },
+  ]
+
+  it("empty children array stays a branch and keeps its chevron", async () => {
     const wrapper = mount(VPick, {
       props: { options: withEmpty, modelValue: null },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     await nextTick()
 
-    const options = wrapper.findAll('[role="option"]')
-    const emptyRow = options.find((o) => o.text().includes("Empty"))
-    // Empty children → rendered as leaf: spacer but no expand button
-    expect(emptyRow?.find(".vpick-option-expand").exists()).toBe(false)
-    expect(emptyRow?.find(".vpick-option-expand-spacer").exists()).toBe(true)
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Empty"))
+    expect(emptyRow?.find(".vpick-option-expand").exists()).toBe(true)
+    expect(emptyRow?.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("a node with no children key renders as a leaf", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: [
+          {
+            label: "Branch",
+            value: "branch",
+            children: [{ label: "Child", value: "child" }],
+          },
+          { label: "Leaf", value: "leaf" },
+        ],
+        modelValue: null,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const leafRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Leaf"))
+    expect(leafRow?.find(".vpick-option-expand").exists()).toBe(false)
+    expect(leafRow?.find(".vpick-option-expand-spacer").exists()).toBe(true)
+  })
+
+  it("expanding an empty branch shows noChildrenText in an inert row", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: withEmpty,
+        modelValue: null,
+        noChildrenText: "Nothing here",
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Empty"))
+    await emptyRow!.find(".vpick-option-expand").trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.exists()).toBe(true)
+    expect(placeholder.text()).toBe("Nothing here")
+    // Inert: not an option, so screen readers and arrow keys skip it.
+    expect(placeholder.attributes("role")).toBeUndefined()
+  })
+
+  it("arrow keys skip the empty-branch placeholder row", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null, defaultExpandLevel: 1 },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await nextTick()
+
+    // Rows are: Branch, Child, Empty, <placeholder>. Walk past the end.
+    for (let i = 0; i < 6; i++) {
+      await trigger.trigger("keydown", { key: "ArrowDown" })
+    }
+    await nextTick()
+
+    // Highlight lands on the last navigable row, never the placeholder.
+    const highlighted = wrapper.find(".vpick-option--highlighted")
+    expect(highlighted.exists()).toBe(true)
+    expect(highlighted.text()).toContain("Empty")
+    expect(wrapper.find(".vpick-option-empty").classes()).not.toContain(
+      "vpick-option--highlighted",
+    )
+
+    // End key must not land on it either.
+    await trigger.trigger("keydown", { key: "End" })
+    await nextTick()
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Empty")
+  })
+
+  it("disableBranchNodes blocks selecting an empty branch", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null, disableBranchNodes: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const emptyRow = wrapper
+      .findAll('[role="option"]')
+      .find((o) => o.text().includes("Empty"))
+    await emptyRow!.trigger("click")
+    expect(wrapper.emitted("update:modelValue")).toBeFalsy()
   })
 
   it("clicking chevron expands branch without selecting", async () => {
@@ -1839,5 +1932,123 @@ describe("VPick — cascade", () => {
     expect(val).toContain("laptops")
     expect(val).toContain("gaming")
     expect(val).toContain("business")
+  })
+})
+
+describe("VPick — clearOnSelect / closeOnSelect", () => {
+  it("clears the query after picking in multi mode by default", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const input = wrapper.find("input")
+    await input.setValue("do")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(input.element.value).toBe("")
+  })
+
+  it("clearOnSelect false keeps the query after picking", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: [],
+        clearOnSelect: false,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const input = wrapper.find("input")
+    await input.setValue("do")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(input.element.value).toBe("do")
+  })
+
+  it("stays open after picking in multi mode by default", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+
+  it("closeOnSelect true closes after picking in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: [],
+        closeOnSelect: true,
+      },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+  })
+
+  it("closeOnSelect false keeps single-select open after picking", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, modelValue: null, closeOnSelect: false },
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+  })
+})
+
+describe("VPick — select / deselect events", () => {
+  const users = [
+    { id: 1, name: "Alice" },
+    { id: 2, name: "Bob" },
+  ]
+
+  it("select hands back the caller's original object, not the normalized one", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: users, labelKey: "name", valueKey: "id" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+
+    const payload = wrapper.emitted("select")?.[0]?.[0]
+    expect(payload).toBe(users[0])
+  })
+
+  it("emits deselect when unpicking in multi mode", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        modelValue: [1],
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+
+    expect(wrapper.emitted("deselect")?.[0]?.[0]).toBe(users[0])
+    expect(wrapper.emitted("select")).toBeFalsy()
+  })
+
+  it("does not emit select for a blocked branch node", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: [
+          {
+            label: "Branch",
+            value: "branch",
+            children: [{ label: "Child", value: "child" }],
+          },
+        ],
+        modelValue: null,
+        disableBranchNodes: true,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("select")).toBeFalsy()
   })
 })

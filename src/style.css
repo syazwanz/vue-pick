@@ -707,6 +707,19 @@ button.vpick-trigger--loading:disabled,
   background-color: var(--vpick-option-hover-bg);
 }
 
+/* Placeholder under an expanded branch whose children array is empty.
+   Inert: no role, no pointer events, muted like the no-results message. */
+.vpick-option-empty {
+  padding: 0.375rem 0.5rem;
+  padding-inline-start: calc(
+    1.375rem + var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
+  );
+  font-size: var(--vpick-font-size);
+  color: var(--vpick-group-label-color);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Alignment spacer for leaf nodes in tree mode */
 .vpick-option-expand-spacer {
   flex-shrink: 0;
