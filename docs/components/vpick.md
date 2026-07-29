@@ -262,12 +262,13 @@ These props apply to both `VPickNative` and `VPick`:
 
 ## Slots
 
-| Slot      | Scope               | Description                                                                  |
-| --------- | ------------------- | ---------------------------------------------------------------------------- |
-| `icon`    | —                   | Custom chevron icon. Shown when not loading.                                 |
-| `loading` | —                   | Custom loading indicator. Shown when `loading` is true.                      |
-| `clear`   | —                   | Custom clear button content. Shown when `clearable` and a value is selected. |
-| `empty`   | `{ query: string }` | Custom empty state when no options match the search query.                   |
+| Slot          | Scope                    | Description                                                                                          |
+| ------------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `icon`        | —                        | Custom chevron icon. Shown when not loading.                                                         |
+| `loading`     | —                        | Custom loading indicator. Shown when `loading` is true.                                              |
+| `clear`       | —                        | Custom clear button content. Shown when `clearable` and a value is selected.                         |
+| `empty`       | `{ query: string }`      | Custom empty state when no options match the search query.                                           |
+| `no-children` | `{ option: OptionItem }` | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
 
 ## Events
 
@@ -316,7 +317,45 @@ turning into a selectable option:
 ```
 
 Expanding an empty branch shows `noChildrenText`. That row is inert: it has no
-`option` role, and arrow keys skip it.
+`option` role, and arrow keys skip it. Use the `no-children` slot when you need
+markup rather than plain text:
+
+```vue
+<VPick :options="options">
+  <template #no-children="{ option }">
+    <WarningIcon /> Nothing under {{ option.label }}
+  </template>
+</VPick>
+```
+
+## Styling branch and leaf rows
+
+In tree mode each option row carries a modifier class and its nesting depth, so
+you can style branches differently from leaves without a slot:
+
+```css
+.vpick-option--branch {
+  font-weight: 600;
+}
+.vpick-option--leaf {
+  color: #475569;
+}
+/* top-level branches only */
+.vpick-option--branch[data-depth="0"] {
+  text-transform: uppercase;
+}
+```
+
+`--branch` is set whenever the node has a `children` array, empty or not.
+`--leaf` and `data-depth` are only applied in tree mode, so flat lists stay
+untouched.
+
+## Unselectable branches
+
+With `disableBranchNodes`, branch rows cannot be selected. Clicking the row
+toggles the branch open or closed instead, so the whole row stays a useful
+target rather than only the chevron. The row keeps `aria-disabled="true"`,
+since it still is not selectable as an option.
 
 ## Keyboard navigation
 

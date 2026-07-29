@@ -1581,10 +1581,78 @@ describe("VPick — tree select", () => {
     const electronicsRow = wrapper
       .findAll('[role="option"]')
       .find((o) => o.text().includes("Electronics"))
-    expect(electronicsRow?.classes()).toContain("vpick-option--disabled")
+    // Not selectable as an option, and said so to assistive tech...
+    expect(electronicsRow?.attributes("aria-disabled")).toBe("true")
+    // ...but not painted as a dead row, because the click still expands it.
+    expect(electronicsRow?.classes()).not.toContain("vpick-option--disabled")
 
     await electronicsRow!.trigger("click")
     expect(wrapper.emitted("update:modelValue")).toBeUndefined()
+  })
+
+  it("tags branch and leaf rows for CSS, with depth", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const rows = wrapper.findAll('[role="option"]')
+    const branch = rows.find((o) => o.text().includes("Electronics"))!
+    const leaf = rows.find((o) => o.text().includes("Phones"))!
+
+    expect(branch.classes()).toContain("vpick-option--branch")
+    expect(branch.classes()).not.toContain("vpick-option--leaf")
+    expect(branch.attributes("data-depth")).toBe("0")
+
+    expect(leaf.classes()).toContain("vpick-option--leaf")
+    expect(leaf.classes()).not.toContain("vpick-option--branch")
+    expect(leaf.attributes("data-depth")).toBe("1")
+  })
+
+  it("does not tag rows outside tree mode", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const row = wrapper.findAll('[role="option"]')[0]
+    expect(row.classes()).not.toContain("vpick-option--leaf")
+    expect(row.attributes("data-depth")).toBeUndefined()
+  })
+
+  it("no-children slot overrides the placeholder text", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null, defaultExpandLevel: 1 },
+      slots: {
+        "no-children": '<span class="custom-empty">nothing in here</span>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.find(".custom-empty").exists()).toBe(true)
+    expect(placeholder.text()).toBe("nothing in here")
+  })
+
+  it("clicking an unselectable branch row toggles expansion", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, disableBranchNodes: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const row = () =>
+      wrapper
+        .findAll('[role="option"]')
+        .find((o) => o.text().includes("Electronics"))!
+    expect(row().attributes("aria-expanded")).toBe("false")
+
+    await row().trigger("click")
+    await nextTick()
+    expect(row().attributes("aria-expanded")).toBe("true")
+
+    await row().trigger("click")
+    await nextTick()
+    expect(row().attributes("aria-expanded")).toBe("false")
   })
 
   it("D4: defaultExpandLevel=1 pre-expands top-level branches", async () => {
