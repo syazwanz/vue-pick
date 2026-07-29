@@ -35,13 +35,13 @@ interface OptionGroup {
 
 Rather than forcing you to map your data, VPick and VPickNative accept key adapter props:
 
-| Prop              | Default      | Applies to | Description                                                     |
-| ----------------- | ------------ | ---------- | --------------------------------------------------------------- |
-| `labelKey`        | `"label"`    | Both       | Key for the visible option text.                                |
-| `valueKey`        | `"value"`    | Both       | Key for the emitted `v-model` value.                            |
-| `disabledKey`     | `"disabled"` | Both       | Key for the per-option disabled flag.                           |
+| Prop              | Default      | Applies to | Description                                                                          |
+| ----------------- | ------------ | ---------- | ------------------------------------------------------------------------------------ |
+| `labelKey`        | `"label"`    | Both       | Key for the visible option text.                                                     |
+| `valueKey`        | `"value"`    | Both       | Key for the emitted `v-model` value.                                                 |
+| `disabledKey`     | `"disabled"` | Both       | Key for the per-option disabled flag.                                                |
 | `childrenKey`     | `"children"` | VPick only | Key for nested children. Options with a non-empty `children` array enable tree mode. |
-| `groupOptionsKey` | `"options"`  | Both       | Key for the array of options inside a group.                    |
+| `groupOptionsKey` | `"options"`  | Both       | Key for the array of options inside a group.                                         |
 
 All defaults match the base shape, so existing code keeps working with no changes.
 
