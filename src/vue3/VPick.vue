@@ -1304,10 +1304,10 @@ onBeforeUnmount(() => {
           </svg>
         </slot>
       </span>
-      <span
+      <button
         v-else-if="canClear"
+        type="button"
         class="vpick-clear"
-        role="button"
         tabindex="-1"
         aria-label="Clear selection"
         @mousedown.prevent
@@ -1330,7 +1330,7 @@ onBeforeUnmount(() => {
             <path d="m6 6 12 12" />
           </svg>
         </slot>
-      </span>
+      </button>
       <button
         v-else
         type="button"
