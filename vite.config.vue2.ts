@@ -1,7 +1,6 @@
 import { defineConfig } from "vite"
 import vue2 from "@vitejs/plugin-vue2"
 import * as compiler from "vue2/compiler-sfc"
-import dts from "vite-plugin-dts"
 import { resolve } from "path"
 
 export default defineConfig({
@@ -22,15 +21,9 @@ export default defineConfig({
       external: ["vue"],
     },
   },
-  plugins: [
-    vue2({ compiler: compiler as never }),
-    dts({
-      rollupTypes: true,
-      tsconfigPath: resolve(__dirname, "tsconfig.json"),
-      outDir: "dist",
-      entryRoot: "src/vue2",
-      insertTypesEntry: false,
-      exclude: ["sandbox/**"],
-    }),
-  ],
+  // No dts plugin here on purpose. With `rollupTypes` it emitted its rolled-up
+  // declarations as dist/index.d.ts, overwriting the Vue 3 types with Vue 2
+  // ones that also carried unresolvable relative paths. The Vue 3 build already
+  // emits both index.d.ts and vue2.d.ts correctly.
+  plugins: [vue2({ compiler: compiler as never })],
 })
