@@ -86,3 +86,20 @@ inherits from `--vpick-width` so a single override styles both.
 | `--vpick-option-check-color`    | `currentColor`                                                   |
 | `--vpick-group-label-color`     | `#737373`                                                        |
 | `--vpick-group-label-size`      | `0.75rem`                                                        |
+| `--vpick-tree-indent`           | `1rem`                                                           |
+
+`--vpick-tree-indent` is the width of one level of nesting in tree mode, applied
+per depth.
+
+## Multiselect checkbox variables
+
+`multiple` renders a checkbox on each option row. These style it.
+
+| Variable                          | Default                     |
+| --------------------------------- | --------------------------- |
+| `--vpick-checkbox-bg`             | `transparent`               |
+| `--vpick-checkbox-bg-checked`     | `#18181b`                   |
+| `--vpick-checkbox-border`         | `var(--vpick-border-color)` |
+| `--vpick-checkbox-border-checked` | `#18181b`                   |
+| `--vpick-checkbox-color`          | `#fff`                      |
+| `--vpick-checkbox-radius`         | `0.25rem`                   |
