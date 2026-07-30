@@ -307,6 +307,7 @@ function toggleError(e: Event) {
       </div>
     </div>
 
+    <h2 class="section-title">Anchoring</h2>
     <!-- Open each dropdown, then scroll its own pane. Left stays glued to the
          trigger, right trails it. Only difference is `position: relative`. -->
     <div class="pane-row">
