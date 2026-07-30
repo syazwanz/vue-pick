@@ -2792,3 +2792,155 @@ describe("VPick — revealing the selection on open", () => {
     expect(wrapper.findAll('[role="option"]')).toHaveLength(3)
   })
 })
+
+describe("VPick — empty states", () => {
+  it("says so when there are no options at all", async () => {
+    const wrapper = mount(VPick, { props: { options: [] } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").text()).toBe("No options available")
+  })
+
+  it("uses noResultsText when a search matches nothing", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, searchable: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.find("input").setValue("zzz")
+    expect(wrapper.find(".vpick-empty").text()).toBe("No results")
+  })
+
+  it("both messages are configurable", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: [], noOptionsText: "Nothing here yet" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").text()).toBe("Nothing here yet")
+  })
+
+  it("shows nothing when there are options and no search", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").exists()).toBe(false)
+  })
+})
+
+describe("VPick — backspaceRemoves / deleteRemoves", () => {
+  function multi(props: Record<string, unknown> = {}) {
+    return mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: ["todo", "done"],
+        ...props,
+      },
+    })
+  }
+
+  it("Backspace and Delete both remove the last chip by default", async () => {
+    for (const key of ["Backspace", "Delete"]) {
+      const wrapper = multi()
+      await wrapper.find("input").trigger("keydown", { key })
+      expect(wrapper.emitted("update:modelValue")![0][0]).toEqual(["todo"])
+    }
+  })
+
+  it("each can be turned off independently", async () => {
+    const noBackspace = multi({ backspaceRemoves: false })
+    await noBackspace.find("input").trigger("keydown", { key: "Backspace" })
+    expect(noBackspace.emitted("update:modelValue")).toBeFalsy()
+    // Delete still works, since only backspace was disabled.
+    await noBackspace.find("input").trigger("keydown", { key: "Delete" })
+    expect(noBackspace.emitted("update:modelValue")).toBeTruthy()
+
+    const noDelete = multi({ deleteRemoves: false })
+    await noDelete.find("input").trigger("keydown", { key: "Delete" })
+    expect(noDelete.emitted("update:modelValue")).toBeFalsy()
+  })
+
+  it("neither fires while the search input has text", async () => {
+    const wrapper = multi()
+    await wrapper.find("input").setValue("to")
+    await wrapper.find("input").trigger("keydown", { key: "Backspace" })
+    expect(wrapper.emitted("update:modelValue")).toBeFalsy()
+  })
+})
+
+describe("VPick — labelKey as a fallback chain", () => {
+  const mixed = [
+    { id: 1, label: "Alice" },
+    { id: 2, name: "Bob" },
+    { id: 3, label: "", name: "Carol" },
+  ]
+
+  it("takes the first key with a non-empty value", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: mixed, labelKey: ["label", "name"], valueKey: "id" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.findAll('[role="option"]').map((o) => o.text())).toEqual([
+      "Alice",
+      "Bob",
+      "Carol",
+    ])
+  })
+
+  it("a single string still behaves as before", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: mixed, labelKey: "label", valueKey: "id" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.findAll('[role="option"]')[0].text()).toBe("Alice")
+  })
+
+  it("the resolved label drives search, not just display", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: mixed,
+        labelKey: ["label", "name"],
+        valueKey: "id",
+        searchable: true,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.find("input").setValue("bob")
+    expect(wrapper.findAll('[role="option"]').map((o) => o.text())).toEqual([
+      "Bob",
+    ])
+  })
+})
+
+describe("VPick — searchNested", () => {
+  async function search(query: string, props: Record<string, unknown> = {}) {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        searchable: true,
+        modelValue: null,
+        flattenSearchResults: true,
+        ...props,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.find("input").setValue(query)
+    await nextTick()
+    return wrapper.findAll('[role="option"]').map((o) => o.text())
+  }
+
+  it("a multi-word query can span the ancestor path", async () => {
+    expect(await search("electronics gaming", { searchNested: true })).toEqual([
+      "Gaming",
+    ])
+  })
+
+  it("without it, the same query matches nothing", async () => {
+    expect(await search("electronics gaming")).toEqual([])
+  })
+
+  it("single-word queries are unaffected", async () => {
+    expect(await search("gaming", { searchNested: true })).toEqual(["Gaming"])
+  })
+
+  it("words from unrelated branches do not match", async () => {
+    expect(await search("books gaming", { searchNested: true })).toEqual([])
+  })
+})

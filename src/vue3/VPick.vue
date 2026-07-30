@@ -43,7 +43,7 @@ const props = withDefaults(
     separators?: boolean
     ariaLabel?: string
     ariaDescribedby?: string
-    labelKey?: string
+    labelKey?: string | string[]
     valueKey?: string
     disabledKey?: string
     childrenKey?: string
@@ -51,6 +51,7 @@ const props = withDefaults(
     teleportTo?: string | HTMLElement
     bodyLock?: boolean
     searchable?: boolean
+    searchNested?: boolean
     filter?: (option: OptionItem, query: string) => boolean
     noResultsText?: string
     clearable?: boolean
@@ -70,6 +71,9 @@ const props = withDefaults(
     clearOnSelect?: boolean
     closeOnSelect?: boolean
     noChildrenText?: string
+    noOptionsText?: string
+    backspaceRemoves?: boolean
+    deleteRemoves?: boolean
   }>(),
   {
     modelValue: undefined,
@@ -92,6 +96,7 @@ const props = withDefaults(
     teleportTo: undefined,
     bodyLock: undefined,
     searchable: false,
+    searchNested: false,
     filter: undefined,
     noResultsText: "No results",
     clearable: false,
@@ -109,6 +114,9 @@ const props = withDefaults(
     // wins in both modes so the prop never silently does nothing.
     closeOnSelect: undefined,
     noChildrenText: "No sub-options",
+    noOptionsText: "No options available",
+    backspaceRemoves: true,
+    deleteRemoves: true,
   },
 )
 
@@ -264,6 +272,41 @@ function toggleExpand(value: OptionItem["value"]) {
   expandedSet.value = next
 }
 
+// Each node's label prefixed by its ancestors', e.g. "electronics laptops
+// gaming". Only built when searchNested needs it.
+const nestedLabels = computed(() => {
+  const map = new Map<OptionItem["value"], string>()
+  if (!props.searchNested) return map
+  const all = flatAll.value
+  for (const fo of all) {
+    const parts = [fo.option.label]
+    let pv = fo.parentValue
+    while (pv !== undefined) {
+      const parent = all.find((f) => f.option.value === pv)
+      if (!parent) break
+      parts.unshift(parent.option.label)
+      pv = parent.parentValue
+    }
+    map.set(fo.option.value, parts.join(" ").toLowerCase())
+  }
+  return map
+})
+
+// The single place search matching is decided, so the visible list, the
+// flattened list and ancestor auto-expansion cannot drift apart.
+function matchesQuery(fo: FlatOption, raw: string): boolean {
+  const trimmed = raw.trim()
+  if (props.filter) return props.filter(fo.option, trimmed)
+  const q = trimmed.toLowerCase()
+  const words = q.split(/\s+/).filter(Boolean)
+  // Multi-word queries may span the ancestor path: "electronics gaming".
+  if (props.searchNested && words.length > 1) {
+    const nested = nestedLabels.value.get(fo.option.value) ?? ""
+    return words.every((w) => nested.includes(w))
+  }
+  return fo.option.label.toLowerCase().includes(q)
+}
+
 // Ancestor values of every node the predicate accepts. Walks the whole tree
 // rather than the visible rows, so it reaches inside collapsed branches.
 function collectAncestors(
@@ -283,11 +326,7 @@ function collectAncestors(
 }
 
 function autoExpandForSearch(q: string) {
-  const ancestorValues = collectAncestors((fo) =>
-    props.filter
-      ? props.filter(fo.option, q)
-      : fo.option.label.toLowerCase().includes(q),
-  )
+  const ancestorValues = collectAncestors((fo) => matchesQuery(fo, q))
   const next = new Set(preSearchExpandedSet.value ?? expandedSet.value)
   for (const v of ancestorValues) next.add(v)
   expandedSet.value = next
@@ -494,10 +533,7 @@ const filteredFlat = computed<FlatOption[]>(() => {
   if (isTreeMode.value) {
     const q = searchQuery.value.trim().toLowerCase()
     if (!q) return flat.value
-    const matches = (fo: FlatOption) =>
-      props.filter
-        ? props.filter(fo.option, searchQuery.value.trim())
-        : fo.option.label.toLowerCase().includes(q)
+    const matches = (fo: FlatOption) => matchesQuery(fo, searchQuery.value)
 
     if (props.flattenSearchResults) {
       // Direct matches only, ancestors excluded. Walk every node rather than
@@ -583,13 +619,16 @@ const selectedOption = computed<OptionItem | null>(() => {
 
 const selectedLabel = computed(() => selectedOption.value?.label ?? "")
 
+// Nothing to show at all, as opposed to a search that matched nothing. Both
+// need a message: an empty panel just looks broken.
+const hasNoOptions = computed(() => flatAll.value.length === 0)
+
 const showEmpty = computed(
-  () =>
-    isSearchable.value &&
-    isOpen.value &&
-    !props.loading &&
-    searchQuery.value.trim().length > 0 &&
-    filteredFlat.value.length === 0,
+  () => isOpen.value && !props.loading && filteredFlat.value.length === 0,
+)
+
+const emptyText = computed(() =>
+  hasNoOptions.value ? props.noOptionsText : props.noResultsText,
 )
 
 const canClear = computed(() => {
@@ -1024,11 +1063,15 @@ watch(stayOpen, (shouldStayOpen) => {
 })
 
 function onKeydown(e: KeyboardEvent) {
-  // Backspace on empty search input removes last chip in multi mode
+  // Backspace or Delete on an empty search input removes the last chip. Both
+  // are opt-out, since some forms reserve those keys.
+  const removesChip =
+    (e.key === "Backspace" && props.backspaceRemoves) ||
+    (e.key === "Delete" && props.deleteRemoves)
   if (
     props.multiple &&
     isSearchable.value &&
-    e.key === "Backspace" &&
+    removesChip &&
     searchQuery.value === "" &&
     selectedOptions.value.length > 0
   ) {
@@ -1673,7 +1716,7 @@ onBeforeUnmount(() => {
               </div>
             </template>
             <div v-if="showEmpty" class="vpick-empty">
-              <slot name="empty" :query="searchQuery">{{ noResultsText }}</slot>
+              <slot name="empty" :query="searchQuery">{{ emptyText }}</slot>
             </div>
           </div>
         </div>

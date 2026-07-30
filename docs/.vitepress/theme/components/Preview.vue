@@ -12,6 +12,13 @@ const props = withDefaults(
   },
 )
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
 const tab = ref<"preview" | "code">("preview")
 const highlighted = shallowRef<string>("")
 const copied = ref(false)
@@ -27,7 +34,9 @@ watchEffect(async () => {
       defaultColor: false,
     })
   } catch {
-    highlighted.value = `<pre>${props.code}</pre>`
+    // Shiki failed. Fall back to plain text, escaped: this is the one path
+    // where the string is not already Shiki-generated markup.
+    highlighted.value = `<pre>${escapeHtml(props.code)}</pre>`
   }
 })
 
@@ -77,6 +86,12 @@ async function copy() {
         <span v-if="copied">Copied</span>
         <span v-else>Copy</span>
       </button>
+      <!--
+        Shiki emits highlighted markup that has to render as HTML. The source is
+        a ?raw import of a local example file resolved at build time, never user
+        input, and the non-Shiki fallback above is escaped.
+      -->
+      <!-- eslint-disable-next-line vue/no-v-html -->
       <div class="preview__code" v-html="highlighted" />
     </div>
   </div>

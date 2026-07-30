@@ -2018,3 +2018,89 @@ describe("VPick (Vue 2) — revealing the selection on open", () => {
     expect(labels).toEqual(["Electronics", "Books"])
   })
 })
+
+describe("VPick (Vue 2) — the 0.16 props", () => {
+  const nested: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "e",
+      children: [
+        {
+          label: "Laptops",
+          value: "l",
+          children: [{ label: "Gaming", value: "g" }],
+        },
+      ],
+    },
+    { label: "Books", value: "b" },
+  ]
+
+  it("says so when there are no options at all", async () => {
+    const wrapper = mount(VPick, { propsData: { options: [] } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").text()).toBe("No options available")
+  })
+
+  it("noOptionsText is configurable", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: [], noOptionsText: "Nothing here yet" },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").text()).toBe("Nothing here yet")
+  })
+
+  it("Delete removes the last chip, and can be turned off", async () => {
+    const on = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["todo", "done"] },
+    })
+    await on.find("input").trigger("keydown", { key: "Delete" })
+    expect(on.emitted("input")[0][0]).toEqual(["todo"])
+
+    const off = mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        value: ["todo", "done"],
+        deleteRemoves: false,
+      },
+    })
+    await off.find("input").trigger("keydown", { key: "Delete" })
+    expect(off.emitted("input")).toBeFalsy()
+  })
+
+  it("labelKey takes the first non-empty key", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: [
+          { id: 1, label: "Alice" },
+          { id: 2, name: "Bob" },
+        ],
+        labelKey: ["label", "name"],
+        valueKey: "id",
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(
+      wrapper.findAll('[role="option"]').wrappers.map((o) => o.text()),
+    ).toEqual(["Alice", "Bob"])
+  })
+
+  it("searchNested lets a multi-word query span the ancestor path", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: nested,
+        searchable: true,
+        searchNested: true,
+        flattenSearchResults: true,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    const input = wrapper.find("input")
+    input.element.value = "electronics gaming"
+    await input.trigger("input")
+    await nextTick()
+    expect(
+      wrapper.findAll('[role="option"]').wrappers.map((o) => o.text()),
+    ).toEqual(["Gaming"])
+  })
+})

@@ -104,6 +104,13 @@ Long option lists scroll inside the dropdown. Max height is controlled by `--vpi
 
 Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
 
+`labelKey` also accepts an array, used as a fallback chain where the first key
+with a non-empty value wins. Useful when records are inconsistent:
+
+```vue
+<VPick :options="options" :label-key="['label', 'name']" value-key="id" />
+```
+
 <Preview :code="CustomKeysCode">
   <CustomKeysExample />
 </Preview>
@@ -223,45 +230,49 @@ Options wider than the trigger make the dropdown grow. To pin both widths identi
 
 These props apply to both `VPickNative` and `VPick`:
 
-| Prop              | Type              | Default      | Description                                                                             |
-| ----------------- | ----------------- | ------------ | --------------------------------------------------------------------------------------- |
-| `modelValue`      | `any`             | `undefined`  | Selected value. Use `v-model` for two-way binding. With `multiple`, an array of values. |
-| `options`         | `OptionOrGroup[]` | **required** | Array of options or option groups.                                                      |
-| `placeholder`     | `string`          | `undefined`  | Placeholder text shown when no value is selected.                                       |
-| `disabled`        | `boolean`         | `false`      | Disables the select.                                                                    |
-| `loading`         | `boolean`         | `false`      | Shows a spinner and disables interaction.                                               |
-| `error`           | `string`          | `undefined`  | Error message. Applies error styling and `aria-invalid`.                                |
-| `id`              | `string`          | `undefined`  | HTML `id` attribute.                                                                    |
-| `name`            | `string`          | `undefined`  | HTML `name` attribute for form submission.                                              |
-| `required`        | `boolean`         | `false`      | HTML `required` attribute.                                                              |
-| `ariaLabel`       | `string`          | `undefined`  | `aria-label` for accessibility.                                                         |
-| `ariaDescribedby` | `string`          | `undefined`  | `aria-describedby` for accessibility.                                                   |
-| `labelKey`        | `string`          | `"label"`    | Object key to read each option's visible label from.                                    |
-| `valueKey`        | `string`          | `"value"`    | Object key to read each option's value from.                                            |
-| `disabledKey`     | `string`          | `"disabled"` | Object key to read each option's disabled flag from.                                    |
-| `groupOptionsKey` | `string`          | `"options"`  | Object key for the options array inside a group.                                        |
+| Prop              | Type                 | Default      | Description                                                                             |
+| ----------------- | -------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `modelValue`      | `any`                | `undefined`  | Selected value. Use `v-model` for two-way binding. With `multiple`, an array of values. |
+| `options`         | `OptionOrGroup[]`    | **required** | Array of options or option groups.                                                      |
+| `placeholder`     | `string`             | `undefined`  | Placeholder text shown when no value is selected.                                       |
+| `disabled`        | `boolean`            | `false`      | Disables the select.                                                                    |
+| `loading`         | `boolean`            | `false`      | Shows a spinner and disables interaction.                                               |
+| `error`           | `string`             | `undefined`  | Error message. Applies error styling and `aria-invalid`.                                |
+| `id`              | `string`             | `undefined`  | HTML `id` attribute.                                                                    |
+| `name`            | `string`             | `undefined`  | HTML `name` attribute for form submission.                                              |
+| `required`        | `boolean`            | `false`      | HTML `required` attribute.                                                              |
+| `ariaLabel`       | `string`             | `undefined`  | `aria-label` for accessibility.                                                         |
+| `ariaDescribedby` | `string`             | `undefined`  | `aria-describedby` for accessibility.                                                   |
+| `labelKey`        | `string \| string[]` | `"label"`    | Object key to read each option's visible label from.                                    |
+| `valueKey`        | `string`             | `"value"`    | Object key to read each option's value from.                                            |
+| `disabledKey`     | `string`             | `"disabled"` | Object key to read each option's disabled flag from.                                    |
+| `groupOptionsKey` | `string`             | `"options"`  | Object key for the options array inside a group.                                        |
 
 ### VPick-only props
 
-| Prop                 | Type                                                                        | Default            | Description                                                                                                                         |
-| -------------------- | --------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `separators`         | `boolean`                                                                   | `false`            | Renders a horizontal divider between adjacent groups in the dropdown.                                                               |
-| `rotateIcon`         | `boolean`                                                                   | `false`            | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                  |
-| `searchable`         | `boolean`                                                                   | `false`            | Renders an input trigger with type-ahead filtering instead of a button.                                                             |
-| `clearable`          | `boolean`                                                                   | `false`            | Shows a clear button when a value is selected.                                                                                      |
-| `multiple`           | `boolean`                                                                   | `false`            | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                       |
-| `filter`             | `(option, query) => boolean`                                                | `undefined`        | Custom filter function for searchable mode. Receives each option and the query string.                                              |
-| `noResultsText`      | `string`                                                                    | `"No results"`     | Text displayed when the search query matches no options.                                                                            |
-| `teleportTo`         | `string \| HTMLElement`                                                     | `"body"`           | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                              |
-| `bodyLock`           | `boolean \| null`                                                           | `null`             | Locks body scroll while open. Defaults to `true` for button mode, `false` for searchable mode when set to `null`.                   |
-| `childrenKey`        | `string`                                                                    | `"children"`       | Object key for nested children. Options with a non-empty `children` array enable tree mode automatically.                           |
-| `defaultExpandLevel` | `number`                                                                    | `undefined`        | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                          |
-| `disableBranchNodes` | `boolean`                                                                   | `false`            | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                             |
-| `cascade`            | `boolean`                                                                   | `true`             | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.             |
-| `valueConsistsOf`    | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`  | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                            |
-| `clearOnSelect`      | `boolean`                                                                   | `true`             | Clear the search query after picking an option.                                                                                     |
-| `closeOnSelect`      | `boolean`                                                                   | see description    | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both. |
-| `noChildrenText`     | `string`                                                                    | `"No sub-options"` | Text shown under an expanded branch whose `children` array is empty.                                                                |
+| Prop                 | Type                                                                        | Default                  | Description                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `separators`         | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                               |
+| `rotateIcon`         | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                  |
+| `searchable`         | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                             |
+| `clearable`          | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                      |
+| `multiple`           | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                       |
+| `filter`             | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                              |
+| `noResultsText`      | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                            |
+| `teleportTo`         | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                              |
+| `bodyLock`           | `boolean \| null`                                                           | `null`                   | Locks body scroll while open. Defaults to `true` for button mode, `false` for searchable mode when set to `null`.                   |
+| `childrenKey`        | `string`                                                                    | `"children"`             | Object key for nested children. Options with a non-empty `children` array enable tree mode automatically.                           |
+| `defaultExpandLevel` | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                          |
+| `disableBranchNodes` | `boolean`                                                                   | `false`                  | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                             |
+| `cascade`            | `boolean`                                                                   | `true`                   | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.             |
+| `valueConsistsOf`    | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`        | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                            |
+| `clearOnSelect`      | `boolean`                                                                   | `true`                   | Clear the search query after picking an option.                                                                                     |
+| `closeOnSelect`      | `boolean`                                                                   | see description          | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both. |
+| `noChildrenText`     | `string`                                                                    | `"No sub-options"`       | Text shown under an expanded branch whose `children` array is empty.                                                                |
+| `noOptionsText`      | `string`                                                                    | `"No options available"` | Text shown when there are no options at all.                                                                                        |
+| `backspaceRemoves`   | `boolean`                                                                   | `true`                   | Backspace on an empty search input removes the last chip.                                                                           |
+| `deleteRemoves`      | `boolean`                                                                   | `true`                   | Delete on an empty search input removes the last chip.                                                                              |
+| `searchNested`       | `boolean`                                                                   | `false`                  | In tree mode, let a multi-word query match across a node's ancestor path.                                                           |
 
 ## Slots
 
@@ -352,6 +363,28 @@ selection, chips and keyboard navigation all behave the same.
 Nothing is highlighted until the user presses a key, since a visible list is
 not the same as a focused one. A disabled control closes, so the panel is not
 left sitting there inert.
+
+## Empty states
+
+Two different situations, two messages:
+
+- `noOptionsText` (default `"No options available"`) when `options` is empty
+- `noResultsText` (default `"No results"`) when a search matches nothing
+
+The `empty` slot replaces whichever applies.
+
+## Searching across the ancestor path
+
+`searchNested` lets a multi-word query match a node's full path rather than just
+its own label:
+
+```vue
+<VPick :options="options" searchable search-nested />
+```
+
+Searching "electronics gaming" finds `Gaming` under `Electronics > Laptops`,
+because every word appears somewhere in that path. Single-word queries are
+unaffected, and words from unrelated branches still do not match.
 
 ## Flattening search results
 
