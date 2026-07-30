@@ -687,7 +687,7 @@ const FORWARDED_VARS = [
   "--vpick-tree-indent",
 ]
 
-function forwardedVars(): Record<string, string> {
+function readForwardedVars(): Record<string, string> {
   const root = getRootEl()
   if (!root) return {}
   const cs = getComputedStyle(root)
@@ -702,6 +702,15 @@ function forwardedVars(): Record<string, string> {
     if (computed) out[name] = computed
   }
   return out
+}
+
+// Reading 24 custom properties means a style resolve, which is far too much to
+// repeat per scroll event. Theming cannot change mid-scroll, so cache on open
+// and refresh only where a change is actually possible.
+const forwarded = ref<Record<string, string>>({})
+
+function refreshForwardedVars() {
+  forwarded.value = readForwardedVars()
 }
 
 function resolveTeleportTarget(): HTMLElement {
@@ -727,10 +736,9 @@ async function updatePosition(skipSecondPass = false) {
   const initialHeight = listboxRef.value?.offsetHeight || 240
   const initial = computePosition(rect, initialHeight, vpHeight, offset)
   placement.value = initial.placement
-  const forwarded = forwardedVars()
 
   positionerStyle.value = {
-    ...forwarded,
+    ...forwarded.value,
     position: "fixed",
     top: "0px",
     left: "0px",
@@ -752,7 +760,7 @@ async function updatePosition(skipSecondPass = false) {
   )
   placement.value = measured.placement
   positionerStyle.value = {
-    ...forwarded,
+    ...forwarded.value,
     position: "fixed",
     top: "0px",
     left: "0px",
@@ -761,11 +769,28 @@ async function updatePosition(skipSecondPass = false) {
   }
 }
 
+// Scroll fires far more often than the screen repaints, so collapse every event
+// in a frame into one position write. Note this cannot make the panel lead the
+// scroll: JS owns the position while `position: fixed` is in use.
+let repositionFrame: number | null = null
+
+function cancelReposition() {
+  if (repositionFrame !== null) {
+    cancelAnimationFrame(repositionFrame)
+    repositionFrame = null
+  }
+}
+
 function onReposition(e?: Event) {
   if (!isOpen.value) return
   const target = e?.target
   if (target instanceof Node && positionerRef.value?.contains(target)) return
-  updatePosition(true)
+  if (repositionFrame !== null) return
+  repositionFrame = requestAnimationFrame(() => {
+    repositionFrame = null
+    if (!isOpen.value) return
+    updatePosition(true)
+  })
 }
 
 // Vue 2.7's `flush: "post"` fires before the hidden select's :value binding
@@ -845,15 +870,19 @@ function open() {
     scrollLocked = true
   }
   nextTick(() => {
+    refreshForwardedVars()
     updatePosition()
     if (triggerRef.value && !cleanupScroll) {
       cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
     }
     // Reposition when the trigger height changes (e.g. multi-select chips wrap
-    // onto additional rows).
+    // onto additional rows). A resize can follow a theming change, so this is
+    // the one repositioning path that re-reads the forwarded variables.
     if (triggerRef.value && !cleanupResize) {
       cleanupResize = setupResizeObserver(triggerRef.value, () => {
-        if (isOpen.value) updatePosition()
+        if (!isOpen.value) return
+        refreshForwardedVars()
+        updatePosition()
       })
     }
   })
@@ -871,6 +900,7 @@ function close() {
     unlockBodyScroll()
     scrollLocked = false
   }
+  cancelReposition()
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
@@ -1249,6 +1279,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
+  cancelReposition()
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null

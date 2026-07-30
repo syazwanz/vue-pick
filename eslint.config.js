@@ -65,6 +65,8 @@ export default tseslint.config(
         getComputedStyle: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
       },
       parserOptions: {
         parser: tseslint.parser,
