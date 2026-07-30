@@ -57,6 +57,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p tests/tsconfig.json && vue-tsc --noEmit -p tests/vue2/tsconfig.json",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
@@ -88,6 +89,7 @@
     "vue": "^3.5.32",
     "vue-eslint-parser": "^10.4.0",
     "vue-select": "^3.20.4",
+    "vue-tsc": "3.3.8",
     "vue2": "npm:vue@^2.7.16"
   },
   "pnpm": {

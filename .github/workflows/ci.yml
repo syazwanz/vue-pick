@@ -32,6 +32,11 @@ jobs:
       - name: Format
         run: pnpm format:check
 
+      # Catches what ESLint cannot: prop and template types, and test files,
+      # which the build does not compile.
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Test
         run: pnpm test
 
