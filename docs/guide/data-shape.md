@@ -21,7 +21,11 @@ interface OptionItem {
   label: string
   value: any
   disabled?: boolean
+  // An array, even an empty one, marks this node as a branch.
   children?: OptionItem[]
+  // Set by Vue Pick, not by you: the original object you passed in.
+  // Handed back by `select`/`deselect` and available in slots.
+  raw?: unknown
 }
 
 interface OptionGroup {
@@ -35,13 +39,13 @@ interface OptionGroup {
 
 Rather than forcing you to map your data, VPick and VPickNative accept key adapter props:
 
-| Prop              | Default      | Applies to | Description                                                                          |
-| ----------------- | ------------ | ---------- | ------------------------------------------------------------------------------------ |
-| `labelKey`        | `"label"`    | Both       | Key for the visible option text.                                                     |
-| `valueKey`        | `"value"`    | Both       | Key for the emitted `v-model` value.                                                 |
-| `disabledKey`     | `"disabled"` | Both       | Key for the per-option disabled flag.                                                |
-| `childrenKey`     | `"children"` | VPick only | Key for nested children. Options with a non-empty `children` array enable tree mode. |
-| `groupOptionsKey` | `"options"`  | Both       | Key for the array of options inside a group.                                         |
+| Prop              | Default      | Applies to | Description                                                                       |
+| ----------------- | ------------ | ---------- | --------------------------------------------------------------------------------- |
+| `labelKey`        | `"label"`    | Both       | Key for the visible option text. Also accepts an array, used as a fallback chain. |
+| `valueKey`        | `"value"`    | Both       | Key for the emitted `v-model` value.                                              |
+| `disabledKey`     | `"disabled"` | Both       | Key for the per-option disabled flag.                                             |
+| `childrenKey`     | `"children"` | VPick only | Key for nested children. Any option with a `children` array enables tree mode.    |
+| `groupOptionsKey` | `"options"`  | Both       | Key for the array of options inside a group.                                      |
 
 All defaults match the base shape, so existing code keeps working with no changes.
 
@@ -88,7 +92,7 @@ const regions = [
 
 ## Tree data
 
-Options with a non-empty `children` array automatically enable tree mode in `VPick`. No extra prop is needed — the component detects nested data and renders expand/collapse chevrons.
+Any option with a `children` array automatically enables tree mode in `VPick`. No extra prop is needed, since the component detects nested data and renders expand/collapse chevrons.
 
 ```ts
 const categories = [
@@ -111,7 +115,11 @@ const categories = [
 ]
 ```
 
-Flat groups (`{ label, options: [] }`) and tree nodes (`{ label, value, children: [] }`) can be mixed at the top level. Empty `children: []` is treated as a leaf — no chevron is rendered.
+Flat groups (`{ label, options: [] }`) and tree nodes (`{ label, value, children: [] }`) can be mixed at the top level.
+
+An empty `children: []` still counts as a branch: it renders a chevron, and
+expanding it shows `noChildrenText`. Omit the key entirely for a leaf. See
+[branch nodes with no children](/components/vpick#branch-nodes-with-no-children).
 
 Use `childrenKey` if your API uses a different key name:
 

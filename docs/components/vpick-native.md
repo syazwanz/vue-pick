@@ -118,6 +118,12 @@ Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data st
 </VPickNative>
 ```
 
+## Events
+
+| Event               | Payload | Description                                                                                                 |
+| ------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `update:modelValue` | `any`   | Emitted when the selection changes. Vue 2 emits `input` instead, which is what `v-model` listens for there. |
+
 ## Accessibility
 
 - Uses a real native `<select>` element for full browser and screen reader support.
