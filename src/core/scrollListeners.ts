@@ -1,18 +1,44 @@
-export function setupScrollListeners(
-  el: HTMLElement,
-  callback: (e?: Event) => void,
-): () => void {
+const SCROLLABLE = /(auto|scroll|overlay)/
+
+function isScrollable(el: HTMLElement): boolean {
+  const style = window.getComputedStyle(el)
+  return SCROLLABLE.test(style.overflow + style.overflowY + style.overflowX)
+}
+
+/**
+ * Every ancestor of `el` that can scroll, nearest first.
+ */
+export function scrollParents(el: HTMLElement): HTMLElement[] {
   const parents: HTMLElement[] = []
   let node: HTMLElement | null = el.parentElement
 
   while (node) {
-    const style = window.getComputedStyle(node)
-    const overflow = style.overflow + style.overflowY + style.overflowX
-    if (/(auto|scroll|overlay)/.test(overflow)) {
-      parents.push(node)
-    }
+    if (isScrollable(node)) parents.push(node)
     node = node.parentElement
   }
+
+  return parents
+}
+
+/**
+ * The nearest scrollable ancestor, or null when the page itself is the only
+ * scroll container.
+ *
+ * Whether that element can actually anchor the panel is deliberately not
+ * decided here. `position: absolute` only scrolls with the content when the
+ * panel's containing block sits inside the scroller, which cannot be read off
+ * computed styles, so the caller verifies it against the real `offsetParent`
+ * once the panel is in the DOM.
+ */
+export function findScrollParent(el: HTMLElement): HTMLElement | null {
+  return scrollParents(el)[0] ?? null
+}
+
+export function setupScrollListeners(
+  el: HTMLElement,
+  callback: (e?: Event) => void,
+): () => void {
+  const parents = scrollParents(el)
 
   // Attach scroll listeners to all scrollable parents
   parents.forEach((parent) => {

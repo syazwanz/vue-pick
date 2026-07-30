@@ -150,3 +150,134 @@ describe("VPick — portal", () => {
     container.remove()
   })
 })
+
+describe("VPick — anchoring strategy", () => {
+  // A positioned, scrollable ancestor can hold the panel, so the panel is
+  // anchored inside it with `absolute`. The point of doing so is that the
+  // coordinates stop depending on scroll position: the browser moves the panel
+  // with the content, and JS writes nothing per frame.
+  function mountInContainer(
+    containerStyle: Partial<CSSStyleDeclaration>,
+    props: Record<string, unknown> = {},
+  ) {
+    const container = document.createElement("div")
+    Object.assign(container.style, containerStyle)
+    document.body.appendChild(container)
+    const host = document.createElement("div")
+    container.appendChild(host)
+
+    // happy-dom does no layout, so both boxes are driven by hand.
+    container.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 400, left: 0, right: 300 }) as DOMRect
+
+    const wrapper = mount(VPick, {
+      props: { options: opts, ...props },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    return { wrapper, container }
+  }
+
+  it("anchors inside a positioned scroll container", async () => {
+    const { wrapper, container } = mountInContainer({
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+
+    let top = 100
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner = container.querySelector<HTMLElement>(".vpick-positioner")
+    expect(positioner).not.toBe(null)
+    expect(positioner!.parentElement).toBe(container)
+    expect(positioner!.style.position).toBe("absolute")
+
+    const before = positioner!.style.transform
+
+    // Scroll the container: the trigger's viewport rect moves up by 60 and
+    // scrollTop grows by 60, so the anchored coordinates must not change. This
+    // is the whole reason for anchoring, expressed as an assertion.
+    top = 40
+    container.scrollTop = 60
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    expect(positioner!.style.transform).toBe(before)
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  it("stays on fixed in body when the scroll container cannot anchor it", async () => {
+    // Scrollable but `position: static`, so it establishes no containing block.
+    const { wrapper, container } = mountInContainer({
+      overflowY: "auto",
+      height: "400px",
+    })
+
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(100)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")
+    expect(positioner!.parentElement).toBe(document.body)
+    expect(positioner!.style.position).toBe("fixed")
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  it("a static container with a transform can anchor after all", async () => {
+    const { wrapper, container } = mountInContainer({
+      overflowY: "auto",
+      height: "400px",
+      transform: "translateZ(0)",
+    })
+
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(100)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner = container.querySelector<HTMLElement>(".vpick-positioner")
+    expect(positioner!.parentElement).toBe(container)
+    expect(positioner!.style.position).toBe("absolute")
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  it('strategy="fixed" opts out and reproduces the old behavior', async () => {
+    const { wrapper, container } = mountInContainer(
+      { position: "relative", overflowY: "auto", height: "400px" },
+      { strategy: "fixed" },
+    )
+
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(100)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")
+    expect(positioner!.parentElement).toBe(document.body)
+    expect(positioner!.style.position).toBe("fixed")
+
+    wrapper.unmount()
+    container.remove()
+  })
+})

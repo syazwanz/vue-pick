@@ -263,6 +263,7 @@ These props apply to both `VPickNative` and `VPick`:
 | `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                              |
 | `noResultsText`        | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                            |
 | `teleportTo`           | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                              |
+| `strategy`             | `"auto" \| "absolute" \| "fixed"`                                           | `"auto"`                 | How the dropdown is anchored. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                              |
 | `bodyLock`             | `boolean`                                                                   | `undefined`              | Locks body scroll while open. Left unset, defaults to `true` in button mode and `false` in searchable mode.                         |
 | `childrenKey`          | `string`                                                                    | `"children"`             | Object key for nested children. Any option with a `children` array enables tree mode automatically.                                 |
 | `defaultExpandLevel`   | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                          |
@@ -370,6 +371,50 @@ selection, chips and keyboard navigation all behave the same.
 Nothing is highlighted until the user presses a key, since a visible list is
 not the same as a focused one. A disabled control closes, so the panel is not
 left sitting there inert.
+
+## Anchoring and scroll containers
+
+The dropdown is rendered outside the component so it is never clipped by an
+ancestor with `overflow: hidden`. Where it gets rendered, and how it is
+positioned, is decided by `strategy`.
+
+| Value              | Behavior                                                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `"auto"` (default) | Anchors inside the nearest scrollable ancestor when that ancestor can hold it, otherwise falls back to `"fixed"`. |
+| `"absolute"`       | Always anchors inside the nearest scrollable ancestor.                                                            |
+| `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                |
+
+The distinction matters when your page scrolls inside a container rather than
+the window, which is the usual shape for a dashboard with fixed chrome around a
+scrolling content pane.
+
+With `"fixed"`, the dropdown's coordinates are relative to the viewport, so they
+change on every scrolled pixel and have to be recalculated in JavaScript. The
+panel ends up a frame behind the trigger, which is visible as the panel trailing
+during a scroll.
+
+Anchored inside the scroll container, the coordinates do not depend on scroll
+position at all. The browser moves the panel along with the content, so it stays
+glued to the trigger and no work happens per frame.
+
+`"auto"` prefers anchoring but needs an ancestor that establishes a containing
+block. A plain `overflow-y: auto` div does not, so nothing changes for it. Adding
+`position: relative` to your scroll container is enough:
+
+```css
+.content-pane {
+  overflow-y: auto;
+  position: relative; /* lets the dropdown anchor here */
+}
+```
+
+Use `"fixed"` when the panel is taller than its container and you would rather it
+overflow the container than be clipped by it. When anchored, the panel is
+measured against the container, so it flips and shrinks to fit that box instead
+of the window.
+
+Setting `teleportTo` overrides all of this: the dropdown goes where you say, and
+`strategy` defaults to `"fixed"` there unless you pass `"absolute"`.
 
 ## Empty states
 
