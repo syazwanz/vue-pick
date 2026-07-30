@@ -35,5 +35,9 @@ export type { OptionKeys } from "./normalize"
 export { computePosition } from "./positioning"
 export type { PositionResult } from "./positioning"
 export { lockBodyScroll, unlockBodyScroll } from "./bodyScrollLock"
-export { setupScrollListeners } from "./scrollListeners"
+export {
+  setupScrollListeners,
+  findScrollParent,
+  scrollParents,
+} from "./scrollListeners"
 export { setupResizeObserver } from "./resizeObserver"

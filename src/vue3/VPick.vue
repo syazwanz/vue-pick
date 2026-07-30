@@ -21,6 +21,7 @@ import {
   lockBodyScroll,
   unlockBodyScroll,
   setupScrollListeners,
+  findScrollParent,
   setupResizeObserver,
   isOptionGroup,
 } from "../core"
@@ -49,6 +50,7 @@ const props = withDefaults(
     childrenKey?: string
     groupOptionsKey?: string
     teleportTo?: string | HTMLElement
+    strategy?: "auto" | "absolute" | "fixed"
     bodyLock?: boolean
     searchable?: boolean
     searchNested?: boolean
@@ -94,6 +96,7 @@ const props = withDefaults(
     childrenKey: undefined,
     groupOptionsKey: undefined,
     teleportTo: undefined,
+    strategy: "auto",
     bodyLock: undefined,
     searchable: false,
     searchNested: false,
@@ -713,28 +716,65 @@ function refreshForwardedVars() {
   forwarded.value = readForwardedVars()
 }
 
+// Both strategies share the same maths, differing only in what the coordinates
+// are relative to and which box bounds the panel.
+//
+//   fixed    : viewport coordinates, bounded by the viewport. Changes on every
+//              scrolled pixel, so it must be recomputed.
+//   absolute : coordinates relative to the anchor's padding box, plus its
+//              scroll offset. Scrolling changes the trigger's viewport rect and
+//              the anchor's scrollTop by the same amount, so the result is
+//              invariant and the browser does the moving.
+function measure(listboxHeight: number) {
+  const trigger = triggerRef.value
+  if (!trigger) return null
+  const rect = trigger.getBoundingClientRect()
+  const offset = isSearchable.value ? 6 : 4
+  const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
+  const anchor = resolvedStrategy.value === "absolute" ? anchorEl.value : null
+
+  if (!anchor) {
+    return {
+      ...computePosition(rect, listboxHeight, vpHeight, offset),
+      width: rect.width,
+    }
+  }
+
+  const box = anchor.getBoundingClientRect()
+  // Flip and clamp against the container, so the panel is sized to fit where it
+  // actually lives rather than to the window.
+  const placed = computePosition(
+    rect,
+    listboxHeight,
+    vpHeight,
+    offset,
+    8,
+    box.top,
+    box.bottom,
+  )
+  return {
+    ...placed,
+    top: placed.top - box.top + anchor.scrollTop,
+    left: placed.left - box.left + anchor.scrollLeft,
+    width: rect.width,
+  }
+}
+
 async function updatePosition(skipSecondPass = false) {
   // In flow: the browser lays the panel out, nothing to compute.
   if (isInline.value) return
-  const trigger = triggerRef.value
-  if (!trigger) return
-  const rect = trigger.getBoundingClientRect()
-  // Searchable uses a larger offset so the 3px focus ring on the input has
-  // breathing room from the dropdown.
-  const offset = isSearchable.value ? 6 : 4
-  const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
   // First paint: use a sensible default height; next frame remeasures actual.
-  const initialHeight = listboxRef.value?.offsetHeight || 240
-  const initial = computePosition(rect, initialHeight, vpHeight, offset)
+  const initial = measure(listboxRef.value?.offsetHeight || 240)
+  if (!initial) return
   placement.value = initial.placement
 
   positionerStyle.value = {
     ...forwarded.value,
-    position: "fixed",
+    position: resolvedStrategy.value,
     top: "0px",
     left: "0px",
     transform: `translate3d(${initial.left}px, ${initial.top}px, 0)`,
-    "--vpick-trigger-width": `${rect.width}px`,
+    "--vpick-trigger-width": `${initial.width}px`,
   }
   // During scroll the listbox height is already known, so the second-pass
   // height correction (the nextTick remeasure below) only matters at open
@@ -743,26 +783,106 @@ async function updatePosition(skipSecondPass = false) {
   await nextTick()
   const el = listboxRef.value
   if (!el) return
-  const measured = computePosition(
-    trigger.getBoundingClientRect(),
-    el.offsetHeight,
-    vpHeight,
-    offset,
-  )
+  const measured = measure(el.offsetHeight)
+  if (!measured) return
   placement.value = measured.placement
   positionerStyle.value = {
     ...forwarded.value,
-    position: "fixed",
+    position: resolvedStrategy.value,
     top: "0px",
     left: "0px",
     transform: `translate3d(${measured.left}px, ${measured.top}px, 0)`,
-    "--vpick-trigger-width": `${rect.width}px`,
+    "--vpick-trigger-width": `${measured.width}px`,
   }
 }
 
+// --- Anchoring ---
+//
+// `fixed` + teleport to body keeps the panel clear of ancestor clipping, but it
+// makes JS authoritative for the position: the coordinates are viewport-based,
+// so every scrolled pixel needs recomputing and the panel lands a frame behind
+// a scroll the browser composites off the main thread.
+//
+// Anchoring inside the scroll container instead makes the coordinates
+// scroll-invariant, so the browser moves the panel natively and it stays glued.
+// The cost is that the container's own overflow can clip it, which is why the
+// panel is measured against the container's box when anchored there.
+const anchorEl = ref<HTMLElement | null>(null)
+
+// Resolved per open, since layout can change between opens.
+const resolvedStrategy = ref<"absolute" | "fixed">("fixed")
+
+// `anchorEl` wins once resolved, so the panel lands inside the scroll container
+// and rides its scroll. Falls back to the explicit target, then to body.
+const teleportTarget = computed<string | HTMLElement>(
+  () => anchorEl.value ?? props.teleportTo ?? "body",
+)
+
+function explicitTeleportTarget(): HTMLElement | null {
+  const to = props.teleportTo
+  if (to instanceof HTMLElement) return to
+  if (typeof to === "string") {
+    const el = document.querySelector(to)
+    if (el instanceof HTMLElement) return el
+  }
+  return null
+}
+
+// `absolute` only tracks the scroll for free when the panel's containing block
+// is the scroller itself. A container that establishes no containing block
+// leaves the panel anchored to some outer ancestor, where it would sit still
+// while the content scrolled underneath, which is worse than trailing it.
+//
+// Deliberately not using `offsetParent`: it reports null for a `position: fixed`
+// element, and the panel still carries `fixed` from the previous open when this
+// runs, so the answer would be null for reasons unrelated to the container.
+function establishesContainingBlock(el: HTMLElement): boolean {
+  const cs = window.getComputedStyle(el)
+  // Every property is read defensively: a partial CSSOM implementation reports
+  // "" rather than the initial value, and "" must read as "not positioned".
+  if (cs.position && cs.position !== "static") return true
+  // A static element still forms one if it is a transform, filter or
+  // containment context.
+  if (cs.transform && cs.transform !== "none") return true
+  if (cs.perspective && cs.perspective !== "none") return true
+  if (cs.filter && cs.filter !== "none") return true
+  if (/(transform|perspective|filter)/.test(cs.willChange || "")) return true
+  if (/(layout|paint|strict|content)/.test(cs.contain || "")) return true
+  return false
+}
+
+function resolveAnchor() {
+  // An explicit teleportTo is the caller's decision; do not second-guess it.
+  const explicit = explicitTeleportTarget()
+  if (explicit) {
+    anchorEl.value = explicit
+    resolvedStrategy.value =
+      props.strategy === "absolute" ? "absolute" : "fixed"
+    return
+  }
+  if (props.strategy === "fixed") {
+    anchorEl.value = null
+    resolvedStrategy.value = "fixed"
+    return
+  }
+  const trigger = triggerRef.value
+  const container = trigger ? findScrollParent(trigger) : null
+  // No inner scroll container, or one that cannot anchor the panel: keep the
+  // panel in body on `fixed`, which is correct everywhere even though it trails
+  // an inner scroll.
+  if (!container || !establishesContainingBlock(container)) {
+    anchorEl.value = null
+    resolvedStrategy.value = "fixed"
+    return
+  }
+  anchorEl.value = container
+  resolvedStrategy.value = "absolute"
+}
+
 // Scroll fires far more often than the screen repaints, so collapse every event
-// in a frame into one position write. Note this cannot make the panel lead the
-// scroll: JS owns the position while `position: fixed` is in use.
+// in a frame into one position write. With `absolute` anchoring the browser
+// moves the panel itself, so this only carries the `fixed` path, which cannot
+// lead the scroll no matter how it is scheduled.
 let repositionFrame: number | null = null
 
 function cancelReposition() {
@@ -846,6 +966,7 @@ function open() {
     lockBodyScroll()
     scrollLocked = true
   }
+  resolveAnchor()
   nextTick(() => {
     refreshForwardedVars()
     updatePosition()
@@ -889,6 +1010,10 @@ function close() {
 }
 
 function onAfterLeave() {
+  // Drop the anchor only once the panel is gone, so it is not reparented
+  // mid-transition. The next open re-resolves it against current layout.
+  anchorEl.value = null
+  resolvedStrategy.value = "fixed"
   searchQuery.value = ""
   isUserSearching.value = false
   // If dropdown closes while tree search was active, restore pre-search expansion (D6)
@@ -1556,7 +1681,7 @@ onBeforeUnmount(() => {
          hardware-accelerated layer); listbox owns the enter-leave animation.
          Splitting them is required because two transforms can't coexist on
          the same element. -->
-    <Teleport :to="teleportTo ?? 'body'" :disabled="isInline">
+    <Teleport :to="teleportTarget" :disabled="isInline">
       <Transition name="vpick-dropdown" @after-leave="onAfterLeave">
         <div
           v-show="isOpen"
