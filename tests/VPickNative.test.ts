@@ -190,6 +190,23 @@ describe("VPickNative", () => {
       expect(wrapper.find("select").element.value).toBe("2")
     })
 
+    it("accepts labelKey as a fallback chain, first non-empty wins", () => {
+      const wrapper = mount(VPickNative, {
+        props: {
+          options: [
+            { id: 1, label: "", name: "Alice" },
+            { id: 2, label: "Robert", name: "Bob" },
+          ],
+          labelKey: ["label", "name"],
+          valueKey: "id",
+        },
+      })
+      expect(wrapper.findAll("option").map((o) => o.text())).toEqual([
+        "Alice",
+        "Robert",
+      ])
+    })
+
     it("emits value from valueKey on change", async () => {
       const wrapper = mount(VPickNative, {
         props: { options: users, labelKey: "name", valueKey: "id" },

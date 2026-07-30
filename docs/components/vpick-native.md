@@ -82,23 +82,23 @@ Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data st
 
 ## Props
 
-| Prop                   | Type              | Default      | Description                                              |
-| ---------------------- | ----------------- | ------------ | -------------------------------------------------------- |
-| `modelValue` / `value` | `any`             | `undefined`  | Selected value. Use `v-model` for two-way binding.       |
-| `options`              | `OptionOrGroup[]` | **required** | Array of options or option groups.                       |
-| `placeholder`          | `string`          | `undefined`  | Placeholder text shown when no value is selected.        |
-| `disabled`             | `boolean`         | `false`      | Disables the select.                                     |
-| `loading`              | `boolean`         | `false`      | Shows a spinner and disables interaction.                |
-| `error`                | `string`          | `undefined`  | Error message. Applies error styling and `aria-invalid`. |
-| `id`                   | `string`          | `undefined`  | HTML `id` attribute.                                     |
-| `name`                 | `string`          | `undefined`  | HTML `name` attribute for form submission.               |
-| `required`             | `boolean`         | `false`      | HTML `required` attribute.                               |
-| `ariaLabel`            | `string`          | `undefined`  | `aria-label` for accessibility.                          |
-| `ariaDescribedby`      | `string`          | `undefined`  | `aria-describedby` for accessibility.                    |
-| `labelKey`             | `string`          | `"label"`    | Object key to read each option's visible label from.     |
-| `valueKey`             | `string`          | `"value"`    | Object key to read each option's value from.             |
-| `disabledKey`          | `string`          | `"disabled"` | Object key to read each option's disabled flag from.     |
-| `groupOptionsKey`      | `string`          | `"options"`  | Object key for the options array inside a group.         |
+| Prop                   | Type                 | Default      | Description                                                                             |
+| ---------------------- | -------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `modelValue` / `value` | `any`                | `undefined`  | Selected value. Use `v-model` for two-way binding.                                      |
+| `options`              | `OptionOrGroup[]`    | **required** | Array of options or option groups.                                                      |
+| `placeholder`          | `string`             | `undefined`  | Placeholder text shown when no value is selected.                                       |
+| `disabled`             | `boolean`            | `false`      | Disables the select.                                                                    |
+| `loading`              | `boolean`            | `false`      | Shows a spinner and disables interaction.                                               |
+| `error`                | `string`             | `undefined`  | Error message. Applies error styling and `aria-invalid`.                                |
+| `id`                   | `string`             | `undefined`  | HTML `id` attribute.                                                                    |
+| `name`                 | `string`             | `undefined`  | HTML `name` attribute for form submission.                                              |
+| `required`             | `boolean`            | `false`      | HTML `required` attribute.                                                              |
+| `ariaLabel`            | `string`             | `undefined`  | `aria-label` for accessibility.                                                         |
+| `ariaDescribedby`      | `string`             | `undefined`  | `aria-describedby` for accessibility.                                                   |
+| `labelKey`             | `string \| string[]` | `"label"`    | Object key to read each option's visible label from. An array acts as a fallback chain. |
+| `valueKey`             | `string`             | `"value"`    | Object key to read each option's value from.                                            |
+| `disabledKey`          | `string`             | `"disabled"` | Object key to read each option's disabled flag from.                                    |
+| `groupOptionsKey`      | `string`             | `"options"`  | Object key for the options array inside a group.                                        |
 
 ## Slots
 

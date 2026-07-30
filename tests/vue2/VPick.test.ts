@@ -1928,6 +1928,21 @@ describe("VPick (Vue 2) — alwaysOpen", () => {
     expect(wrapper.find(".vpick-trigger-icon").exists()).toBe(false)
   })
 
+  // The searchable trigger is a separate branch from the button trigger, so it
+  // needs its own guard. `multiple` reaches it too, since it forces searchable.
+  it.each([
+    ["searchable", { searchable: true }],
+    ["multiple", { multiple: true }],
+  ])("hides the chevron in %s mode too", (_label, extra) => {
+    const inline = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true, ...extra },
+    })
+    expect(inline.find(".vpick-trigger-icon").exists()).toBe(false)
+
+    const normal = mount(VPick, { propsData: { options: status, ...extra } })
+    expect(normal.find(".vpick-trigger-icon").exists()).toBe(true)
+  })
+
   it("still selects", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: status, alwaysOpen: true },

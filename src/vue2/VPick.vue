@@ -1521,7 +1521,7 @@ onBeforeUnmount(() => {
         </slot>
       </button>
       <button
-        v-else
+        v-else-if="!isInline"
         type="button"
         class="vpick-trigger-icon vpick-trigger-icon--button"
         tabindex="-1"
