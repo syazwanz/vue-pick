@@ -5,7 +5,7 @@
 <h1 align="center">Vue Pick</h1>
 
 <p align="center">
-  Accessible select components for <strong>Vue 2.7 and Vue 3</strong>, from one codebase.
+  Select, multiselect, and tree select for <strong>Vue 2.7 and Vue 3</strong>, from one codebase.
 </p>
 
 <p align="center">
@@ -14,10 +14,9 @@
   <a href="https://stackblitz.com/edit/vue-pick-demo?file=src%2FApp.vue"><img alt="Open in StackBlitz" src="https://img.shields.io/badge/StackBlitz-Open_demo-1269D3?logo=stackblitz&logoColor=white" /></a>
 </p>
 
-<!-- TODO: add screenshot or short GIF of VPick dropdown in use -->
-
 ## Features
 
+- Single select, multiselect, and nested tree select with cascading selection
 - Same API across Vue 2.7 and Vue 3
 - Native `<select>` wrapper and custom dropdown
 - Full keyboard navigation and ARIA support
