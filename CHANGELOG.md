@@ -1,5 +1,11 @@
 # vue-pick
 
+## 0.16.1
+
+### Patch Changes
+
+- fe67cf8: Update the package description and keywords to cover multiselect and tree select.
+
 ## 0.16.0
 
 ### Minor Changes
