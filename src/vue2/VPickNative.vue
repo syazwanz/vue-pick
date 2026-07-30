@@ -18,7 +18,7 @@ const props = defineProps<{
   error?: string
   ariaLabel?: string
   ariaDescribedby?: string
-  labelKey?: string
+  labelKey?: string | string[]
   valueKey?: string
   disabledKey?: string
   groupOptionsKey?: string
