@@ -2129,7 +2129,10 @@ describe("VPick — sortValueBy", () => {
     return e![e!.length - 1][0] as string[]
   }
 
-  function openAll(modelValue: string[], sortValueBy?: string) {
+  function openAll(
+    modelValue: string[],
+    sortValueBy?: "ORDER_SELECTED" | "LEVEL" | "INDEX",
+  ) {
     return mount(VPick, {
       props: {
         options: tree,
@@ -2137,7 +2140,8 @@ describe("VPick — sortValueBy", () => {
         cascade: false,
         defaultExpandLevel: 2,
         modelValue,
-        ...(sortValueBy ? { sortValueBy } : {}),
+        // Optional prop: undefined falls through to the component default.
+        sortValueBy,
       },
     })
   }
@@ -2942,5 +2946,36 @@ describe("VPick — searchNested", () => {
 
   it("words from unrelated branches do not match", async () => {
     expect(await search("books gaming", { searchNested: true })).toEqual([])
+  })
+})
+
+describe("VPick — empty-branch placeholders stay out of the option set", () => {
+  const withEmptyBranch: OptionOrGroup[] = [
+    {
+      label: "Branch",
+      value: "branch",
+      children: [{ label: "Child", value: "child" }],
+    },
+    { label: "Empty", value: "empty", children: [] },
+  ]
+
+  it("the hidden select has no duplicate option for an empty branch", () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmptyBranch, defaultExpandLevel: 2 },
+    })
+    const values = wrapper
+      .findAll("select option")
+      .map((o) => o.attributes("value"))
+      .filter((v) => v !== "")
+    expect(values).toEqual([...new Set(values)])
+    expect(values.filter((v) => v === "empty")).toHaveLength(1)
+  })
+
+  it("a tree with only an empty branch is not treated as having no options", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: [{ label: "Empty", value: "empty", children: [] }] },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-empty").exists()).toBe(false)
   })
 })
