@@ -520,9 +520,15 @@ const flat = computed<FlatOption[]>(() =>
 
 // Full tree walk (no expansion gating) — used by the hidden select so the
 // selected value is always represented regardless of collapse state.
+// Every real option, regardless of expansion. Placeholder rows are a display
+// artifact of the visible list, so they are excluded: this feeds value lookups,
+// the hidden <select> and the sort position map, and a placeholder shares its
+// parent branch's option, which would duplicate it in all three.
 const flatAll = computed<FlatOption[]>(() =>
   isTreeMode.value
-    ? flattenOptions(normalized.value, instanceId.value, "all")
+    ? flattenOptions(normalized.value, instanceId.value, "all").filter(
+        (fo) => !fo.isEmptyMessage,
+      )
     : flat.value,
 )
 
