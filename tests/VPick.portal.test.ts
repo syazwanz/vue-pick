@@ -12,6 +12,12 @@ const opts = [
   { label: "Done", value: "done" },
 ]
 
+// Scroll repositioning is coalesced into one write per animation frame, so a
+// nextTick is not enough to observe it.
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+}
+
 function rectAt(top: number): DOMRect {
   return {
     top,
@@ -78,11 +84,14 @@ describe("VPick — portal", () => {
     wrapper.unmount()
   })
 
-  // The listbox stays teleported to body even when the trigger sits inside a
-  // scroll container. It tracks by recomputing fixed coordinates from the
-  // trigger's viewport rect, so it must never be reparented into the container
-  // — doing that would expose it to the container's own clipping, which is the
-  // whole reason we teleport in the first place.
+  // Pins today's `fixed` positioning: the listbox stays teleported to body even
+  // when the trigger sits inside a scroll container, and tracks by recomputing
+  // viewport coordinates from the trigger's rect.
+  //
+  // This asserts the panel *follows* the scroll. It does not assert that the
+  // panel stays glued to the trigger, and it cannot: JS owns the position here,
+  // so it lands a frame behind a compositor-driven scroll. Do not cite this
+  // test as evidence that reparenting into the scroll container is unnecessary.
   it("tracks the trigger when a scrollable ancestor scrolls", async () => {
     const container = document.createElement("div")
     container.style.overflowY = "auto"
@@ -116,9 +125,26 @@ describe("VPick — portal", () => {
     // Scrolling the container moves the trigger up the viewport by 60px.
     top = 40
     container.dispatchEvent(new Event("scroll"))
-    await nextTick()
+    await nextFrame()
 
     expect(positioner!.style.transform).toBe("translate3d(20px, 80px, 0)")
+
+    // Many events inside one frame collapse into a single reposition. Counting
+    // rect reads is what proves it: the end position alone would look identical
+    // if every event had been handled separately.
+    let reads = 0
+    top = 10
+    triggerEl.getBoundingClientRect = () => {
+      reads++
+      return rectAt(top)
+    }
+    container.dispatchEvent(new Event("scroll"))
+    container.dispatchEvent(new Event("scroll"))
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    expect(reads).toBe(1)
+    expect(positioner!.style.transform).toBe("translate3d(20px, 50px, 0)")
 
     wrapper.unmount()
     container.remove()

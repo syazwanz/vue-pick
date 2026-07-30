@@ -684,7 +684,7 @@ const FORWARDED_VARS = [
   "--vpick-tree-indent",
 ]
 
-function forwardedVars(): Record<string, string> {
+function readForwardedVars(): Record<string, string> {
   const root = rootRef.value
   if (!root) return {}
   const cs = getComputedStyle(root)
@@ -704,6 +704,15 @@ function forwardedVars(): Record<string, string> {
   return out
 }
 
+// Reading 24 custom properties means a style resolve, which is far too much to
+// repeat per scroll event. Theming cannot change mid-scroll, so cache on open
+// and refresh only where a change is actually possible.
+const forwarded = ref<Record<string, string>>({})
+
+function refreshForwardedVars() {
+  forwarded.value = readForwardedVars()
+}
+
 async function updatePosition(skipSecondPass = false) {
   // In flow: the browser lays the panel out, nothing to compute.
   if (isInline.value) return
@@ -718,10 +727,9 @@ async function updatePosition(skipSecondPass = false) {
   const initialHeight = listboxRef.value?.offsetHeight || 240
   const initial = computePosition(rect, initialHeight, vpHeight, offset)
   placement.value = initial.placement
-  const forwarded = forwardedVars()
 
   positionerStyle.value = {
-    ...forwarded,
+    ...forwarded.value,
     position: "fixed",
     top: "0px",
     left: "0px",
@@ -743,7 +751,7 @@ async function updatePosition(skipSecondPass = false) {
   )
   placement.value = measured.placement
   positionerStyle.value = {
-    ...forwarded,
+    ...forwarded.value,
     position: "fixed",
     top: "0px",
     left: "0px",
@@ -752,12 +760,29 @@ async function updatePosition(skipSecondPass = false) {
   }
 }
 
+// Scroll fires far more often than the screen repaints, so collapse every event
+// in a frame into one position write. Note this cannot make the panel lead the
+// scroll: JS owns the position while `position: fixed` is in use.
+let repositionFrame: number | null = null
+
+function cancelReposition() {
+  if (repositionFrame !== null) {
+    cancelAnimationFrame(repositionFrame)
+    repositionFrame = null
+  }
+}
+
 function onReposition(e?: Event) {
   if (!isOpen.value) return
   // Ignore scroll events originating from the listbox's own scroll container.
   const target = e?.target
   if (target instanceof Node && positionerRef.value?.contains(target)) return
-  updatePosition(true)
+  if (repositionFrame !== null) return
+  repositionFrame = requestAnimationFrame(() => {
+    repositionFrame = null
+    if (!isOpen.value) return
+    updatePosition(true)
+  })
 }
 
 // Bubble value changes to parent form handlers.
@@ -822,15 +847,19 @@ function open() {
     scrollLocked = true
   }
   nextTick(() => {
+    refreshForwardedVars()
     updatePosition()
     if (triggerRef.value && !cleanupScroll) {
       cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
     }
     // Reposition when the trigger height changes (e.g. multi-select chips wrap
-    // onto additional rows).
+    // onto additional rows). A resize can follow a theming change, so this is
+    // the one repositioning path that re-reads the forwarded variables.
     if (triggerRef.value && !cleanupResize) {
       cleanupResize = setupResizeObserver(triggerRef.value, () => {
-        if (isOpen.value) updatePosition()
+        if (!isOpen.value) return
+        refreshForwardedVars()
+        updatePosition()
       })
     }
   })
@@ -848,6 +877,7 @@ function close() {
     unlockBodyScroll()
     scrollLocked = false
   }
+  cancelReposition()
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
@@ -1224,6 +1254,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
+  cancelReposition()
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
