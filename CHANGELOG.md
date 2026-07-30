@@ -1,5 +1,45 @@
 # vue-pick
 
+## 0.16.0
+
+### Minor Changes
+
+- 3a17616: Add `backspaceRemoves` and `deleteRemoves` props, both `true` by default.
+
+  Backspace on an empty search input already removed the last chip in `multiple` mode, with no way to opt out. It can now be disabled, and Delete does the same thing.
+
+- 3a17616: `labelKey` now accepts an array as a fallback chain. The first key with a non-empty value wins.
+
+  ```vue
+  <VPick :options="options" :label-key="['label', 'name']" value-key="id" />
+  ```
+
+  Useful when records are inconsistent, e.g. some carry `label` and others `name`. A single string behaves exactly as before.
+
+  The resolved label is used for search matching as well as display.
+
+- 3a17616: Add a `noOptionsText` prop, and show a message when there are no options at all.
+
+  Previously the empty message only appeared while searching, so an empty `options` array opened a completely blank panel with no text.
+
+  `noOptionsText` (default `"No options available"`) covers "there is nothing to pick from"; `noResultsText` still covers "your search matched nothing". The `empty` slot receives whichever applies.
+
+- 3a17616: Add a `searchNested` prop for tree mode. A multi-word query can then match across a node's ancestor path.
+
+  ```vue
+  <VPick :options="options" searchable search-nested />
+  ```
+
+  Searching "electronics gaming" finds `Gaming` under `Electronics > Laptops`, because every word appears somewhere in that path. Single-word queries are unaffected, and words from unrelated branches still do not match.
+
+### Patch Changes
+
+- f5c4c69: Stop empty-branch placeholder rows leaking into the option set.
+
+  The row shown under an expanded branch with an empty `children` array shares its parent's option, so it appeared a second time in the hidden `<select>` used for form submission, producing a duplicate `<option>` and a Vue duplicate-key warning. It also counted toward value lookups and chip ordering.
+
+  Also fixes the placeholder's `:key` in the Vue 2 build, which used a template literal. The Vue 2 template compiler truncates those in attribute expressions, so the key was malformed.
+
 ## 0.15.1
 
 ### Patch Changes
