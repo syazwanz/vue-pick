@@ -3,3 +3,6 @@ ref.local/
 # Editor-managed: VS Code rewrites this in its own style, so a format gate
 # would flip-flop against it forever.
 .vscode
+
+# Machine-generated: pnpm rewrites this, so formatting it is a fight.
+pnpm-lock.yaml

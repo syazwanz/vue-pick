@@ -1557,7 +1557,7 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     await wrapper.findAll('[role="option"]').at(0).trigger("click")
-    expect(wrapper.emitted("select")[0][0]).toBe(users[0])
+    expect(wrapper.emitted("select")![0][0]).toBe(users[0])
   })
 
   it("clearOnSelect false keeps the query after picking", async () => {
@@ -1570,7 +1570,7 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
       },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
-    const input = wrapper.find("input")
+    const input = wrapper.find<HTMLInputElement>("input")
     input.element.value = "do"
     await input.trigger("input")
     await wrapper.findAll('[role="option"]').at(0).trigger("click")
@@ -1624,7 +1624,7 @@ describe("VPick (Vue 2) — sortValueBy and value-label slot", () => {
       .filter((o) => o.text().includes("Phones"))
       .at(0)
       .trigger("click")
-    const e = wrapper.emitted("input")
+    const e = wrapper.emitted("input")!
     expect(e[e.length - 1][0]).toEqual(["phones", "books"])
   })
 
@@ -1790,14 +1790,14 @@ describe("VPick (Vue 2) — valueFormat", () => {
     const wrapper = mountUsers()
     await wrapper.find('[role="combobox"]').trigger("click")
     await wrapper.findAll('[role="option"]').at(0).trigger("click")
-    expect(wrapper.emitted("input")[0][0]).toBe(1)
+    expect(wrapper.emitted("input")![0][0]).toBe(1)
   })
 
   it("emits the caller's original object in single mode", async () => {
     const wrapper = mountUsers({ valueFormat: "object" })
     await wrapper.find('[role="combobox"]').trigger("click")
     await wrapper.findAll('[role="option"]').at(0).trigger("click")
-    expect(wrapper.emitted("input")[0][0]).toBe(users[0])
+    expect(wrapper.emitted("input")![0][0]).toBe(users[0])
   })
 
   it("understands objects coming back in, matched by value key", () => {
@@ -1816,12 +1816,12 @@ describe("VPick (Vue 2) — valueFormat", () => {
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     await wrapper.findAll('[role="option"]').at(1).trigger("click")
-    expect(wrapper.emitted("input")[0][0]).toEqual([users[1]])
+    expect(wrapper.emitted("input")![0][0]).toEqual([users[1]])
   })
 
   it("keeps the hidden select working on plain values", () => {
     const wrapper = mountUsers({ valueFormat: "object", value: users[1] })
-    expect(wrapper.find("select").element.value).toBe("2")
+    expect(wrapper.find<HTMLSelectElement>("select").element.value).toBe("2")
   })
 })
 
@@ -1847,7 +1847,7 @@ describe("VPick (Vue 2) — flattenSearchResults", () => {
       },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
-    const input = wrapper.find("input")
+    const input = wrapper.find<HTMLInputElement>("input")
     input.element.value = query
     await input.trigger("input")
     return wrapper
@@ -1878,7 +1878,7 @@ describe("VPick (Vue 2) — flattenSearchResults", () => {
   it("flattened options remain selectable", async () => {
     const wrapper = await openAndType("gaming", true)
     await wrapper.find('[role="option"]').trigger("click")
-    expect(wrapper.emitted("input")[0][0]).toBe("gaming")
+    expect(wrapper.emitted("input")![0][0]).toBe("gaming")
   })
 })
 
@@ -1933,7 +1933,7 @@ describe("VPick (Vue 2) — alwaysOpen", () => {
       propsData: { options: status, alwaysOpen: true },
     })
     await wrapper.findAll('[role="option"]').at(1).trigger("click")
-    expect(wrapper.emitted("input")[0][0]).toBe("in-progress")
+    expect(wrapper.emitted("input")![0][0]).toBe("in-progress")
   })
 
   it("re-enabling reopens it", async () => {
@@ -2054,7 +2054,7 @@ describe("VPick (Vue 2) — the 0.16 props", () => {
       propsData: { options: status, multiple: true, value: ["todo", "done"] },
     })
     await on.find("input").trigger("keydown", { key: "Delete" })
-    expect(on.emitted("input")[0][0]).toEqual(["todo"])
+    expect(on.emitted("input")![0][0]).toEqual(["todo"])
 
     const off = mount(VPick, {
       propsData: {
@@ -2095,7 +2095,7 @@ describe("VPick (Vue 2) — the 0.16 props", () => {
       },
     })
     await wrapper.find('[role="combobox"]').trigger("click")
-    const input = wrapper.find("input")
+    const input = wrapper.find<HTMLInputElement>("input")
     input.element.value = "electronics gaming"
     await input.trigger("input")
     await nextTick()
