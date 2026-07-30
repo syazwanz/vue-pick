@@ -1,5 +1,15 @@
 # vue-pick
 
+## 0.16.2
+
+### Patch Changes
+
+- 501bc1c: `VPickNative` now accepts `labelKey` as an array, matching `VPick`. Pass
+  `["label", "name"]` to use the first key with a non-empty value.
+
+  Fix: `alwaysOpen` left the chevron visible in `searchable` and `multiple` mode.
+  It is now hidden in every mode, as it already was in button mode.
+
 ## 0.16.1
 
 ### Patch Changes
