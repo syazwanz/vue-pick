@@ -1,7 +1,10 @@
 import type { OptionItem, OptionGroup, OptionOrGroup } from "./index"
 
 export interface OptionKeys {
-  label: string
+  // An array is a fallback chain: the first key with a non-empty value wins.
+  // Lets `{ label }` and `{ name }` shaped records share one config, which a
+  // single key cannot express.
+  label: string | string[]
   value: string
   disabled: string
   children: string
@@ -31,12 +34,21 @@ export function normalizeOptions(
   return raw.map((item) => normalizeItem(item, k))
 }
 
+function readLabel(obj: Record<string, unknown>, key: string | string[]) {
+  if (!Array.isArray(key)) return obj[key] as string
+  for (const candidate of key) {
+    const v = obj[candidate]
+    if (v !== undefined && v !== null && v !== "") return v as string
+  }
+  return undefined as unknown as string
+}
+
 function normalizeItem(item: unknown, k: OptionKeys): OptionOrGroup {
   const obj = (item ?? {}) as Record<string, unknown>
   const groupOptions = obj[k.groupOptions]
   if (Array.isArray(groupOptions)) {
     const group: OptionGroup = {
-      label: obj[k.label] as string,
+      label: readLabel(obj, k.label),
       options: groupOptions.map((child) =>
         normalizeItem(child, k),
       ) as OptionItem[],
@@ -47,7 +59,7 @@ function normalizeItem(item: unknown, k: OptionKeys): OptionOrGroup {
     return group
   }
   const normalized: OptionItem = {
-    label: obj[k.label] as string,
+    label: readLabel(obj, k.label),
     value: obj[k.value],
   }
   // Non-enumerable so the normalized shape still deep-equals and serializes

@@ -27,6 +27,17 @@ export default tseslint.config(
     },
   },
   {
+    // Vue 2 reuses an element across v-if/v-else branches when neither carries
+    // a key, which can leak state between them. Vue 3 auto-assigns branch keys,
+    // so `flat/recommended` leaves this off; the Vue 2 adapter still needs it.
+    // Note this does NOT catch two branches sharing the same key — no rule
+    // does, only the editor language service.
+    files: ["src/vue2/**/*.vue"],
+    rules: {
+      "vue/v-if-else-key": "error",
+    },
+  },
+  {
     files: ["docs/**/*.{vue,ts,js}", "sandbox/**/*.vue"],
     rules: {
       "vue/multi-word-component-names": "off",
