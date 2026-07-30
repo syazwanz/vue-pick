@@ -15,6 +15,11 @@ const currentOptions = computed(() =>
 const currentTab = ref("vpick") // 'vpick' or 'native'
 const selectedValue = ref<unknown>(null)
 
+// Anchoring demo: same component, two panes, differing only in whether the
+// pane is positioned.
+const paneAnchored = ref<unknown>(null)
+const paneStatic = ref<unknown>(null)
+
 const treeValue = ref<unknown>(null)
 const treeMultiValue = ref<unknown[]>([])
 const treeSearchable = ref(false)
@@ -299,6 +304,34 @@ function toggleError(e: Event) {
           :class="{ 'is-empty': !treeEventLog.length }"
           >{{ treeEventLog.join("\n") || "No events yet" }}</pre
         >
+      </div>
+    </div>
+
+    <!-- Open each dropdown, then scroll its own pane. Left stays glued to the
+         trigger, right trails it. Only difference is `position: relative`. -->
+    <div class="pane-row">
+      <div class="pane pane--anchored">
+        <h4>position: relative</h4>
+        <p class="hint">anchored inside this pane, stays glued</p>
+        <v-pick
+          v-model="paneAnchored"
+          :options="options"
+          placeholder="Select an option"
+          style="--vpick-width: 100%; --vpick-bg: white"
+        />
+        <div class="filler"></div>
+      </div>
+
+      <div class="pane">
+        <h4>position: static</h4>
+        <p class="hint">cannot anchor, falls back to fixed and trails</p>
+        <v-pick
+          v-model="paneStatic"
+          :options="options"
+          placeholder="Select an option"
+          style="--vpick-width: 100%; --vpick-bg: white"
+        />
+        <div class="filler"></div>
       </div>
     </div>
 

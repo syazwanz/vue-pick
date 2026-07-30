@@ -311,3 +311,42 @@ body {
   font-size: 12px;
   color: #cbd5e1;
 }
+
+/* Two inner scroll containers, the shape a dashboard has: fixed chrome around a
+   scrolling content pane. Open a dropdown, then scroll the pane it sits in.
+   The positioned one anchors the panel inside itself, so the panel is moved by
+   the browser and stays glued. The static one cannot anchor it, so the panel
+   stays in body on `fixed` and visibly trails. */
+.pane-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 60px;
+}
+
+.pane {
+  flex: 1;
+  height: 260px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.pane--anchored {
+  position: relative;
+}
+
+.pane h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.pane .hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0 0 12px;
+}
+
+.pane .filler {
+  height: 500px;
+}
