@@ -1098,6 +1098,81 @@ describe("VPick — multiple selection", () => {
     expect(chips[1].find(".vpick-chip-label").text()).toBe("Done")
   })
 
+  // The chips and the search input share one TransitionGroup. The input has to
+  // be inside it: that is what gives it the -move class, so it slides to its
+  // new position when a chip is added or removed instead of jumping. The
+  // wrapper is `display: contents`, so everything stays a flex child of the
+  // trigger and wrapping still works.
+  // The visible placeholder is a pinned element, not the input's own, so it does
+  // not slide when the input moves as chips come and go. The native attribute
+  // stays for screen readers, hidden with `color: transparent`, so the two must
+  // appear and disappear together.
+  it("pairs a pinned placeholder with the native one for screen readers", async () => {
+    const empty = mount(VPick, {
+      props: { options: status, multiple: true, placeholder: "Pick some" },
+    })
+    expect(empty.find(".vpick-multi-placeholder").text()).toBe("Pick some")
+    expect(
+      empty.find(".vpick-multi-placeholder").attributes("aria-hidden"),
+    ).toBe("true")
+    expect(empty.find("input").attributes("placeholder")).toBe("Pick some")
+
+    const filled = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        placeholder: "Pick some",
+        modelValue: ["todo"],
+      },
+    })
+    expect(filled.find(".vpick-multi-placeholder").classes()).toContain(
+      "vpick-multi-placeholder--hidden",
+    )
+    expect(filled.find("input").attributes("placeholder")).toBeUndefined()
+  })
+
+  it("hides the pinned placeholder once the user types", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, placeholder: "Pick some" },
+    })
+    await wrapper.find("input").setValue("to")
+    expect(wrapper.find(".vpick-multi-placeholder").classes()).toContain(
+      "vpick-multi-placeholder--hidden",
+    )
+  })
+
+  // Removing the last chip is not animated: the placeholder appears in the same
+  // spot at that instant, and a lingering chip would sit on top of it. Removing
+  // one of several keeps the animation, since the rest still slide into the gap.
+  it("marks the chip wrapper empty only once the last chip goes", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo", "done"] },
+    })
+    const classes = () => wrapper.find(".vpick-chips").classes()
+    expect(classes()).not.toContain("vpick-chips--empty")
+
+    await wrapper.setProps({ modelValue: ["todo"] })
+    expect(classes()).not.toContain("vpick-chips--empty")
+
+    await wrapper.setProps({ modelValue: [] })
+    expect(classes()).toContain("vpick-chips--empty")
+  })
+
+  it("keeps chips and the input in one transition group", () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo", "done"] },
+    })
+    const chipWrap = wrapper.find(".vpick-chips")
+    expect(chipWrap.exists()).toBe(true)
+    expect(chipWrap.element.parentElement).toBe(
+      wrapper.find(".vpick-trigger--multi").element,
+    )
+    for (const chip of wrapper.findAll(".vpick-chip")) {
+      expect(chip.element.parentElement).toBe(chipWrap.element)
+    }
+    expect(wrapper.find("input").element.parentElement).toBe(chipWrap.element)
+  })
+
   it("emits array with value added on click", async () => {
     const wrapper = mount(VPick, {
       props: { options: status, multiple: true, modelValue: ["todo"] },

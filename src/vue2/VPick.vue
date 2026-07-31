@@ -1589,78 +1589,101 @@ onBeforeUnmount(() => {
       ]"
       @click="onSearchTriggerClick"
     >
-      <!-- Chips for multi-select -->
-      <span
-        v-for="fo in selectedOptions"
-        :key="String(fo.option.value)"
-        class="vpick-chip"
+      <!-- Chips for multi-select. transition-group so removing one lets the
+           rest slide into place instead of jumping. -->
+      <transition-group
+        name="vpick-chip"
+        tag="span"
+        :class="[
+          'vpick-chips',
+          { 'vpick-chips--empty': !selectedOptions.length },
+        ]"
       >
-        <span class="vpick-chip-label"
-          ><slot name="value-label" :option="fo.option">{{
-            fo.option.label
-          }}</slot></span
+        <span
+          v-for="fo in selectedOptions"
+          :key="String(fo.option.value)"
+          class="vpick-chip"
         >
-        <button
-          type="button"
-          class="vpick-chip-remove"
-          tabindex="-1"
-          :disabled="disabled || loading"
-          :aria-label="`Remove ${fo.option.label}`"
-          @mousedown.prevent
-          @click.stop="removeChip(fo.option.value)"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
+          <span class="vpick-chip-label"
+            ><slot name="value-label" :option="fo.option">{{
+              fo.option.label
+            }}</slot></span
           >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </span>
-      <input
-        :id="instanceId"
-        ref="inputRef"
-        type="text"
-        role="combobox"
-        class="vpick-trigger-input"
-        autocomplete="off"
-        spellcheck="false"
-        aria-autocomplete="list"
-        :aria-expanded="isOpen ? 'true' : 'false'"
-        :aria-haspopup="'listbox'"
-        :aria-controls="listboxId"
-        :aria-activedescendant="
-          isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
-            ? filteredFlat[highlightedIndex].id
-            : undefined
-        "
-        :aria-label="ariaLabel"
-        :aria-describedby="ariaDescribedby"
-        :aria-invalid="error ? 'true' : undefined"
-        :aria-busy="loading ? 'true' : undefined"
-        :disabled="disabled || loading"
-        :placeholder="
-          multiple
-            ? selectedOptions.length
-              ? undefined
-              : placeholder
-            : selectedLabel || placeholder
-        "
-        :value="isUserSearching ? searchQuery : multiple ? '' : selectedLabel"
-        @input="onInput"
-        @keydown="onKeydown"
-        @focus="open"
-        @click="open"
-      />
+          <button
+            type="button"
+            class="vpick-chip-remove"
+            tabindex="-1"
+            :disabled="disabled || loading"
+            :aria-label="`Remove ${fo.option.label}`"
+            @mousedown.prevent
+            @click.stop="removeChip(fo.option.value)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </span>
+        <input
+          :id="instanceId"
+          key="input"
+          ref="inputRef"
+          type="text"
+          role="combobox"
+          class="vpick-trigger-input"
+          autocomplete="off"
+          spellcheck="false"
+          aria-autocomplete="list"
+          :aria-expanded="isOpen ? 'true' : 'false'"
+          :aria-haspopup="'listbox'"
+          :aria-controls="listboxId"
+          :aria-activedescendant="
+            isOpen && highlightedIndex >= 0 && filteredFlat[highlightedIndex]
+              ? filteredFlat[highlightedIndex].id
+              : undefined
+          "
+          :aria-label="ariaLabel"
+          :aria-describedby="ariaDescribedby"
+          :aria-invalid="error ? 'true' : undefined"
+          :aria-busy="loading ? 'true' : undefined"
+          :disabled="disabled || loading"
+          :placeholder="
+            multiple
+              ? selectedOptions.length
+                ? undefined
+                : placeholder
+              : selectedLabel || placeholder
+          "
+          :value="isUserSearching ? searchQuery : multiple ? '' : selectedLabel"
+          @input="onInput"
+          @keydown="onKeydown"
+          @focus="open"
+          @click="open"
+        />
+      </transition-group>
+      <span
+        v-if="multiple && placeholder"
+        :class="[
+          'vpick-multi-placeholder',
+          {
+            'vpick-multi-placeholder--hidden':
+              selectedOptions.length > 0 || !!searchQuery,
+          },
+        ]"
+        aria-hidden="true"
+        >{{ placeholder }}</span
+      >
       <span
         v-if="loading"
         class="vpick-trigger-icon vpick-trigger-spinner"

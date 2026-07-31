@@ -103,3 +103,50 @@ per depth.
 | `--vpick-checkbox-border-checked` | `#18181b`                   |
 | `--vpick-checkbox-color`          | `#fff`                      |
 | `--vpick-checkbox-radius`         | `0.25rem`                   |
+
+## Clear button and empty state variables
+
+| Variable                       | Default                          |
+| ------------------------------ | -------------------------------- |
+| `--vpick-clear-color`          | `var(--vpick-icon-color)`        |
+| `--vpick-clear-hover-bg`       | `var(--vpick-option-hover-bg)`   |
+| `--vpick-icon-button-hover-bg` | `var(--vpick-option-hover-bg)`   |
+| `--vpick-empty-color`          | `var(--vpick-placeholder-color)` |
+| `--vpick-empty-padding`        | `0.5rem 0.625rem`                |
+
+Each inherits from a more general variable, so overriding the general one styles
+these too and the specific one is only needed to break that link.
+
+## Multiselect chip variables
+
+`multiple` renders each selected value as a chip in the trigger.
+
+| Variable                           | Default              |
+| ---------------------------------- | -------------------- |
+| `--vpick-chip-bg`                  | `#f5f5f5`            |
+| `--vpick-chip-color`               | `inherit`            |
+| `--vpick-chip-border`              | `transparent`        |
+| `--vpick-chip-radius`              | `0.375rem`           |
+| `--vpick-chip-font-size`           | `0.75rem`            |
+| `--vpick-chip-remove-color`        | `currentColor`       |
+| `--vpick-chip-remove-hover-bg`     | `rgba(0, 0, 0, 0.1)` |
+| `--vpick-chip-transition-duration` | `150ms`              |
+
+Chips scale up as they are added and shrink away as they are removed, with the
+remaining chips sliding across to close the gap. Set the duration to `0s` to
+turn that off:
+
+```vue
+<VPick
+  v-model="selected"
+  :options="options"
+  multiple
+  style="--vpick-chip-transition-duration: 0s"
+/>
+```
+
+## Reduced motion
+
+Every transition is disabled automatically for visitors whose system asks for
+less motion, via `prefers-reduced-motion: reduce`. The loading spinner keeps
+turning, since it reports progress rather than decorating.
