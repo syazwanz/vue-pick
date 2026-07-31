@@ -381,7 +381,7 @@ positioned, is decided by `strategy`.
 | Value              | Behavior                                                                                                          |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `"auto"` (default) | Anchors inside the nearest scrollable ancestor when that ancestor can hold it, otherwise falls back to `"fixed"`. |
-| `"absolute"`       | Always anchors inside the nearest scrollable ancestor.                                                            |
+| `"absolute"`       | Always anchors inside the nearest scrollable ancestor, setting `position: relative` on it if it has none.         |
 | `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                |
 
 The distinction matters when your page scrolls inside a container rather than
@@ -398,8 +398,10 @@ position at all. The browser moves the panel along with the content, so it stays
 glued to the trigger and no work happens per frame.
 
 `"auto"` prefers anchoring but needs an ancestor that establishes a containing
-block. A plain `overflow-y: auto` div does not, so nothing changes for it. Adding
-`position: relative` to your scroll container is enough:
+block. A plain `overflow-y: auto` div does not, which is the common case, so
+`"auto"` alone often changes nothing. There are two ways to opt in.
+
+Add `position: relative` to your scroll container:
 
 ```css
 .content-pane {
@@ -408,13 +410,33 @@ block. A plain `overflow-y: auto` div does not, so nothing changes for it. Addin
 }
 ```
 
+Or pass `strategy="absolute"` and let VPick set it for you:
+
+```vue
+<VPick v-model="selected" :options="options" strategy="absolute" />
+```
+
+`"absolute"` is an instruction rather than a preference, so it anchors even to a
+container `"auto"` would have declined. When that container has no containing
+block of its own, VPick sets `position: relative` on it and puts the original
+value back when the dropdown closes. A container shared by several dropdowns is
+reference counted, so the last one out restores it.
+
+Worth knowing before reaching for it: a containing block applies to every
+absolutely-positioned descendant, not only the dropdown. If your pane already
+holds `position: absolute` children laid out against some outer ancestor, they
+will re-anchor to the pane. `"auto"` never mutates anything, and in development
+it logs a warning naming the container it could not anchor to.
+
 Use `"fixed"` when the panel is taller than its container and you would rather it
 overflow the container than be clipped by it. When anchored, the panel is
 measured against the container, so it flips and shrinks to fit that box instead
 of the window.
 
-Setting `teleportTo` overrides all of this: the dropdown goes where you say, and
-`strategy` defaults to `"fixed"` there unless you pass `"absolute"`.
+`teleportTo` and `strategy` answer different questions and are honored
+independently: `teleportTo` says where the dropdown is rendered, `strategy` says
+how it is positioned once there. Naming a target skips auto-detection, and the
+strategy stays `"fixed"` unless you ask for `"absolute"`.
 
 ## Empty states
 

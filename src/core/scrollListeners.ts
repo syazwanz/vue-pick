@@ -24,11 +24,8 @@ export function scrollParents(el: HTMLElement): HTMLElement[] {
  * The nearest scrollable ancestor, or null when the page itself is the only
  * scroll container.
  *
- * Whether that element can actually anchor the panel is deliberately not
- * decided here. `position: absolute` only scrolls with the content when the
- * panel's containing block sits inside the scroller, which cannot be read off
- * computed styles, so the caller verifies it against the real `offsetParent`
- * once the panel is in the DOM.
+ * Finding the scroller and deciding whether it can anchor the panel are
+ * separate questions: see `establishesContainingBlock` for the second.
  */
 export function findScrollParent(el: HTMLElement): HTMLElement | null {
   return scrollParents(el)[0] ?? null
