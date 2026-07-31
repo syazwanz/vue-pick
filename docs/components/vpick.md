@@ -28,6 +28,8 @@ import ClearableExample from '../examples/vpick/clearable.vue'
 import ClearableCode from '../examples/vpick/clearable.vue?raw'
 import MultipleExample from '../examples/vpick/multiple.vue'
 import MultipleCode from '../examples/vpick/multiple.vue?raw'
+import ChipMotionExample from '../examples/vpick/chip-motion.vue'
+import ChipMotionCode from '../examples/vpick/chip-motion.vue?raw'
 import TreeExample from '../examples/vpick/tree.vue'
 import TreeCode from '../examples/vpick/tree.vue?raw'
 import TreeSearchableExample from '../examples/vpick/tree-searchable.vue'
@@ -139,6 +141,17 @@ Use `multiple` to allow selecting more than one option. The trigger renders sele
 
 <Preview :code="MultipleCode">
   <MultipleExample />
+</Preview>
+
+Chips scale in as they are added and out as they are removed, and the remaining
+chips slide across to close the gap. Removing the last one is instant, so the
+placeholder is not left sitting under a chip that is still on its way out.
+
+Set `--vpick-chip-transition-duration` to `0s` to turn all of that off. Add and
+remove a few on each to compare:
+
+<Preview :code="ChipMotionCode">
+  <ChipMotionExample />
 </Preview>
 
 ### Tree select

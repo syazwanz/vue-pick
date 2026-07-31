@@ -581,16 +581,15 @@ button.vpick-trigger--loading:disabled,
   min-height: var(--vpick-height-default);
   flex-wrap: wrap;
   gap: 0.25rem;
-  padding: 0.25rem 0.625rem;
+  padding: 0.25rem;
   /* reserve space on the right for icons so chips don't overlap */
   padding-right: 1.75rem;
 }
 
-/* When chips are present, tighten left padding but keep the right reserved
-   for the absolutely-positioned clear / caret icon. */
-.vpick-trigger--multi:has(.vpick-chip) {
-  padding-left: 0.25rem;
-}
+/* The left inset is split between the trigger's own padding and the input's,
+   rather than being switched on `:has(.vpick-chip)`. That conditional padding
+   moved the placeholder sideways every time the first chip appeared or the last
+   one was removed. */
 
 /* Keep chevron / clear icons pinned to the right, vertically centered */
 .vpick-trigger--multi .vpick-trigger-icon,
@@ -608,6 +607,62 @@ button.vpick-trigger--loading:disabled,
 
 .vpick-trigger--multi .vpick-trigger-spinner > svg {
   animation: vpick-trigger-spin 0.6s linear infinite;
+}
+
+/* TransitionGroup needs a real element to render, but the chips have to stay
+   direct flex children of the trigger for wrapping and gap to work, so the
+   wrapper generates no box of its own. */
+.vpick-chips {
+  display: contents;
+}
+
+/* Removing the last chip is not animated. The placeholder is painted the moment
+   the selection empties, in the same spot the chip occupies, so a chip that
+   lingers there sits on top of the placeholder text and the two read as one
+   element fading in. Removing one of several chips keeps the full animation,
+   since the remaining chips still have a gap to slide across. */
+.vpick-chips--empty .vpick-chip-leave-active {
+  transition-duration: 0s;
+}
+
+/* Chips scale in when selected and out when removed. Set the duration to 0s to
+   turn it off. */
+.vpick-chip-enter-active,
+.vpick-chip-leave-active {
+  transition:
+    transform var(--vpick-chip-transition-duration, 150ms)
+      cubic-bezier(0, 0.55, 0.45, 1),
+    opacity var(--vpick-chip-transition-duration, 150ms)
+      cubic-bezier(0, 0.55, 0.45, 1);
+}
+
+/* Taking the leaving chip out of flow is what lets the rest slide across to
+   close the gap rather than snapping. Anchors to .vpick-trigger, which is
+   position: relative. */
+.vpick-chip-leave-active {
+  position: absolute;
+  /* A removed chip occupies the same spot the placeholder is about to appear
+     in, so its opacity is cleared in the first half of the transition. Left to
+     run the full duration it lingers over the placeholder text and the two read
+     as one element fading in. The shrink still runs the whole way. */
+  transition:
+    transform var(--vpick-chip-transition-duration, 150ms)
+      cubic-bezier(0.25, 1, 0.5, 1),
+    opacity calc(var(--vpick-chip-transition-duration, 150ms) * 0.5) linear;
+}
+
+/* Applies to the search input as well as the chips, since both are children of
+   the group. Adding or removing a chip slides the input to its new position
+   rather than teleporting it. */
+.vpick-chip-move {
+  transition: transform var(--vpick-chip-transition-duration, 150ms)
+    cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.vpick-chip-enter-from,
+.vpick-chip-leave-to {
+  transform: scale(0.7);
+  opacity: 0;
 }
 
 /* Chip / Tag */
@@ -665,12 +720,44 @@ button.vpick-trigger--loading:disabled,
   opacity: 0.3;
 }
 
-/* Inline search input inside multi-select trigger */
+/* The multi-select placeholder is painted as its own pinned element rather than
+   the input's placeholder text. The input is inside the TransitionGroup so it
+   slides when chips come and go, and a native placeholder would ride along with
+   it, sweeping across the control every time the last chip was removed. The
+   native one stays on the input for screen readers, just made transparent. */
+.vpick-trigger--multi .vpick-trigger-input::placeholder {
+  color: transparent;
+}
+
+.vpick-multi-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 0.625rem;
+  transform: translateY(-50%);
+  max-width: calc(100% - 2.375rem);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--vpick-placeholder-color);
+  pointer-events: none;
+  user-select: none;
+  visibility: visible;
+}
+
+/* Shown and hidden outright, never faded. A chip is drawn over this exact spot,
+   so anything gradual here reads as the placeholder itself animating. */
+.vpick-multi-placeholder--hidden {
+  visibility: hidden;
+}
+
+/* Inline search input inside multi-select trigger. The left padding plus the
+   trigger's own 0.25rem puts the placeholder 0.625rem in, matching single-select
+   searchable, while a chip still sits at the trigger's 0.25rem. */
 .vpick-trigger--multi .vpick-trigger-input {
   flex: 1 1 0;
   min-width: 0;
   height: auto;
-  padding: 0;
+  padding: 0 0 0 0.375rem;
 }
 
 /* Non-searchable multi trigger: comma-joined label */
@@ -760,4 +847,33 @@ button.vpick-trigger--loading:disabled,
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   word-wrap: normal;
+}
+
+/* Motion preferences
+   ------------------------------------------------------------------------- */
+
+/* Honour a system-level request for less motion. Transitions collapse to
+   effectively zero rather than being removed, so enter/leave hooks still fire
+   and elements are never left mid-transition. The spinner keeps turning, since
+   it communicates that something is in progress. */
+@media (prefers-reduced-motion: reduce) {
+  .vpick-dropdown-enter-active .vpick-listbox,
+  .vpick-dropdown-leave-active .vpick-listbox,
+  .vpick-chip-enter-active,
+  .vpick-chip-leave-active,
+  .vpick-chip-move,
+  .vpick-trigger,
+  .vpick-trigger-icon,
+  .vpick-option-expand {
+    transition-duration: 0.01ms !important;
+  }
+
+  .vpick-dropdown-enter-from .vpick-listbox,
+  .vpick-dropdown-leave-to .vpick-listbox,
+  .vpick-dropdown-enter-from[data-placement="top"] .vpick-listbox,
+  .vpick-dropdown-leave-to[data-placement="top"] .vpick-listbox,
+  .vpick-chip-enter-from,
+  .vpick-chip-leave-to {
+    transform: none;
+  }
 }
