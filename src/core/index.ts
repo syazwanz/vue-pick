@@ -40,4 +40,9 @@ export {
   findScrollParent,
   scrollParents,
 } from "./scrollListeners"
+export {
+  establishesContainingBlock,
+  promoteToContainingBlock,
+  releaseContainingBlock,
+} from "./containingBlock"
 export { setupResizeObserver } from "./resizeObserver"

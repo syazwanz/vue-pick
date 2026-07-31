@@ -27,6 +27,9 @@ import {
   unlockBodyScroll,
   setupScrollListeners,
   findScrollParent,
+  establishesContainingBlock,
+  promoteToContainingBlock,
+  releaseContainingBlock,
   setupResizeObserver,
   isOptionGroup,
 } from "../core"
@@ -744,33 +747,51 @@ function resolveTeleportTarget(): HTMLElement {
 const anchorEl = ref<HTMLElement | null>(null)
 const resolvedStrategy = ref<"absolute" | "fixed">("fixed")
 
-// `absolute` only tracks the scroll for free when the panel's containing block
-// is the scroller itself. A container that establishes no containing block
-// leaves the panel anchored to some outer ancestor, where it would sit still
-// while the content scrolled underneath, which is worse than trailing it.
-//
-// Deliberately not using `offsetParent`: it reports null for a `position: fixed`
-// element, and the panel still carries `fixed` from the previous open when this
-// runs, so the answer would be null for reasons unrelated to the container.
-function establishesContainingBlock(el: HTMLElement): boolean {
-  const cs = window.getComputedStyle(el)
-  // Every property is read defensively: a partial CSSOM implementation reports
-  // "" rather than the initial value, and "" must read as "not positioned".
-  if (cs.position && cs.position !== "static") return true
-  if (cs.transform && cs.transform !== "none") return true
-  if (cs.perspective && cs.perspective !== "none") return true
-  if (cs.filter && cs.filter !== "none") return true
-  if (/(transform|perspective|filter)/.test(cs.willChange || "")) return true
-  if (/(layout|paint|strict|content)/.test(cs.contain || "")) return true
-  return false
+// Whichever element this instance promoted, so the exact same one is released
+// even if layout changes between opens.
+let promotedEl: HTMLElement | null = null
+
+function promote(el: HTMLElement) {
+  promoteToContainingBlock(el)
+  promotedEl = el
+}
+
+function releasePromotion() {
+  if (!promotedEl) return
+  releaseContainingBlock(promotedEl)
+  promotedEl = null
+}
+
+const warnedContainers = new WeakSet<HTMLElement>()
+
+function warnCannotAnchor(container: HTMLElement) {
+  if (typeof process === "undefined") return
+  if (process.env?.NODE_ENV === "production") return
+  // Once per container: several selects usually share one scroll pane.
+  if (warnedContainers.has(container)) return
+  warnedContainers.add(container)
+  console.warn(
+    "[vue-pick] This dropdown's scroll container establishes no containing " +
+      "block, so the panel cannot be anchored inside it and falls back to " +
+      "position: fixed. It will lag behind that container's scroll. Give the " +
+      'container "position: relative", or pass strategy="absolute" to have ' +
+      "vue-pick set that for you.",
+    container,
+  )
 }
 
 function resolveAnchor() {
-  // An explicit teleportTo is the caller's decision; do not second-guess it.
-  if (explicitTeleportTarget()) {
-    anchorEl.value = null
+  releasePromotion()
+  const explicit = explicitTeleportTarget()
+
+  // `teleportTo` decides *where* the panel goes and `strategy` decides *how* it
+  // is positioned once there. Both are the caller's call, so neither overrides
+  // the other.
+  if (explicit) {
+    anchorEl.value = explicit
     resolvedStrategy.value =
       props.strategy === "absolute" ? "absolute" : "fixed"
+    if (resolvedStrategy.value === "absolute") promote(explicit)
     return
   }
   if (props.strategy === "fixed") {
@@ -780,10 +801,27 @@ function resolveAnchor() {
   }
   const trigger = triggerRef.value
   const container = trigger ? findScrollParent(trigger) : null
-  // No inner scroll container, or one that cannot anchor the panel: keep the
-  // panel in body on `fixed`, which is correct everywhere even though it trails
-  // an inner scroll.
-  if (!container || !establishesContainingBlock(container)) {
+  if (!container) {
+    anchorEl.value = null
+    resolvedStrategy.value = "fixed"
+    return
+  }
+
+  // An explicit `absolute` is a decision, not a hint: anchor there, and give the
+  // container a containing block if it has none. That mutates the caller's DOM,
+  // which is why only an explicit opt-in reaches it.
+  if (props.strategy === "absolute") {
+    promote(container)
+    anchorEl.value = container
+    resolvedStrategy.value = "absolute"
+    return
+  }
+
+  // `auto` never mutates. A container that cannot hold the panel means falling
+  // back to `fixed`, which is correct everywhere even though it trails an inner
+  // scroll.
+  if (!establishesContainingBlock(container)) {
+    warnCannotAnchor(container)
     anchorEl.value = null
     resolvedStrategy.value = "fixed"
     return
@@ -1028,6 +1066,7 @@ function close() {
 function onAfterLeave() {
   // Drop the anchor only once the panel is gone, so it is not reparented
   // mid-transition. The next open re-resolves it against current layout.
+  releasePromotion()
   anchorEl.value = null
   resolvedStrategy.value = "fixed"
   searchQuery.value = ""
@@ -1396,6 +1435,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener("mousedown", onClickOutside)
   cancelReposition()
+  // An unmount while open never reaches onAfterLeave, so the container would
+  // keep a `position: relative` nobody owns.
+  releasePromotion()
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
