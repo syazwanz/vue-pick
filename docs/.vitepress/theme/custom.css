@@ -6,6 +6,14 @@
   --vp-font-family-mono: "Geist Mono", "Fira Code", ui-monospace, monospace;
 }
 
+/* The dropdown is teleported to <body> and its default z-index of 50 sits above
+   VitePress's fixed navbar (--vp-z-index-nav: 30), so an open dropdown painted
+   over the header while scrolling. 29 keeps it above page content and the
+   desktop sidebar (25) but under the navbar. */
+:root {
+  --vpick-listbox-z-index: 29;
+}
+
 :root {
   --vp-c-brand-1: #18181b;
   --vp-c-brand-2: #27272a;

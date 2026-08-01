@@ -33,8 +33,12 @@ function rectAt(top: number): DOMRect {
 }
 
 afterEach(() => {
-  // Clean any teleported nodes left in body between tests.
-  document.body.querySelectorAll('[role="listbox"]').forEach((n) => n.remove())
+  // Clean any teleported nodes left in body between tests. The positioner is
+  // the wrapper the listbox sits inside, so removing only the listbox leaves
+  // empty positioners behind and a later `querySelector` picks up a stale one.
+  document.body
+    .querySelectorAll('.vpick-positioner, [role="listbox"]')
+    .forEach((n) => n.remove())
 })
 
 describe("VPick — portal", () => {
@@ -414,5 +418,90 @@ describe("VPick — explicit strategy", () => {
 
     wrapper.unmount()
     target.remove()
+  })
+})
+
+describe("VPick — hideWhenDetached", () => {
+  // The panel is hidden, not closed, so selection and focus survive scrolling
+  // back to the trigger.
+  function openInContainer(props: Record<string, unknown> = {}) {
+    const container = document.createElement("div")
+    container.style.overflowY = "auto"
+    document.body.appendChild(container)
+    container.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 300, left: 0, right: 300 }) as DOMRect
+    const host = document.createElement("div")
+    container.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      props: { options: opts, ...props },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    return { wrapper, container }
+  }
+
+  it("hides once the trigger is clipped by its scroll container", async () => {
+    const { wrapper, container } = openInContainer()
+    let top = 150 // inside the container's 100..300 band
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    // Scroll the trigger fully above the container.
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      true,
+    )
+
+    // Hidden, not closed: the listbox is still mounted, so selection, focus
+    // and any search query survive scrolling back.
+    expect(document.body.querySelector('[role="listbox"]')).not.toBe(null)
+
+    // Scrolling back reveals it again.
+    top = 150
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  it("stays visible when hideWhenDetached is off", async () => {
+    const { wrapper, container } = openInContainer({ hideWhenDetached: false })
+    let top = 150
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    wrapper.unmount()
+    container.remove()
   })
 })

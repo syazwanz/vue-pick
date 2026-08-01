@@ -15,9 +15,12 @@ const options = [
 
 <template>
   <div class="chip-motion">
-    <label>
-      <span>Default</span>
+    <div class="pane">
+      <!-- Pair the label by `for` and `id`. Wrapping the component in a label
+           instead would bind it to the first chip's remove button. -->
+      <label for="chip-motion-default">Default</label>
       <VPick
+        id="chip-motion-default"
         v-model="animated"
         :options="options"
         multiple
@@ -25,19 +28,21 @@ const options = [
         placeholder="Select statuses"
         style="--vpick-width: 18rem"
       />
-    </label>
+    </div>
 
-    <label>
-      <span>Motion off</span>
+    <div class="pane">
+      <label for="chip-motion-instant">Motion off</label>
       <VPick
+        id="chip-motion-instant"
         v-model="instant"
         :options="options"
         multiple
         clearable
         placeholder="Select statuses"
-        style="--vpick-width: 18rem; --vpick-chip-transition-duration: 0s"
+        :animate="false"
+        style="--vpick-width: 18rem"
       />
-    </label>
+    </div>
   </div>
 </template>
 
@@ -48,14 +53,16 @@ const options = [
   gap: 1.5rem;
 }
 
-.chip-motion label {
+.chip-motion .pane {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
+  align-items: flex-start;
 }
 
-.chip-motion span {
+.chip-motion label {
   font-size: 0.75rem;
   opacity: 0.6;
+  cursor: pointer;
 }
 </style>

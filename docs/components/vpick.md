@@ -147,8 +147,9 @@ Chips scale in as they are added and out as they are removed, and the remaining
 chips slide across to close the gap. Removing the last one is instant, so the
 placeholder is not left sitting under a chip that is still on its way out.
 
-Set `--vpick-chip-transition-duration` to `0s` to turn all of that off. Add and
-remove a few on each to compare:
+Pass `:animate="false"` to switch that off and have chips appear and disappear
+outright. `--vpick-chip-transition-duration` tunes the speed while it is on. Add
+and remove a few on each to compare:
 
 <Preview :code="ChipMotionCode">
   <ChipMotionExample />
@@ -266,34 +267,36 @@ These props apply to both `VPickNative` and `VPick`:
 
 ### VPick-only props
 
-| Prop                   | Type                                                                        | Default                  | Description                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `separators`           | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                               |
-| `rotateIcon`           | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                  |
-| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                             |
-| `clearable`            | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                      |
-| `multiple`             | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                       |
-| `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                              |
-| `noResultsText`        | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                            |
-| `teleportTo`           | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                              |
-| `strategy`             | `"auto" \| "absolute" \| "fixed"`                                           | `"auto"`                 | How the dropdown is anchored. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                              |
-| `bodyLock`             | `boolean`                                                                   | `undefined`              | Locks body scroll while open. Left unset, defaults to `true` in button mode and `false` in searchable mode.                         |
-| `childrenKey`          | `string`                                                                    | `"children"`             | Object key for nested children. Any option with a `children` array enables tree mode automatically.                                 |
-| `defaultExpandLevel`   | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                          |
-| `disableBranchNodes`   | `boolean`                                                                   | `false`                  | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                             |
-| `cascade`              | `boolean`                                                                   | `true`                   | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.             |
-| `valueConsistsOf`      | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`        | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                            |
-| `clearOnSelect`        | `boolean`                                                                   | `true`                   | Clear the search query after picking an option.                                                                                     |
-| `closeOnSelect`        | `boolean`                                                                   | see description          | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both. |
-| `noChildrenText`       | `string`                                                                    | `"No sub-options"`       | Text shown under an expanded branch whose `children` array is empty.                                                                |
-| `noOptionsText`        | `string`                                                                    | `"No options available"` | Text shown when there are no options at all.                                                                                        |
-| `backspaceRemoves`     | `boolean`                                                                   | `true`                   | Backspace on an empty search input removes the last chip.                                                                           |
-| `deleteRemoves`        | `boolean`                                                                   | `true`                   | Delete on an empty search input removes the last chip.                                                                              |
-| `searchNested`         | `boolean`                                                                   | `false`                  | In tree mode, let a multi-word query match across a node's ancestor path.                                                           |
-| `alwaysOpen`           | `boolean`                                                                   | `false`                  | Renders the list inline in the page instead of as a dropdown. See [Always open](#always-open).                                      |
-| `flattenSearchResults` | `boolean`                                                                   | `false`                  | In tree mode, show only nodes matching the query, as a flat list. See [Flattening search results](#flattening-search-results).      |
-| `valueFormat`          | `"id" \| "object"`                                                          | `"id"`                   | Whether `v-model` holds plain values or your original option objects. See [Object values](#object-values).                          |
-| `sortValueBy`          | `"ORDER_SELECTED" \| "LEVEL" \| "INDEX"`                                    | `"ORDER_SELECTED"`       | Order of the emitted array and the chips. See [Ordering selected values](#ordering-selected-values).                                |
+| Prop                   | Type                                                                        | Default                  | Description                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `separators`           | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                                 |
+| `rotateIcon`           | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                    |
+| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                               |
+| `clearable`            | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                        |
+| `multiple`             | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                         |
+| `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                                |
+| `noResultsText`        | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                              |
+| `teleportTo`           | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                                |
+| `strategy`             | `"auto" \| "absolute" \| "fixed"`                                           | `"auto"`                 | How the dropdown is anchored. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                                |
+| `hideWhenDetached`     | `boolean`                                                                   | `true`                   | Hide the dropdown while its trigger is scrolled out of view. See [Anchoring and scroll containers](#anchoring-and-scroll-containers). |
+| `animate`              | `boolean`                                                                   | `true`                   | Animate the multiselect chips. Set to `false` to add and remove them outright.                                                        |
+| `bodyLock`             | `boolean`                                                                   | `undefined`              | Locks body scroll while open. Left unset, defaults to `true` in button mode and `false` in searchable mode.                           |
+| `childrenKey`          | `string`                                                                    | `"children"`             | Object key for nested children. Any option with a `children` array enables tree mode automatically.                                   |
+| `defaultExpandLevel`   | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                            |
+| `disableBranchNodes`   | `boolean`                                                                   | `false`                  | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                               |
+| `cascade`              | `boolean`                                                                   | `true`                   | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.               |
+| `valueConsistsOf`      | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`        | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                              |
+| `clearOnSelect`        | `boolean`                                                                   | `true`                   | Clear the search query after picking an option.                                                                                       |
+| `closeOnSelect`        | `boolean`                                                                   | see description          | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both.   |
+| `noChildrenText`       | `string`                                                                    | `"No sub-options"`       | Text shown under an expanded branch whose `children` array is empty.                                                                  |
+| `noOptionsText`        | `string`                                                                    | `"No options available"` | Text shown when there are no options at all.                                                                                          |
+| `backspaceRemoves`     | `boolean`                                                                   | `true`                   | Backspace on an empty search input removes the last chip.                                                                             |
+| `deleteRemoves`        | `boolean`                                                                   | `true`                   | Delete on an empty search input removes the last chip.                                                                                |
+| `searchNested`         | `boolean`                                                                   | `false`                  | In tree mode, let a multi-word query match across a node's ancestor path.                                                             |
+| `alwaysOpen`           | `boolean`                                                                   | `false`                  | Renders the list inline in the page instead of as a dropdown. See [Always open](#always-open).                                        |
+| `flattenSearchResults` | `boolean`                                                                   | `false`                  | In tree mode, show only nodes matching the query, as a flat list. See [Flattening search results](#flattening-search-results).        |
+| `valueFormat`          | `"id" \| "object"`                                                          | `"id"`                   | Whether `v-model` holds plain values or your original option objects. See [Object values](#object-values).                            |
+| `sortValueBy`          | `"ORDER_SELECTED" \| "LEVEL" \| "INDEX"`                                    | `"ORDER_SELECTED"`       | Order of the emitted array and the chips. See [Ordering selected values](#ordering-selected-values).                                  |
 
 ## Slots
 
@@ -451,6 +454,24 @@ independently: `teleportTo` says where the dropdown is rendered, `strategy` says
 how it is positioned once there. Naming a target skips auto-detection, and the
 strategy stays `"fixed"` unless you ask for `"absolute"`.
 
+### When the trigger scrolls away
+
+An open dropdown whose trigger has scrolled out of view is anchored to something
+the user can no longer see. `hideWhenDetached` hides it until the trigger comes
+back:
+
+```vue
+<VPick :options="options" :hide-when-detached="false" />
+```
+
+It is hidden, not closed, so the selection, the focus position and any search
+query are all still there when you scroll back.
+
+This measures clipping, not overlap. A trigger covered by a fixed header is not
+clipped by anything, so the panel stays visible and paints over the header. Give
+the panel a lower `--vpick-listbox-z-index` than your header if you would rather
+it slid underneath.
+
 ## Empty states
 
 Two different situations, two messages:
@@ -607,6 +628,23 @@ since it still is not selectable as an option.
 | `Backspace`               | In `multiple` mode, removes the last selected chip when the search input is empty. Disable with `backspaceRemoves: false`. |
 | `Delete`                  | Same as `Backspace`. Disable with `deleteRemoves: false`.                                                                  |
 | `Tab`                     | Close dropdown and move focus                                                                                              |
+
+## Labelling
+
+Pair a label with `for` and `id` rather than wrapping the component in it:
+
+```vue
+<label for="status">Status</label>
+<VPick id="status" v-model="selected" :options="options" multiple />
+```
+
+`id` is applied to the control itself, the `<button role="combobox">` in button
+mode and the `<input role="combobox">` in searchable and `multiple`, so `for`
+resolves to the right element and clicking the label focuses it.
+
+Wrapping instead binds the label to its first labelable descendant. In
+`multiple` mode that is the first chip's remove button, so clicking the label
+deletes a chip. `ariaLabel` is the alternative when there is no visible label.
 
 ## Accessibility
 

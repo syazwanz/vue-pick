@@ -45,4 +45,5 @@ export {
   promoteToContainingBlock,
   releaseContainingBlock,
 } from "./containingBlock"
+export { isClippedOutOfView } from "./visibility"
 export { setupResizeObserver } from "./resizeObserver"

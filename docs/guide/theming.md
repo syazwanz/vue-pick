@@ -133,17 +133,21 @@ these too and the specific one is only needed to break that link.
 | `--vpick-chip-transition-duration` | `150ms`              |
 
 Chips scale up as they are added and shrink away as they are removed, with the
-remaining chips sliding across to close the gap. Set the duration to `0s` to
-turn that off:
+remaining chips sliding across to close the gap. This variable tunes how fast
+that runs:
 
 ```vue
 <VPick
   v-model="selected"
   :options="options"
   multiple
-  style="--vpick-chip-transition-duration: 0s"
+  style="--vpick-chip-transition-duration: 80ms"
 />
 ```
+
+To switch the motion off entirely, use the `animate` prop rather than a zero
+duration. A duration of zero still runs the transition, just with no time to run
+it in, which leaves the chips mid-reflow for a frame.
 
 ## Reduced motion
 

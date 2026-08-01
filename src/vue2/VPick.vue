@@ -27,6 +27,8 @@ import {
   unlockBodyScroll,
   setupScrollListeners,
   findScrollParent,
+  scrollParents,
+  isClippedOutOfView,
   establishesContainingBlock,
   promoteToContainingBlock,
   releaseContainingBlock,
@@ -57,6 +59,8 @@ const props = withDefaults(
     groupOptionsKey?: string
     teleportTo?: string | HTMLElement
     strategy?: "auto" | "absolute" | "fixed"
+    hideWhenDetached?: boolean
+    animate?: boolean
     bodyLock?: boolean
     searchable?: boolean
     searchNested?: boolean
@@ -103,6 +107,8 @@ const props = withDefaults(
     groupOptionsKey: undefined,
     teleportTo: undefined,
     strategy: "auto",
+    hideWhenDetached: true,
+    animate: true,
     bodyLock: undefined,
     searchable: false,
     searchNested: false,
@@ -745,6 +751,12 @@ function resolveTeleportTarget(): HTMLElement {
 // The cost is that the container's own overflow can clip it, which is why the
 // panel is measured against the container's box when anchored there.
 const anchorEl = ref<HTMLElement | null>(null)
+
+// The panel is hidden rather than closed while its trigger is out of view, so
+// selection, focus and the search query all survive scrolling back to it.
+const detached = ref(false)
+// Resolved on open so the ancestor walk does not repeat on every frame.
+let scrollAncestors: HTMLElement[] = []
 const resolvedStrategy = ref<"absolute" | "fixed">("fixed")
 
 // Whichever element this instance promoted, so the exact same one is released
@@ -846,10 +858,7 @@ function mountPositioner() {
 //              scroll offset. Scrolling changes the trigger's viewport rect and
 //              the anchor's scrollTop by the same amount, so the result is
 //              invariant and the browser does the moving.
-function measure(listboxHeight: number) {
-  const trigger = triggerRef.value
-  if (!trigger) return null
-  const rect = trigger.getBoundingClientRect()
+function measure(listboxHeight: number, rect: DOMRect) {
   const offset = isSearchable.value ? 6 : 4
   const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
   const anchor = resolvedStrategy.value === "absolute" ? anchorEl.value : null
@@ -884,8 +893,15 @@ function measure(listboxHeight: number) {
 async function updatePosition(skipSecondPass = false) {
   // In flow: the browser lays the panel out, nothing to compute.
   if (isInline.value) return
+  const trigger = triggerRef.value
+  if (!trigger) return
+  // One layout read per frame, shared by the detachment check and the maths.
+  const rect = trigger.getBoundingClientRect()
+  if (props.hideWhenDetached) {
+    detached.value = isClippedOutOfView(rect, scrollAncestors)
+  }
   // First paint: use a sensible default height; next frame remeasures actual.
-  const initial = measure(listboxRef.value?.offsetHeight || 240)
+  const initial = measure(listboxRef.value?.offsetHeight || 240, rect)
   if (!initial) return
   placement.value = initial.placement
 
@@ -904,7 +920,7 @@ async function updatePosition(skipSecondPass = false) {
   await nextTick()
   const el = listboxRef.value
   if (!el) return
-  const measured = measure(el.offsetHeight)
+  const measured = measure(el.offsetHeight, trigger.getBoundingClientRect())
   if (!measured) return
   placement.value = measured.placement
   positionerStyle.value = {
@@ -1025,6 +1041,7 @@ function open() {
     mountPositioner()
     updatePosition()
     if (triggerRef.value && !cleanupScroll) {
+      scrollAncestors = scrollParents(triggerRef.value)
       cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
     }
     // Reposition when the trigger height changes (e.g. multi-select chips wrap
@@ -1053,6 +1070,8 @@ function close() {
     scrollLocked = false
   }
   cancelReposition()
+  detached.value = false
+  scrollAncestors = []
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
@@ -1594,9 +1613,11 @@ onBeforeUnmount(() => {
       <transition-group
         name="vpick-chip"
         tag="span"
+        :css="animate"
         :class="[
           'vpick-chips',
           { 'vpick-chips--empty': !selectedOptions.length },
+          { 'vpick-chips--static': !animate },
         ]"
       >
         <span
@@ -1765,11 +1786,18 @@ onBeforeUnmount(() => {
          hardware-accelerated layer); listbox owns the enter-leave animation.
          Splitting them is required because two transforms can't coexist on
          the same element. -->
-    <transition name="vpick-dropdown" @after-leave="onAfterLeave">
+    <transition
+      name="vpick-dropdown"
+      :css="animate"
+      @after-leave="onAfterLeave"
+    >
       <div
         v-show="isOpen"
         ref="positionerRef"
-        class="vpick-positioner"
+        :class="[
+          'vpick-positioner',
+          { 'vpick-positioner--detached': detached },
+        ]"
         :style="positionerStyle"
         :data-placement="placement"
         @mousedown.prevent

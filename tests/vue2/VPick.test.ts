@@ -1226,6 +1226,29 @@ describe("VPick (Vue 2) — multiple selection", () => {
     expect(classes()).toContain("vpick-chips--empty")
   })
 
+  // `animate: false` has to stop the FLIP move as well as the enter and leave
+  // classes. transition-group runs the move from its own updated hook and never
+  // consults `css`, so the wrapper carries a class that declares no transform
+  // transition, which is what makes Vue skip the move pass entirely.
+  it("marks the chip wrapper static when animate is off", () => {
+    const on = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["todo"] },
+    })
+    expect(on.find(".vpick-chips").classes()).not.toContain(
+      "vpick-chips--static",
+    )
+
+    const off = mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        value: ["todo"],
+        animate: false,
+      },
+    })
+    expect(off.find(".vpick-chips").classes()).toContain("vpick-chips--static")
+  })
+
   it("keeps chips and the input in one transition group", () => {
     const wrapper = mount(VPick, {
       propsData: { options: status, multiple: true, value: ["todo", "done"] },
@@ -2427,5 +2450,81 @@ describe("VPick (Vue 2) — explicit strategy", () => {
 
     wrapper.destroy()
     target.remove()
+  })
+})
+
+describe("VPick (Vue 2) — hideWhenDetached", () => {
+  // Mirrors the Vue 3 suite. The panel is hidden, not closed, so selection and
+  // focus survive scrolling back to the trigger.
+  function openInContainer(propsData: Record<string, unknown> = {}) {
+    const container = document.createElement("div")
+    container.style.overflowY = "auto"
+    document.body.appendChild(container)
+    container.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 300, left: 0, right: 300 }) as DOMRect
+    const host = document.createElement("div")
+    container.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status, ...propsData },
+      attachTo: host,
+    })
+    return { wrapper, container }
+  }
+
+  it("hides once the trigger is clipped by its scroll container", async () => {
+    const { wrapper, container } = openInContainer()
+    let top = 150
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      true,
+    )
+
+    top = 150
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    wrapper.destroy()
+    container.remove()
+  })
+
+  it("stays visible when hideWhenDetached is off", async () => {
+    const { wrapper, container } = openInContainer({ hideWhenDetached: false })
+    let top = 150
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+
+    wrapper.destroy()
+    container.remove()
   })
 })

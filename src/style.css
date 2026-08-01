@@ -202,6 +202,15 @@ button.vpick-trigger {
   user-select: none;
 }
 
+/* The reset on `.vpick-trigger` is only (0,1,0), so a host stylesheet targeting
+   `button:focus` outranks it and paints the browser's own focus ring over ours.
+   Re-asserted here at a weight that wins. Only the non-searchable trigger is a
+   `<button>`; the other modes wrap an `<input>` and are not affected. */
+button.vpick-trigger:focus,
+button.vpick-trigger:focus-visible {
+  outline: none;
+}
+
 button.vpick-trigger:focus-visible:not(.vpick-trigger--open) {
   border-color: var(--vpick-focus-border-color);
   box-shadow:
@@ -412,6 +421,13 @@ button.vpick-trigger--loading:disabled,
   pointer-events: none;
 }
 
+/* `hideWhenDetached`: the trigger has been scrolled out of view, so the panel
+   is hidden rather than closed. It keeps its selection, its focus and any
+   search query, and comes back when the trigger does. */
+.vpick-positioner--detached {
+  visibility: hidden;
+}
+
 .vpick-positioner[data-placement="top"] {
   --vpick-transform-origin: bottom center;
 }
@@ -616,13 +632,35 @@ button.vpick-trigger--loading:disabled,
   display: contents;
 }
 
+/* Every chip transition runs off this rather than the raw variable. A duration
+   of exactly 0 makes the browser report "no transition", so Vue skips the FLIP
+   move while `position: absolute` on the leaving chip still applies: the chip
+   drops out of flow, the rest reflow uncompensated, and one frame of overlap
+   shows. A hundredth of a millisecond is imperceptible but keeps the normal
+   path, so `--vpick-chip-transition-duration: 0s` still reads as "off". */
+.vpick {
+  --vpick-chip-duration: max(
+    0.01ms,
+    var(--vpick-chip-transition-duration, 150ms)
+  );
+}
+
 /* Removing the last chip is not animated. The placeholder is painted the moment
    the selection empties, in the same spot the chip occupies, so a chip that
    lingers there sits on top of the placeholder text and the two read as one
    element fading in. Removing one of several chips keeps the full animation,
    since the remaining chips still have a gap to slide across. */
 .vpick-chips--empty .vpick-chip-leave-active {
-  transition-duration: 0s;
+  transition-duration: 0.01ms;
+}
+
+/* `animate: false` sets `:css="false"`, which stops the enter and leave classes
+   being applied but not the FLIP move: TransitionGroup runs that from its own
+   updated hook and never consults `css`. It does skip the whole move pass when
+   the move class declares no transform transition, so declaring none here is
+   what actually turns it off. */
+.vpick-chips--static .vpick-chip-move {
+  transition: none;
 }
 
 /* Chips scale in when selected and out when removed. Set the duration to 0s to
@@ -630,10 +668,8 @@ button.vpick-trigger--loading:disabled,
 .vpick-chip-enter-active,
 .vpick-chip-leave-active {
   transition:
-    transform var(--vpick-chip-transition-duration, 150ms)
-      cubic-bezier(0, 0.55, 0.45, 1),
-    opacity var(--vpick-chip-transition-duration, 150ms)
-      cubic-bezier(0, 0.55, 0.45, 1);
+    transform var(--vpick-chip-duration) cubic-bezier(0, 0.55, 0.45, 1),
+    opacity var(--vpick-chip-duration) cubic-bezier(0, 0.55, 0.45, 1);
 }
 
 /* Taking the leaving chip out of flow is what lets the rest slide across to
@@ -646,17 +682,15 @@ button.vpick-trigger--loading:disabled,
      run the full duration it lingers over the placeholder text and the two read
      as one element fading in. The shrink still runs the whole way. */
   transition:
-    transform var(--vpick-chip-transition-duration, 150ms)
-      cubic-bezier(0.25, 1, 0.5, 1),
-    opacity calc(var(--vpick-chip-transition-duration, 150ms) * 0.5) linear;
+    transform var(--vpick-chip-duration) cubic-bezier(0.25, 1, 0.5, 1),
+    opacity calc(var(--vpick-chip-duration) * 0.5) linear;
 }
 
 /* Applies to the search input as well as the chips, since both are children of
    the group. Adding or removing a chip slides the input to its new position
    rather than teleporting it. */
 .vpick-chip-move {
-  transition: transform var(--vpick-chip-transition-duration, 150ms)
-    cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform var(--vpick-chip-duration) cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .vpick-chip-enter-from,

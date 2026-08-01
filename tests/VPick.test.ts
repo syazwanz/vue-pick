@@ -1158,6 +1158,29 @@ describe("VPick — multiple selection", () => {
     expect(classes()).toContain("vpick-chips--empty")
   })
 
+  // `animate: false` has to stop the FLIP move as well as the enter and leave
+  // classes. TransitionGroup runs the move from its own updated hook and never
+  // consults `css`, so the wrapper carries a class that declares no transform
+  // transition, which is what makes Vue skip the move pass entirely.
+  it("marks the chip wrapper static when animate is off", () => {
+    const on = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo"] },
+    })
+    expect(on.find(".vpick-chips").classes()).not.toContain(
+      "vpick-chips--static",
+    )
+
+    const off = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        modelValue: ["todo"],
+        animate: false,
+      },
+    })
+    expect(off.find(".vpick-chips").classes()).toContain("vpick-chips--static")
+  })
+
   it("keeps chips and the input in one transition group", () => {
     const wrapper = mount(VPick, {
       props: { options: status, multiple: true, modelValue: ["todo", "done"] },

@@ -13,7 +13,7 @@ function isIOS(): boolean {
 
 // Only treat an element as scrollable when it can actually scroll.
 // `overflow: scroll` is always scrollable; `overflow: auto` requires content
-// that exceeds the container. Matches Reka / vueuse useScrollLock.
+// that exceeds the container.
 function isScrollable(el: Element | null): boolean {
   while (el && el !== document.body) {
     const style = getComputedStyle(el)

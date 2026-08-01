@@ -68,6 +68,7 @@ export default tseslint.config(
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         console: "readonly",
+        DOMRect: "readonly",
         process: "readonly",
       },
       parserOptions: {

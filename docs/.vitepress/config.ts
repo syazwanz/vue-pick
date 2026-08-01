@@ -16,6 +16,10 @@ export default defineConfig({
   base: "/",
   cleanUrls: true,
   lastUpdated: true,
+  // The component ships no dark theme, so a dark site would frame every live
+  // example in colours it was never designed against. Drop this once the
+  // stylesheet has a dark palette.
+  appearance: false,
   sitemap: {
     hostname,
   },
