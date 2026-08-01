@@ -130,7 +130,34 @@ export const treeOptions = [
         label: "Men",
         value: "men",
         children: [
-          { label: "Shirts", value: "shirts" },
+          // Deliberately deep: this chain reaches depth 5 so the indent, the
+          // chevron/checkbox alignment and label ellipsis can be eyeballed
+          // where they are worst.
+          {
+            label: "Shirts",
+            value: "shirts",
+            children: [
+              {
+                label: "Casual",
+                value: "shirts-casual",
+                children: [
+                  {
+                    label: "Linen",
+                    value: "shirts-casual-linen",
+                    children: [
+                      { label: "Slim fit", value: "shirts-casual-linen-slim" },
+                      {
+                        label: "Regular fit",
+                        value: "shirts-casual-linen-regular",
+                      },
+                    ],
+                  },
+                  { label: "Oxford", value: "shirts-casual-oxford" },
+                ],
+              },
+              { label: "Formal", value: "shirts-formal" },
+            ],
+          },
           { label: "Pants", value: "pants" },
         ],
       },

@@ -242,13 +242,6 @@ body {
   gap: 8px;
 }
 
-.demo-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  text-align: center;
-}
-
 .demo-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;

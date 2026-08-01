@@ -86,10 +86,11 @@ inherits from `--vpick-width` so a single override styles both.
 | `--vpick-option-check-color`    | `currentColor`                                                   |
 | `--vpick-group-label-color`     | `#737373`                                                        |
 | `--vpick-group-label-size`      | `0.75rem`                                                        |
-| `--vpick-tree-indent`           | `1rem`                                                           |
+| `--vpick-tree-indent`           | `1.375rem`                                                       |
 
 `--vpick-tree-indent` is the width of one level of nesting in tree mode, applied
-per depth.
+per depth. The default matches the width of the expand chevron and its gap, so a
+child's chevron lines up under its parent's label.
 
 ## Multiselect checkbox variables
 
