@@ -1,5 +1,44 @@
 # vue-pick
 
+## 0.19.0
+
+### Minor Changes
+
+- 480e450: Add `animate`, on by default. Set it to `false` to add and remove multiselect
+  chips outright:
+
+  ```vue
+  <VPick multiple :animate="false" />
+  ```
+
+  This replaces the advice in 0.18.0 to set `--vpick-chip-transition-duration` to
+  `0s`. A zero duration does not switch the transition off, it runs it with no
+  time to run in: Vue still applies the leave class, which takes the chip out of
+  flow, and still performs its move pass, so the chips are left mid-reflow for a
+  frame. The variable is for tuning the speed while the motion is on.
+
+- 480e450: Add `hideWhenDetached`, on by default. An open dropdown whose trigger has been
+  scrolled out of view, or out of its scroll container, is now hidden until the
+  trigger comes back rather than left floating over unrelated content.
+
+  ```vue
+  <VPick :options="options" :hide-when-detached="false" />
+  ```
+
+  It is hidden, not closed, so the selection, focus position and search query all
+  survive.
+
+  This measures clipping, not overlap: a trigger covered by a fixed header is not
+  clipped by anything, so the panel stays visible there. Lower
+  `--vpick-listbox-z-index` below your header to have it slide underneath instead.
+
+### Patch Changes
+
+- 480e450: Fix the browser's default focus ring showing on the non-searchable trigger
+  instead of the themed one. A host stylesheet with a `button:focus` rule
+  outranked the reset on `.vpick-trigger`, so the native ring painted over ours.
+  Searchable and multiple were unaffected, since their trigger is not a `<button>`.
+
 ## 0.18.0
 
 ### Minor Changes
