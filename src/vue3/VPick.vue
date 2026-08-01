@@ -265,11 +265,58 @@ function collectInitialExpanded(
   return set
 }
 
+function collectBranchValues(items: OptionOrGroup[]): Set<OptionItem["value"]> {
+  const set = new Set<OptionItem["value"]>()
+  for (const item of items) {
+    if (isOptionGroup(item)) {
+      for (const v of collectBranchValues(item.options as OptionOrGroup[])) {
+        set.add(v)
+      }
+      continue
+    }
+    if (Array.isArray(item.children)) {
+      set.add(item.value)
+      for (const v of collectBranchValues(item.children as OptionOrGroup[])) {
+        set.add(v)
+      }
+    }
+  }
+  return set
+}
+
 const expandedSet = ref<Set<OptionItem["value"]>>(
   props.defaultExpandLevel
     ? collectInitialExpanded(normalized.value, props.defaultExpandLevel)
     : new Set(),
 )
+
+// Every branch the component has already seen, so a later `options` change can
+// tell a brand new node from one the user deliberately collapsed.
+const knownBranches = ref<Set<OptionItem["value"]>>(
+  collectBranchValues(normalized.value),
+)
+
+// `defaultExpandLevel` is applied to branches we have not seen before. Options
+// commonly arrive after mount, and at that point every node is new, so the
+// level has to apply then and not only in setup. Branches that were already
+// present keep whatever the user expanded or collapsed by hand.
+watch(normalized, (items) => {
+  const present = collectBranchValues(items)
+  const next = new Set<OptionItem["value"]>()
+
+  for (const v of expandedSet.value) {
+    if (present.has(v)) next.add(v)
+  }
+
+  if (props.defaultExpandLevel) {
+    for (const v of collectInitialExpanded(items, props.defaultExpandLevel)) {
+      if (!knownBranches.value.has(v)) next.add(v)
+    }
+  }
+
+  expandedSet.value = next
+  knownBranches.value = present
+})
 
 // Snapshot taken on the first search keystroke; restored when search clears (D6)
 const preSearchExpandedSet = ref<Set<OptionItem["value"]> | null>(null)
@@ -1810,7 +1857,10 @@ onBeforeUnmount(() => {
                 <template v-for="item in section.items" :key="item.fo.id">
                   <div
                     v-if="item.fo.isEmptyMessage"
-                    class="vpick-option-empty"
+                    :class="[
+                      'vpick-option-empty',
+                      { 'vpick-option-empty--multi': multiple },
+                    ]"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
                   >
                     <slot name="no-children" :option="item.fo.option">{{
@@ -1865,8 +1915,43 @@ onBeforeUnmount(() => {
                       (highlightedIndex = item.flatIdx)
                     "
                   >
+                    <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
+                    <button
+                      v-if="isTreeMode && item.fo.isBranch"
+                      type="button"
+                      :class="[
+                        'vpick-option-expand',
+                        { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                      ]"
+                      tabindex="-1"
+                      aria-hidden="true"
+                      @mousedown.prevent
+                      @click.stop="toggleExpand(item.fo.option.value)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </button>
                     <span
-                      v-if="multiple"
+                      v-else-if="isTreeMode"
+                      class="vpick-option-expand-spacer"
+                      aria-hidden="true"
+                    />
+                    <!-- No checkbox on a node that cannot be checked. -->
+                    <span
+                      v-if="
+                        multiple && !(disableBranchNodes && item.fo.isBranch)
+                      "
                       :class="[
                         'vpick-option-checkbox',
                         {
@@ -1908,38 +1993,6 @@ onBeforeUnmount(() => {
                         <path d="M5 12h14" />
                       </svg>
                     </span>
-                    <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
-                    <button
-                      v-if="isTreeMode && item.fo.isBranch"
-                      type="button"
-                      :class="[
-                        'vpick-option-expand',
-                        { 'vpick-option-expand--expanded': item.fo.isExpanded },
-                      ]"
-                      tabindex="-1"
-                      aria-hidden="true"
-                      @mousedown.prevent
-                      @click.stop="toggleExpand(item.fo.option.value)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
-                    </button>
-                    <span
-                      v-else-if="isTreeMode"
-                      class="vpick-option-expand-spacer"
-                      aria-hidden="true"
-                    />
                     <span class="vpick-option-label">{{
                       item.fo.option.label
                     }}</span>

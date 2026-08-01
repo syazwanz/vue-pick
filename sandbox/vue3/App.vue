@@ -21,7 +21,7 @@ const paneAnchored = ref<unknown>(null)
 const paneStatic = ref<unknown>(null)
 
 const treeValue = ref<unknown>(null)
-const treeMultiValue = ref<unknown[]>([])
+const treeMultiple = ref(false)
 const treeSearchable = ref(false)
 const treeClearable = ref(true)
 const treeDisableBranches = ref(false)
@@ -41,6 +41,13 @@ function logTreeEvent(kind: string, option: unknown) {
 const treeValueConsistsOf = ref<
   "LEAF_PRIORITY" | "ALL" | "BRANCH_PRIORITY" | "ALL_WITH_INDETERMINATE"
 >("LEAF_PRIORITY")
+
+// Single takes a bare value, multiple takes an array. Reset on toggle so the
+// v-model never carries the wrong shape across.
+watch(treeMultiple, (isMulti) => {
+  treeValue.value = isMulti ? [] : null
+  treeEventLog.value = []
+})
 
 const propsConfig = ref({
   disabled: false,
@@ -186,6 +193,10 @@ function toggleError(e: Event) {
       <h2 class="section-title">Tree Select</h2>
       <div class="controls">
         <label class="control-label">
+          <input v-model="treeMultiple" type="checkbox" />
+          <span>Multiple</span>
+        </label>
+        <label class="control-label">
           <input v-model="treeSearchable" type="checkbox" />
           <span>Searchable</span>
         </label>
@@ -247,32 +258,11 @@ function toggleError(e: Event) {
       </div>
       <div class="demo-row">
         <div class="demo-item">
-          <div class="demo-label">Single</div>
           <v-pick
+            :key="`${treeMultiple}-${treeDefaultExpandLevel}`"
             v-model="treeValue"
             :options="treeOptions"
-            :searchable="treeSearchable"
-            :clearable="treeClearable"
-            :disable-branch-nodes="treeDisableBranches"
-            :default-expand-level="treeDefaultExpandLevel || undefined"
-            :clear-on-select="treeClearOnSelect"
-            :close-on-select="treeCloseOnSelect"
-            :no-children-text="treeNoChildrenText"
-            :always-open="treeAlwaysOpen"
-            placeholder="Select a category"
-            style="--vpick-width: 280px; --vpick-bg: white"
-            @select="logTreeEvent('select', $event)"
-            @deselect="logTreeEvent('deselect', $event)"
-          />
-          <div class="demo-value">
-            <code>{{ JSON.stringify(treeValue) }}</code>
-          </div>
-        </div>
-        <div class="demo-item">
-          <div class="demo-label">Multiple</div>
-          <v-pick
-            v-model="treeMultiValue"
-            :options="treeOptions"
+            :multiple="treeMultiple"
             :searchable="treeSearchable"
             :clearable="treeClearable"
             :disable-branch-nodes="treeDisableBranches"
@@ -283,14 +273,15 @@ function toggleError(e: Event) {
             :close-on-select="treeCloseOnSelect"
             :no-children-text="treeNoChildrenText"
             :always-open="treeAlwaysOpen"
-            multiple
-            placeholder="Select categories"
+            :placeholder="
+              treeMultiple ? 'Select categories' : 'Select a category'
+            "
             style="--vpick-width: 280px; --vpick-bg: white"
             @select="logTreeEvent('select', $event)"
             @deselect="logTreeEvent('deselect', $event)"
           />
           <div class="demo-value">
-            <code>{{ JSON.stringify(treeMultiValue) }}</code>
+            <code>{{ JSON.stringify(treeValue) }}</code>
           </div>
         </div>
       </div>

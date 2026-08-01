@@ -1567,6 +1567,103 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     expect(emptyRow.find(".vpick-option-expand").exists()).toBe(true)
   })
 
+  // The checkbox sits in normal flow, so it indents with the row. That only
+  // works while it comes after the chevron, which makes the order load-bearing.
+  it("tree multi rows order the chevron before the checkbox before the label", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: withEmpty,
+        value: [],
+        multiple: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const rows = wrapper.findAll('[role="option"]')
+    const branch = rows.filter((o) => o.text().includes("Branch")).at(0)
+    const leaf = rows.filter((o) => o.text().includes("Child")).at(0)
+
+    const order = (row: typeof branch) =>
+      Array.from(row.element.children).map((c) => c.classList[0])
+
+    expect(order(branch)).toEqual([
+      "vpick-option-expand",
+      "vpick-option-checkbox",
+      "vpick-option-label",
+    ])
+    expect(order(leaf)).toEqual([
+      "vpick-option-expand-spacer",
+      "vpick-option-checkbox",
+      "vpick-option-label",
+    ])
+  })
+
+  // Options usually arrive from an API after mount. At that point every branch
+  // is new, so defaultExpandLevel has to apply then, not only in setup.
+  it("defaultExpandLevel applies to options that arrive after mount", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: [] as OptionOrGroup[], defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(0)
+
+    await wrapper.setProps({ options: withEmpty })
+    await nextTick()
+
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((o) => o.text())
+    expect(labels).toContain("Branch")
+    expect(labels).toContain("Child")
+  })
+
+  it("a branch the user collapsed stays collapsed when options change", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: withEmpty, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const branch = wrapper
+      .findAll('[role="option"]')
+      .filter((o) => o.text().includes("Branch"))
+      .at(0)
+    await branch.find(".vpick-option-expand").trigger("click")
+    await nextTick()
+    const collapsed = () =>
+      wrapper.findAll('[role="option"]').wrappers.map((o) => o.text())
+    expect(collapsed()).not.toContain("Child")
+
+    // Same tree, new array identity: the collapse must survive.
+    await wrapper.setProps({ options: [...withEmpty] })
+    await nextTick()
+    expect(collapsed()).not.toContain("Child")
+  })
+
+  it("disableBranchNodes drops the checkbox from branch rows, keeps it on leaves", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: withEmpty,
+        value: [],
+        multiple: true,
+        disableBranchNodes: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const rows = wrapper.findAll('[role="option"]')
+    const branch = rows.filter((o) => o.text().includes("Branch")).at(0)
+    const leaf = rows.filter((o) => o.text().includes("Child")).at(0)
+
+    expect(branch.find(".vpick-option-checkbox").exists()).toBe(false)
+    expect(leaf.find(".vpick-option-checkbox").exists()).toBe(true)
+  })
+
   it("expanding an empty branch shows noChildrenText in an inert row", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: withEmpty, noChildrenText: "Nothing here" },
