@@ -1926,6 +1926,45 @@ describe("VPick — tree select", () => {
     expect(placeholder.text()).toBe("nothing in here")
   })
 
+  // The icon goes in its own box ahead of the text, so it lands on the column
+  // the leaf checkboxes use instead of pushing the text a slot to the right,
+  // which is what happens when an icon is put inside the text slot.
+  it("no-children-icon slot renders ahead of the placeholder text", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null, defaultExpandLevel: 1 },
+      slots: {
+        "no-children-icon": '<svg class="warn" />',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.find(".vpick-option-empty-icon .warn").exists()).toBe(
+      true,
+    )
+    expect(
+      Array.from(placeholder.element.children).map((c) => c.className),
+    ).toEqual(["vpick-option-empty-icon", "vpick-option-empty-label"])
+  })
+
+  // The box is what holds the column open. Drop it when the slot is unused and
+  // the text slides a slot left, which is the whole reason the default does not
+  // move under this change.
+  it("keeps the icon box when no icon slot is given", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: withEmpty, modelValue: null, defaultExpandLevel: 1 },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const placeholder = wrapper.find(".vpick-option-empty")
+    expect(placeholder.find(".vpick-option-empty-icon").exists()).toBe(true)
+    expect(placeholder.find(".vpick-option-empty-label").text()).toBe(
+      "No sub-options",
+    )
+  })
+
   it("clicking an unselectable branch row toggles expansion", async () => {
     const wrapper = mount(VPick, {
       props: { options: tree, modelValue: null, disableBranchNodes: true },

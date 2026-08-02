@@ -1895,9 +1895,15 @@ onBeforeUnmount(() => {
                     ]"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
                   >
-                    <slot name="no-children" :option="item.fo.option">{{
-                      noChildrenText
-                    }}</slot>
+                    <span class="vpick-option-empty-icon" aria-hidden="true">
+                      <slot
+                        name="no-children-icon"
+                        :option="item.fo.option" /></span
+                    ><span class="vpick-option-empty-label"
+                      ><slot name="no-children" :option="item.fo.option">{{
+                        noChildrenText
+                      }}</slot></span
+                    >
                   </div>
                   <div
                     v-else
