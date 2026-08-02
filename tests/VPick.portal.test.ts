@@ -32,6 +32,14 @@ function rectAt(top: number): DOMRect {
   } as DOMRect
 }
 
+function setScrollY(y: number): void {
+  Object.defineProperty(window, "scrollY", {
+    value: y,
+    configurable: true,
+    writable: true,
+  })
+}
+
 afterEach(() => {
   // Clean any teleported nodes left in body between tests. The positioner is
   // the wrapper the listbox sits inside, so removing only the listbox leaves
@@ -39,6 +47,7 @@ afterEach(() => {
   document.body
     .querySelectorAll('.vpick-positioner, [role="listbox"]')
     .forEach((n) => n.remove())
+  setScrollY(0)
 })
 
 describe("VPick — portal", () => {
@@ -113,6 +122,74 @@ describe("VPick — portal", () => {
     option!.dispatchEvent(new MouseEvent("click", { bubbles: true }))
 
     expect(wrapper.emitted("update:modelValue")?.[0]).toEqual(["done"])
+    wrapper.unmount()
+  })
+
+  // Nothing between the trigger and the root scrolls here, so the page is the
+  // scroll container. Document coordinates do not change as it scrolls, which
+  // means the browser moves the panel and JS has nothing to chase. That
+  // invariance is the fix, and it is the part a unit test can prove: happy-dom
+  // cannot composite a scroll, so it cannot show the lag being removed.
+  it("keeps the computed position unchanged when the page scrolls", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+
+    let top = 100
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("absolute")
+    const before = positioner.style.transform
+    expect(before).toMatch(/translate3d\(/)
+
+    // Scroll the page 60px. The trigger's viewport rect moves up by exactly
+    // that much, so the document coordinate is the same number as before.
+    top = 40
+    setScrollY(60)
+    window.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    expect(positioner.style.transform).toBe(before)
+    wrapper.unmount()
+  })
+
+  // The escape hatch has to keep behaving the way it did before, including the
+  // part that made it lag, or `strategy="fixed"` is not a way back.
+  it("strategy=fixed still repositions against the viewport on page scroll", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts, strategy: "fixed" as const },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+
+    let top = 100
+    const triggerEl = wrapper.find('[role="combobox"]').element as HTMLElement
+    triggerEl.getBoundingClientRect = () => rectAt(top)
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("fixed")
+    expect(positioner.style.transform).toBe("translate3d(20px, 140px, 0)")
+
+    top = 40
+    setScrollY(60)
+    window.dispatchEvent(new Event("scroll"))
+    await nextFrame()
+
+    expect(positioner.style.transform).toBe("translate3d(20px, 80px, 0)")
     wrapper.unmount()
   })
 
