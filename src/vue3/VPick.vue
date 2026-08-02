@@ -803,16 +803,48 @@ function refreshForwardedVars() {
 //              scroll offset. Scrolling changes the trigger's viewport rect and
 //              the anchor's scrollTop by the same amount, so the result is
 //              invariant and the browser does the moving.
+// Where document coordinates start for a panel positioned absolutely in the
+// body. A static body leaves the initial containing block as the reference, so
+// the page scroll offset is the entire conversion. A positioned body becomes
+// the reference itself, so measure from its padding box instead. Neither case
+// mutates anything.
+function pageOrigin(): { top: number; left: number } {
+  if (typeof window === "undefined") return { top: 0, left: 0 }
+  const body = document.body
+  const cs = getComputedStyle(body)
+  // Tested for the positioned case rather than against "static": a stylesheet-
+  // less environment reports "" here, which is static in every way that counts.
+  if (!cs.position || cs.position === "static") {
+    return { top: window.scrollY, left: window.scrollX }
+  }
+  const box = body.getBoundingClientRect()
+  return {
+    top: -box.top - parseFloat(cs.borderTopWidth || "0"),
+    left: -box.left - parseFloat(cs.borderLeftWidth || "0"),
+  }
+}
+
 function measure(listboxHeight: number, rect: DOMRect) {
   const offset = isSearchable.value ? 6 : 4
   const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
   const anchor = resolvedStrategy.value === "absolute" ? anchorEl.value : null
 
   if (!anchor) {
-    return {
-      ...computePosition(rect, listboxHeight, vpHeight, offset),
-      width: rect.width,
+    const placed = computePosition(rect, listboxHeight, vpHeight, offset)
+    // `absolute` with no anchor means the page itself is the scroller. Document
+    // coordinates do not change while it scrolls, so the browser moves the
+    // panel and JS never has to chase it. Flip and clamp stay viewport-based,
+    // since the visible area is the window rather than the full page height.
+    if (resolvedStrategy.value === "absolute") {
+      const origin = pageOrigin()
+      return {
+        ...placed,
+        top: placed.top + origin.top,
+        left: placed.left + origin.left,
+        width: rect.width,
+      }
     }
+    return { ...placed, width: rect.width }
   }
 
   const box = anchor.getBoundingClientRect()
@@ -889,6 +921,12 @@ async function updatePosition(skipSecondPass = false) {
 // scroll-invariant, so the browser moves the panel natively and it stays glued.
 // The cost is that the container's own overflow can clip it, which is why the
 // panel is measured against the container's box when anchored there.
+//
+// The same holds one level up. When nothing between the trigger and the root
+// scrolls, the page is the scroll container and the body is the anchor: the
+// panel positions absolutely in document coordinates, which do not move as the
+// page scrolls. `anchorEl` stays null there, since the body is where the panel
+// is teleported anyway and there is no container box to measure against.
 const anchorEl = ref<HTMLElement | null>(null)
 
 // The panel is hidden rather than closed while its trigger is out of view, so
@@ -970,9 +1008,14 @@ function resolveAnchor() {
   }
   const trigger = triggerRef.value
   const container = trigger ? findScrollParent(trigger) : null
+  // No scroll ancestor means the page itself scrolls, which is the common case
+  // and was the one still left on `fixed`. Absolute in the body is the same
+  // trade as anchoring inside a container: coordinates stop changing during
+  // scroll, so the panel stays glued. Nothing can clip it there either, since
+  // it is teleported to the body regardless.
   if (!container) {
     anchorEl.value = null
-    resolvedStrategy.value = "fixed"
+    resolvedStrategy.value = "absolute"
     return
   }
 

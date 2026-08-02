@@ -395,15 +395,15 @@ The dropdown is rendered outside the component so it is never clipped by an
 ancestor with `overflow: hidden`. Where it gets rendered, and how it is
 positioned, is decided by `strategy`.
 
-| Value              | Behavior                                                                                                          |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `"auto"` (default) | Anchors inside the nearest scrollable ancestor when that ancestor can hold it, otherwise falls back to `"fixed"`. |
-| `"absolute"`       | Always anchors inside the nearest scrollable ancestor, setting `position: relative` on it if it has none.         |
-| `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                |
+| Value              | Behavior                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `"auto"` (default) | Anchors to the page when nothing between the trigger and the root scrolls, to the nearest scrollable ancestor when that ancestor can hold it, and falls back to `"fixed"` otherwise. |
+| `"absolute"`       | Always anchors inside the nearest scrollable ancestor, setting `position: relative` on it if it has none.                                                                            |
+| `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                                                                                   |
 
-The distinction matters when your page scrolls inside a container rather than
-the window, which is the usual shape for a dashboard with fixed chrome around a
-scrolling content pane.
+This matters whenever the dropdown is open while something scrolls, whether that
+is the window on an ordinary page or a content pane in a dashboard with fixed
+chrome around it.
 
 With `"fixed"`, the dropdown's coordinates are relative to the viewport, so they
 change on every scrolled pixel and have to be recalculated in JavaScript. The
@@ -414,9 +414,12 @@ Anchored inside the scroll container, the coordinates do not depend on scroll
 position at all. The browser moves the panel along with the content, so it stays
 glued to the trigger and no work happens per frame.
 
-`"auto"` prefers anchoring but needs an ancestor that establishes a containing
-block. A plain `overflow-y: auto` div does not, which is the common case, so
-`"auto"` alone often changes nothing. There are two ways to opt in.
+When the window is what scrolls, `"auto"` anchors to the page and needs nothing
+from you. That is the default on an ordinary page.
+
+Inside a scroll container, `"auto"` prefers anchoring but needs an ancestor that
+establishes a containing block. A plain `overflow-y: auto` div does not, so
+`"auto"` alone often changes nothing there. There are two ways to opt in.
 
 Add `position: relative` to your scroll container:
 

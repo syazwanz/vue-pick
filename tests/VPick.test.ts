@@ -113,7 +113,10 @@ describe("VPick — rendering", () => {
     await nextTick()
     const positioner = wrapper.find<HTMLElement>(".vpick-positioner")
     expect(positioner.element.style.transform).toMatch(/translate3d\(/)
-    expect(positioner.element.style.position).toBe("fixed")
+    // Nothing above the trigger scrolls, so the page is the scroll container
+    // and the panel anchors to it. See the page-scroll tests in the portal
+    // suite for why that is not `fixed`.
+    expect(positioner.element.style.position).toBe("absolute")
     wrapper.unmount()
   })
 
