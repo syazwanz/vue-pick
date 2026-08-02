@@ -289,6 +289,52 @@ describe("VPick (Vue 2) — opening / closing", () => {
     )
     wrapper.destroy()
   })
+
+  // Plenty of widget libraries call stopPropagation in their own mousedown
+  // handler. On the bubble phase that swallows the event before it reaches the
+  // document, so the panel stays open on top of the control the user is
+  // reaching for. The listener runs on capture to sit in front of them.
+  it("closes when the outside click is on a control that stops propagation", async () => {
+    const rival = document.createElement("button")
+    rival.addEventListener("mousedown", (e) => e.stopPropagation())
+    document.body.appendChild(rival)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attachTo: document.body,
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    rival.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await nextTick()
+
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+    rival.remove()
+    wrapper.destroy()
+  })
+
+  // Capture runs before the target's own handlers, so the guard has to hold on
+  // the earlier phase too: a mousedown on the trigger must not close the panel
+  // out from under the click that just opened it.
+  it("stays open when the mousedown is on its own trigger", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attachTo: document.body,
+    })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+
+    trigger.element.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true }),
+    )
+    await nextTick()
+
+    expect(trigger.attributes("aria-expanded")).toBe("true")
+    wrapper.destroy()
+  })
 })
 
 describe("VPick (Vue 2) — keyboard navigation", () => {

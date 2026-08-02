@@ -1508,8 +1508,16 @@ function onClickOutside(e: MouseEvent) {
   close()
 }
 
+// Capture phase, deliberately. On the bubble phase this never runs when the
+// click lands on a control that calls `stopPropagation` in its own mousedown
+// handler, which several widget libraries do, and the panel is left open on top
+// of whatever the user was reaching for. Capture runs before any of them and
+// cannot be cut off. The guard only reads `e.target`, which is the same element
+// in either phase, so nothing about which clicks count as outside changes.
+const CLICK_OUTSIDE_OPTS = true
+
 onMounted(async () => {
-  document.addEventListener("mousedown", onClickOutside)
+  document.addEventListener("mousedown", onClickOutside, CLICK_OUTSIDE_OPTS)
   await nextTick()
   isFormControl.value = !!getRootEl()?.closest("form")
   await nextTick()
@@ -1521,7 +1529,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener("mousedown", onClickOutside)
+  document.removeEventListener("mousedown", onClickOutside, CLICK_OUTSIDE_OPTS)
   cancelReposition()
   // An unmount while open never reaches onAfterLeave, so the container would
   // keep a `position: relative` nobody owns.
