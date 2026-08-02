@@ -235,6 +235,17 @@ function hasAnyChildren(items: OptionOrGroup[]): boolean {
 
 const isTreeMode = computed(() => hasAnyChildren(normalized.value))
 
+// Leaves reserve a chevron-width slot so their content lines up with the branch
+// rows beside them. That only holds while both row types carry the same set of
+// controls. With `disableBranchNodes` a branch row is chevron + label while a
+// leaf is spacer + checkbox + label, one slot longer, so every leaf sits a slot
+// past the branch column. Dropping the spacer there puts a leaf's checkbox in
+// the chevron column and its label in the branch label column, and a child's
+// checkbox lands under the first letter of its parent's label.
+const showLeafSpacer = computed(
+  () => !(props.multiple && props.disableBranchNodes),
+)
+
 function collectInitialExpanded(
   items: OptionOrGroup[],
   maxDepth: number,
@@ -652,11 +663,18 @@ function isSelected(value: OptionItem["value"]): boolean {
 }
 
 // Ordered list of selected option objects for rendering chips.
-// In cascade mode, always display in BRANCH_PRIORITY format (most compact) so
+// In cascade mode, display in BRANCH_PRIORITY format (most compact) so
 // selecting a parent shows one chip, not one chip per leaf.
+//
+// Not with `disableBranchNodes`. Compaction reads the selected set, not what
+// was clicked, so picking every leaf of a branch by hand collapses those chips
+// into the branch. That is a fair summary while the branch is selectable, and a
+// lie when it is not: the chip then names a node the user never chose and
+// cannot choose, while the bound value still holds the individual leaves.
 const selectedOptions = computed(() => {
   if (!props.multiple) return []
-  const displayValues = isCascadeMode.value
+  const compact = isCascadeMode.value && !props.disableBranchNodes
+  const displayValues = compact
     ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
     : Array.isArray(model.value)
       ? model.value
@@ -732,6 +750,10 @@ const FORWARDED_VARS = [
   "--vpick-option-selected-color",
   "--vpick-option-check-color",
   "--vpick-option-radius",
+  "--vpick-option-padding-block",
+  "--vpick-option-padding-inline-start",
+  "--vpick-option-branch-padding-block",
+  "--vpick-option-branch-weight",
   "--vpick-group-label-color",
   "--vpick-group-label-size",
   "--vpick-border-radius",
@@ -763,7 +785,7 @@ function readForwardedVars(): Record<string, string> {
   return out
 }
 
-// Reading 24 custom properties means a style resolve, which is far too much to
+// Reading 28 custom properties means a style resolve, which is far too much to
 // repeat per scroll event. Theming cannot change mid-scroll, so cache on open
 // and refresh only where a change is actually possible.
 const forwarded = ref<Record<string, string>>({})
@@ -1656,10 +1678,16 @@ onBeforeUnmount(() => {
       @click="onSearchTriggerClick"
     >
       <!-- Chips for multi-select. transition-group so removing one lets the
-           rest slide into place instead of jumping. -->
+           rest slide into place instead of jumping.
+           `enter-class` maps Vue 2's `-enter` onto `-enter-from`, the Vue 3
+           name the shared stylesheet is written against. Without it nothing
+           matches and the chip enters at full scale with no start state.
+           `-enter-active`, `-leave-to` and `-move` are spelled the same in
+           both versions, so only enter needs remapping. -->
       <transition-group
         name="vpick-chip"
         tag="span"
+        enter-class="vpick-chip-enter-from"
         :css="animate"
         :class="[
           'vpick-chips',
@@ -1832,9 +1860,12 @@ onBeforeUnmount(() => {
          mount). Positioner owns position (transform: translate3d on a
          hardware-accelerated layer); listbox owns the enter-leave animation.
          Splitting them is required because two transforms can't coexist on
-         the same element. -->
+         the same element.
+         `enter-class` remaps Vue 2's `-enter` to `-enter-from`, see the chip
+         transition-group above. -->
     <transition
       name="vpick-dropdown"
+      enter-class="vpick-dropdown-enter-from"
       :css="animate"
       @after-leave="onAfterLeave"
     >
@@ -1881,7 +1912,7 @@ onBeforeUnmount(() => {
                   :key="item.fo.id + '-empty'"
                   :class="[
                     'vpick-option-empty',
-                    { 'vpick-option-empty--multi': multiple },
+                    { 'vpick-option-empty--multi': multiple && showLeafSpacer },
                   ]"
                   :style="{ '--vpick-option-depth': item.fo.depth }"
                 >
@@ -1973,7 +2004,7 @@ onBeforeUnmount(() => {
                     </svg>
                   </button>
                   <span
-                    v-else-if="isTreeMode"
+                    v-else-if="isTreeMode && showLeafSpacer"
                     class="vpick-option-expand-spacer"
                     aria-hidden="true"
                   />
@@ -2021,9 +2052,16 @@ onBeforeUnmount(() => {
                       <path d="M5 12h14" />
                     </svg>
                   </span>
-                  <span class="vpick-option-label">{{
-                    item.fo.option.label
-                  }}</span>
+                  <span class="vpick-option-label"
+                    ><slot
+                      name="option-label"
+                      :option="item.fo.option"
+                      :is-branch="item.fo.isBranch"
+                      :is-expanded="item.fo.isExpanded"
+                      :depth="item.fo.depth"
+                      >{{ item.fo.option.label }}</slot
+                    ></span
+                  >
                   <span
                     v-if="!multiple"
                     class="vpick-option-check"

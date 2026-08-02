@@ -9,6 +9,8 @@
   --vpick-border-color: #e5e5e5;
   --vpick-border-radius: 0.625rem;
   --vpick-option-radius: 0.5rem;
+  --vpick-option-padding-block: 0.25rem;
+  --vpick-option-padding-inline-start: 0.375rem;
   --vpick-tree-indent: 1.375rem;
   --vpick-bg: transparent;
   --vpick-text-color: inherit;
@@ -487,7 +489,8 @@ button.vpick-trigger--loading:disabled,
   align-items: center;
   gap: 0.375rem;
   position: relative;
-  padding: 0.25rem 2rem 0.25rem 0.375rem;
+  padding: var(--vpick-option-padding-block) 2rem
+    var(--vpick-option-padding-block) var(--vpick-option-padding-inline-start);
   font-size: var(--vpick-font-size);
   line-height: var(--vpick-line-height);
   border-radius: var(--vpick-option-radius);
@@ -802,8 +805,24 @@ button.vpick-trigger--loading:disabled,
 /* Depth-based indent: --vpick-option-depth is set inline per row */
 .vpick-option--tree {
   padding-inline-start: calc(
-    0.375rem + var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
+    var(--vpick-option-padding-inline-start) + var(--vpick-option-depth, 0) *
+      var(--vpick-tree-indent)
   );
+}
+
+/* Branch rows read as section headings once they stop being selectable, which
+   is common enough to deserve its own knobs. Both fall back rather than carry
+   their own default, so setting only the row-wide value still moves branches
+   with everything else. */
+.vpick-option--branch {
+  padding-block: var(
+    --vpick-option-branch-padding-block,
+    var(--vpick-option-padding-block)
+  );
+}
+
+.vpick-option--branch .vpick-option-label {
+  font-weight: var(--vpick-option-branch-weight, inherit);
 }
 
 /* Expand / collapse chevron button */
@@ -842,11 +861,14 @@ button.vpick-trigger--loading:disabled,
 /* Placeholder under an expanded branch whose children array is empty.
    Inert: no role, no pointer events, muted like the no-results message.
    The start padding lines the text up with the labels around it: row padding
-   plus the chevron slot, plus the checkbox slot again in multiple mode. */
+   plus the chevron slot, plus the checkbox slot again in multiple mode. With
+   `disableBranchNodes` the leaves carry no spacer, so the base value already
+   lands on the label column and `--multi` is not applied. */
 .vpick-option-empty {
   padding: 0.375rem 0.5rem;
   padding-inline-start: calc(
-    1.75rem + var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
+    var(--vpick-option-padding-inline-start) + 1.375rem +
+      var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
   );
   font-size: var(--vpick-font-size);
   color: var(--vpick-group-label-color);
@@ -856,11 +878,14 @@ button.vpick-trigger--loading:disabled,
 
 .vpick-option-empty--multi {
   padding-inline-start: calc(
-    3.125rem + var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
+    var(--vpick-option-padding-inline-start) + 2.75rem +
+      var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
   );
 }
 
-/* Alignment spacer for leaf nodes in tree mode */
+/* Alignment spacer for leaf nodes in tree mode. Not rendered once
+   `disableBranchNodes` takes the checkbox off branch rows, since the leaf would
+   then be a slot longer than the branch above it. See `showLeafSpacer`. */
 .vpick-option-expand-spacer {
   flex-shrink: 0;
   width: 1rem;

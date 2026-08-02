@@ -70,6 +70,34 @@ describe("VPick — portal", () => {
     wrapper.unmount()
   })
 
+  // Scoped CSS cannot reach the panel once it is teleported, since the
+  // [data-v-hash] ancestor the compiler relies on is no longer above it. The
+  // forwarding list is therefore the only channel a caller has for theming one
+  // instance rather than every instance on the page, which makes a variable
+  // that is missing from it effectively unsettable.
+  it("forwards option row variables to the teleported panel", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attrs: {
+        style:
+          "--vpick-option-padding-block: 0.5rem; --vpick-option-branch-padding-block: 0.75rem; --vpick-option-branch-weight: 700",
+      },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")
+    expect(positioner).not.toBe(null)
+    const style = positioner!.getAttribute("style") ?? ""
+    expect(style).toContain("--vpick-option-padding-block: 0.5rem")
+    expect(style).toContain("--vpick-option-branch-padding-block: 0.75rem")
+    expect(style).toContain("--vpick-option-branch-weight: 700")
+    wrapper.unmount()
+  })
+
   it("clicking a teleported option still selects it", async () => {
     const wrapper = mount(VPick, {
       props: { options: opts, modelValue: "todo" },

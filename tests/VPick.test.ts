@@ -1548,6 +1548,62 @@ describe("VPick — tree select", () => {
     ])
   })
 
+  // `disableBranchNodes` takes the checkbox off branch rows, so a leaf that
+  // still reserves a chevron slot carries one control more than the branch
+  // above it and every leaf sits a slot to the right of the branch column.
+  // Dropping the spacer puts both row types back on the same column.
+  it("disableBranchNodes drops the leaf spacer so both row types share a column", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: [],
+        multiple: true,
+        disableBranchNodes: true,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const options = wrapper.findAll('[role="option"]')
+    const branch = options.find((o) => o.text().includes("Electronics"))!
+    const leaf = options.find((o) => o.text().includes("Books"))!
+
+    const order = (row: typeof branch) =>
+      Array.from(row.element.children).map((c) => c.classList[0])
+
+    expect(order(branch)).toEqual(["vpick-option-expand", "vpick-option-label"])
+    expect(order(leaf)).toEqual(["vpick-option-checkbox", "vpick-option-label"])
+  })
+
+  // The placeholder's start padding is built from the slots to its left, so it
+  // has to shed the checkbox offset exactly when the leaves shed the spacer.
+  it("empty-branch placeholder drops the multi offset with the spacer", async () => {
+    const withEmptyBranch: OptionOrGroup[] = [
+      { label: "Empty", value: "empty", children: [] },
+    ]
+    const openEmptyRow = async (extra: Record<string, unknown>) => {
+      const w = mount(VPick, {
+        props: {
+          options: withEmptyBranch,
+          modelValue: [],
+          multiple: true,
+          ...extra,
+        },
+      })
+      await w.find('[role="combobox"]').trigger("click")
+      await nextTick()
+      await w.find(".vpick-option-expand").trigger("click")
+      await nextTick()
+      return w.find(".vpick-option-empty")
+    }
+
+    expect((await openEmptyRow({})).classes()).toContain(
+      "vpick-option-empty--multi",
+    )
+    expect(
+      (await openEmptyRow({ disableBranchNodes: true })).classes(),
+    ).not.toContain("vpick-option-empty--multi")
+  })
+
   // Options usually arrive from an API after mount. At that point every branch
   // is new, so defaultExpandLevel has to apply then, not only in setup.
   it("defaultExpandLevel applies to options that arrive after mount", async () => {
@@ -2094,7 +2150,8 @@ describe("VPick — cascade", () => {
     )
   })
 
-  // Chip display uses BRANCH_PRIORITY regardless of valueConsistsOf
+  // Chip display uses BRANCH_PRIORITY regardless of valueConsistsOf, except
+  // under disableBranchNodes, see below.
   it("chips show branch when all leaves are selected (LEAF_PRIORITY mode)", async () => {
     const wrapper = mount(VPick, {
       props: {
@@ -2110,6 +2167,26 @@ describe("VPick — cascade", () => {
     expect(chipTexts).toContain("Electronics")
     expect(chipTexts).not.toContain("Phones")
     expect(chipTexts).not.toContain("Gaming")
+  })
+
+  // Compaction reads the selected set, not what was clicked. Picking every leaf
+  // of a branch by hand therefore collapses those chips into the branch, which
+  // is a fair summary while the branch is selectable and a lie when it is not:
+  // the chip names a node the user never chose and cannot choose. Display only,
+  // so nothing is emitted and the bound value keeps its leaves.
+  it("keeps leaf chips when disableBranchNodes makes the branch unselectable", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["gaming", "business"],
+        multiple: true,
+        searchable: true,
+        disableBranchNodes: true,
+      },
+    })
+    const chipTexts = wrapper.findAll(".vpick-chip-label").map((c) => c.text())
+    expect(chipTexts).toEqual(["Gaming", "Business"])
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined()
   })
 
   // Removing a branch chip cascade-deselects all its leaves
@@ -2376,6 +2453,58 @@ describe("VPick — sortValueBy", () => {
     const wrapper = openAll(["books", "gaming"])
     const chips = wrapper.findAll(".vpick-chip-label").map((c) => c.text())
     expect(chips).toEqual(["Books", "Gaming"])
+  })
+})
+
+// The panel is teleported, so a scoped rule cannot reach an option row and a
+// plain class rule restyles every instance on the page. This slot and the
+// forwarded variables are the two ways to change a row for one instance.
+describe("VPick — option-label slot", () => {
+  it("replaces the row label and carries tree context", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null, defaultExpandLevel: 1 },
+      slots: {
+        "option-label":
+          '<template #default="{ option, isBranch, depth }"><span class="row">{{ isBranch ? "B" : "L" }}{{ depth }}:{{ option.label }}</span></template>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll(".row").map((r) => r.text())
+    expect(rows).toContain("B0:Electronics")
+    expect(rows).toContain("L1:Phones")
+    expect(rows).toContain("B1:Laptops")
+    expect(rows).toContain("L0:Books")
+  })
+
+  it("reports expansion state so a caller can draw its own affordance", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null },
+      slots: {
+        "option-label":
+          '<template #default="{ option, isExpanded }"><span class="row">{{ option.label }}:{{ isExpanded }}</span></template>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.findAll(".row").map((r) => r.text())).toContain(
+      "Electronics:false",
+    )
+
+    await wrapper.find(".vpick-option-expand").trigger("click")
+    await nextTick()
+    expect(wrapper.findAll(".row").map((r) => r.text())).toContain(
+      "Electronics:true",
+    )
+  })
+
+  it("falls back to the option label when no slot is given", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: tree, modelValue: null },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.find(".vpick-option-label").text()).toBe("Electronics")
   })
 })
 

@@ -300,14 +300,15 @@ These props apply to both `VPickNative` and `VPick`:
 
 ## Slots
 
-| Slot          | Scope                    | Description                                                                                          |
-| ------------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `icon`        | —                        | Custom chevron icon. Shown when not loading.                                                         |
-| `loading`     | —                        | Custom loading indicator. Shown when `loading` is true.                                              |
-| `clear`       | —                        | Custom clear button content. Shown when `clearable` and a value is selected.                         |
-| `empty`       | `{ query: string }`      | Custom empty state when no options match the search query.                                           |
-| `no-children` | `{ option: OptionItem }` | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
-| `value-label` | `{ option: OptionItem }` | Custom label for the selected value: the trigger label in single mode, each chip in `multiple` mode. |
+| Slot           | Scope                                                                           | Description                                                                                          |
+| -------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `icon`         | —                                                                               | Custom chevron icon. Shown when not loading.                                                         |
+| `loading`      | —                                                                               | Custom loading indicator. Shown when `loading` is true.                                              |
+| `clear`        | —                                                                               | Custom clear button content. Shown when `clearable` and a value is selected.                         |
+| `empty`        | `{ query: string }`                                                             | Custom empty state when no options match the search query.                                           |
+| `no-children`  | `{ option: OptionItem }`                                                        | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
+| `value-label`  | `{ option: OptionItem }`                                                        | Custom label for the selected value: the trigger label in single mode, each chip in `multiple` mode. |
+| `option-label` | `{ option: OptionItem, isBranch: boolean, isExpanded: boolean, depth: number }` | Custom label for each row in the list. The chevron, checkbox and check icon stay put.                |
 
 ## Events
 
@@ -585,6 +586,24 @@ object you passed in `options`:
 Useful when the display label is derived rather than a single field, which
 `labelKey` cannot express.
 
+## Customising option rows
+
+The `option-label` slot replaces the label on each row in the list. The chevron,
+checkbox and check icon are unaffected, so the row keeps working as an option.
+In tree mode the scope also carries the node's position:
+
+```vue
+<VPick v-model="selected" :options="categories" multiple disable-branch-nodes>
+  <template #option-label="{ option, isBranch, depth }">
+    <strong v-if="isBranch">{{ option.label }}</strong>
+    <template v-else>{{ option.label }} ({{ depth }})</template>
+  </template>
+</VPick>
+```
+
+`isExpanded` is also in scope, for drawing an affordance of your own on branch
+rows.
+
 ## Styling branch and leaf rows
 
 In tree mode each option row carries a modifier class and its nesting depth, so
@@ -606,6 +625,13 @@ you can style branches differently from leaves without a slot:
 `--branch` is set whenever the node has a `children` array, empty or not.
 `--leaf` and `data-depth` are only applied in tree mode, so flat lists stay
 untouched.
+
+These rules have to be global. The dropdown panel is teleported out of the
+component, so scoped CSS cannot reach it, and a global rule restyles every VPick
+on the page. To change one instance, set a variable on the component instead:
+those are forwarded to the panel. See
+[Theming](/guide/theming#branch-rows) for `--vpick-option-branch-weight` and the
+row padding variables.
 
 ## Unselectable branches
 

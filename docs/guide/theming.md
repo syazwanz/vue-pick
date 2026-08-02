@@ -72,25 +72,59 @@ inherits from `--vpick-width` so a single override styles both.
 
 ## VPick variables
 
-| Variable                        | Default                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `--vpick-option-radius`         | `0.5rem`                                                         |
-| `--vpick-listbox-bg`            | `#fff`                                                           |
-| `--vpick-listbox-shadow`        | `0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)` |
-| `--vpick-listbox-ring`          | `rgba(0, 0, 0, 0.06)`                                            |
-| `--vpick-listbox-max-height`    | `16rem`                                                          |
-| `--vpick-listbox-z-index`       | `50`                                                             |
-| `--vpick-option-hover-bg`       | `#f5f5f5`                                                        |
-| `--vpick-option-highlight-bg`   | `#f5f5f5`                                                        |
-| `--vpick-option-selected-color` | `inherit`                                                        |
-| `--vpick-option-check-color`    | `currentColor`                                                   |
-| `--vpick-group-label-color`     | `#737373`                                                        |
-| `--vpick-group-label-size`      | `0.75rem`                                                        |
-| `--vpick-tree-indent`           | `1.375rem`                                                       |
+| Variable                              | Default                                                          |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `--vpick-option-radius`               | `0.5rem`                                                         |
+| `--vpick-option-padding-block`        | `0.25rem`                                                        |
+| `--vpick-option-padding-inline-start` | `0.375rem`                                                       |
+| `--vpick-listbox-bg`                  | `#fff`                                                           |
+| `--vpick-listbox-shadow`              | `0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)` |
+| `--vpick-listbox-ring`                | `rgba(0, 0, 0, 0.06)`                                            |
+| `--vpick-listbox-max-height`          | `16rem`                                                          |
+| `--vpick-listbox-z-index`             | `50`                                                             |
+| `--vpick-option-hover-bg`             | `#f5f5f5`                                                        |
+| `--vpick-option-highlight-bg`         | `#f5f5f5`                                                        |
+| `--vpick-option-selected-color`       | `inherit`                                                        |
+| `--vpick-option-check-color`          | `currentColor`                                                   |
+| `--vpick-group-label-color`           | `#737373`                                                        |
+| `--vpick-group-label-size`            | `0.75rem`                                                        |
+| `--vpick-tree-indent`                 | `1.375rem`                                                       |
 
 `--vpick-tree-indent` is the width of one level of nesting in tree mode, applied
 per depth. The default matches the width of the expand chevron and its gap, so a
 child's chevron lines up under its parent's label.
+
+`--vpick-option-padding-inline-start` is the row's own padding, before any tree
+indent. Changing it shifts every row, including the placeholder under an empty
+branch, and leaves the nesting steps intact.
+
+### Branch rows
+
+Branch rows carry `.vpick-option--branch` and take two further variables. Both
+fall back to the row-wide value, so setting only the values above still moves
+branches with everything else.
+
+| Variable                              | Default                             |
+| ------------------------------------- | ----------------------------------- |
+| `--vpick-option-branch-padding-block` | `var(--vpick-option-padding-block)` |
+| `--vpick-option-branch-weight`        | `inherit`                           |
+
+Branch rows read as section headings once `disableBranchNodes` makes them
+unselectable, which is when these are usually worth setting:
+
+```vue
+<VPick
+  :options="categories"
+  multiple
+  disable-branch-nodes
+  style="--vpick-option-branch-weight: 600; --vpick-option-branch-padding-block: 0.4375rem"
+/>
+```
+
+Set them inline like this rather than in a global stylesheet. The panel is
+teleported out of the component, so a scoped rule cannot reach it and a plain
+class rule would restyle every VPick on the page. Variables set on the component
+are forwarded to the panel, which keeps the change to that one instance.
 
 ## Multiselect checkbox variables
 
