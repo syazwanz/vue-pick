@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 import { nextTick } from "vue"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { VPick } from "../../src/vue2"
 import { resetIdCounter, type OptionOrGroup } from "../../src/core"
 
@@ -120,6 +122,29 @@ describe("VPick (Vue 2) — rendering", () => {
     expect(positioner.exists()).toBe(true)
     expect(listbox.exists()).toBe(true)
     expect(positioner.element.contains(listbox.element)).toBe(true)
+    wrapper.destroy()
+  })
+
+  // The panel is moved out of the component's subtree, so scoped CSS cannot
+  // reach it. The forwarding list is the only channel left for theming one
+  // instance rather than every instance, which makes a variable missing from it
+  // effectively unsettable.
+  it("forwards option row variables to the moved panel", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attrs: {
+        style:
+          "--vpick-option-padding-block: 0.5rem; --vpick-option-branch-padding-block: 0.75rem; --vpick-option-branch-weight: 700",
+      },
+      attachTo: document.body,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const style =
+      wrapper.find(".vpick-positioner").element.getAttribute("style") ?? ""
+    expect(style).toContain("--vpick-option-padding-block: 0.5rem")
+    expect(style).toContain("--vpick-option-branch-padding-block: 0.75rem")
+    expect(style).toContain("--vpick-option-branch-weight: 700")
     wrapper.destroy()
   })
 
@@ -1249,6 +1274,28 @@ describe("VPick (Vue 2) — multiple selection", () => {
     expect(off.find(".vpick-chips").classes()).toContain("vpick-chips--static")
   })
 
+  // Vue 2.7 emits `-enter` where Vue 3 emits `-enter-from`, and both builds
+  // share one stylesheet written against the Vue 3 name. Without an explicit
+  // enter-class nothing matches here and both transitions enter with no start
+  // state. The class lands and is gone within a frame, so assert the remap and
+  // that the stylesheet really defines what it points at, which is the pairing
+  // that broke.
+  it("maps Vue 2 enter classes onto the shared -enter-from selectors", () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["todo"] },
+    })
+    expect(
+      wrapper.findComponent({ name: "TransitionGroup" }).props("enterClass"),
+    ).toBe("vpick-chip-enter-from")
+    expect(
+      wrapper.findComponent({ name: "transition" }).props("enterClass"),
+    ).toBe("vpick-dropdown-enter-from")
+
+    const css = readFileSync(resolve(__dirname, "../../src/style.css"), "utf-8")
+    expect(css).toContain(".vpick-chip-enter-from")
+    expect(css).toContain(".vpick-dropdown-enter-from")
+  })
+
   it("keeps chips and the input in one transition group", () => {
     const wrapper = mount(VPick, {
       propsData: { options: status, multiple: true, value: ["todo", "done"] },
@@ -1600,6 +1647,60 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     ])
   })
 
+  // `disableBranchNodes` takes the checkbox off branch rows, so a leaf that
+  // still reserves a chevron slot carries one control more than the branch
+  // above it and every leaf sits a slot to the right of the branch column.
+  // Dropping the spacer puts both row types back on the same column.
+  it("disableBranchNodes drops the leaf spacer so both row types share a column", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: withEmpty,
+        value: [],
+        multiple: true,
+        disableBranchNodes: true,
+        defaultExpandLevel: 1,
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const rows = wrapper.findAll('[role="option"]')
+    const branch = rows.filter((o) => o.text().includes("Branch")).at(0)
+    const leaf = rows.filter((o) => o.text().includes("Child")).at(0)
+
+    const order = (row: typeof branch) =>
+      Array.from(row.element.children).map((c) => c.classList[0])
+
+    expect(order(branch)).toEqual(["vpick-option-expand", "vpick-option-label"])
+    expect(order(leaf)).toEqual(["vpick-option-checkbox", "vpick-option-label"])
+  })
+
+  // The placeholder's start padding is built from the slots to its left, so it
+  // has to shed the checkbox offset exactly when the leaves shed the spacer.
+  it("empty-branch placeholder drops the multi offset with the spacer", async () => {
+    const openEmptyRow = async (extra: Record<string, unknown>) => {
+      const w = mount(VPick, {
+        propsData: {
+          options: withEmpty,
+          value: [],
+          multiple: true,
+          defaultExpandLevel: 2,
+          ...extra,
+        },
+      })
+      await w.find('[role="combobox"]').trigger("click")
+      await nextTick()
+      return w.find(".vpick-option-empty")
+    }
+
+    expect((await openEmptyRow({})).classes()).toContain(
+      "vpick-option-empty--multi",
+    )
+    expect(
+      (await openEmptyRow({ disableBranchNodes: true })).classes(),
+    ).not.toContain("vpick-option-empty--multi")
+  })
+
   // Options usually arrive from an API after mount. At that point every branch
   // is new, so defaultExpandLevel has to apply then, not only in setup.
   it("defaultExpandLevel applies to options that arrive after mount", async () => {
@@ -1869,6 +1970,27 @@ describe("VPick (Vue 2) — sortValueBy and value-label slot", () => {
     expect(chips).toEqual(["Books", "Phones"])
   })
 
+  // Compaction reads the selected set, not what was clicked. Picking every leaf
+  // of a branch by hand therefore collapses those chips into the branch, which
+  // is a fair summary while the branch is selectable and a lie when it is not:
+  // the chip names a node the user never chose and cannot choose. Display only,
+  // so nothing is emitted and the bound value keeps its leaves.
+  it("keeps leaf chips when disableBranchNodes makes the branch unselectable", () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: smallTree,
+        multiple: true,
+        disableBranchNodes: true,
+        value: ["phones", "laptops"],
+      },
+    })
+    const chips = wrapper
+      .findAll(".vpick-chip-label")
+      .wrappers.map((c) => c.text())
+    expect(chips).toEqual(["Phones", "Laptops"])
+    expect(wrapper.emitted("input")).toBeUndefined()
+  })
+
   it("value-label slot overrides the trigger label", () => {
     const users = [{ id: 1, name: "Alice", nickname: "Al" }]
     const wrapper = mount(VPick, {
@@ -1883,6 +2005,65 @@ describe("VPick (Vue 2) — sortValueBy and value-label slot", () => {
       },
     })
     expect(wrapper.find(".nick").text()).toBe("Al")
+  })
+})
+
+// The panel is moved out of the component, so a scoped rule cannot reach an
+// option row and a plain class rule restyles every instance on the page. This
+// slot and the forwarded variables are the two ways to change a row for one
+// instance.
+describe("VPick (Vue 2) — option-label slot", () => {
+  const labelTree: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "electronics",
+      children: [{ label: "Phones", value: "phones" }],
+    },
+    { label: "Books", value: "books" },
+  ]
+
+  it("replaces the row label and carries tree context", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: labelTree, defaultExpandLevel: 1 },
+      scopedSlots: {
+        "option-label":
+          '<span class="row">{{ props.isBranch ? "B" : "L" }}{{ props.depth }}:{{ props.option.label }}</span>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const rows = wrapper.findAll(".row").wrappers.map((r) => r.text())
+    expect(rows).toContain("B0:Electronics")
+    expect(rows).toContain("L1:Phones")
+    expect(rows).toContain("L0:Books")
+  })
+
+  it("reports expansion state so a caller can draw its own affordance", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: labelTree },
+      scopedSlots: {
+        "option-label":
+          '<span class="row">{{ props.option.label }}:{{ props.isExpanded }}</span>',
+      },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.findAll(".row").wrappers.map((r) => r.text())).toContain(
+      "Electronics:false",
+    )
+
+    await wrapper.find(".vpick-option-expand").trigger("click")
+    await nextTick()
+    expect(wrapper.findAll(".row").wrappers.map((r) => r.text())).toContain(
+      "Electronics:true",
+    )
+  })
+
+  it("falls back to the option label when no slot is given", async () => {
+    const wrapper = mount(VPick, { propsData: { options: labelTree } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    expect(wrapper.find(".vpick-option-label").text()).toBe("Electronics")
   })
 })
 
