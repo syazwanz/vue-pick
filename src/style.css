@@ -860,15 +860,22 @@ button.vpick-trigger--loading:disabled,
 
 /* Placeholder under an expanded branch whose children array is empty.
    Inert: no role, no pointer events, muted like the no-results message.
-   The start padding lines the text up with the labels around it: row padding
-   plus the chevron slot, plus the checkbox slot again in multiple mode. With
-   `disableBranchNodes` the leaves carry no spacer, so the base value already
-   lands on the label column and `--multi` is not applied. */
+
+   Laid out as a row like the options around it: an icon box, then the text. The
+   padding stops one slot short of the label column and the icon box makes up the
+   difference, so the text lands on the label column whether or not the
+   `no-children-icon` slot is filled, and an icon lands on the column the leaf
+   checkboxes use. The base value covers the chevron slot; `--multi` adds the
+   checkbox slot. With `disableBranchNodes` the leaves carry no spacer, so the
+   base value is already right and `--multi` is not applied. */
 .vpick-option-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.375rem 0.5rem;
   padding-inline-start: calc(
-    var(--vpick-option-padding-inline-start) + 1.375rem +
-      var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
+    var(--vpick-option-padding-inline-start) + var(--vpick-option-depth, 0) *
+      var(--vpick-tree-indent)
   );
   font-size: var(--vpick-font-size);
   color: var(--vpick-group-label-color);
@@ -878,9 +885,20 @@ button.vpick-trigger--loading:disabled,
 
 .vpick-option-empty--multi {
   padding-inline-start: calc(
-    var(--vpick-option-padding-inline-start) + 2.75rem +
+    var(--vpick-option-padding-inline-start) + 1.375rem +
       var(--vpick-option-depth, 0) * var(--vpick-tree-indent)
   );
+}
+
+/* Holds the column open at the width of a chevron or checkbox whether or not
+   anything is in it, which is what keeps the text on the label column. */
+.vpick-option-empty-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
 }
 
 /* Alignment spacer for leaf nodes in tree mode. Not rendered once

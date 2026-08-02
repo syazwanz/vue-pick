@@ -300,15 +300,16 @@ These props apply to both `VPickNative` and `VPick`:
 
 ## Slots
 
-| Slot           | Scope                                                                           | Description                                                                                          |
-| -------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `icon`         | —                                                                               | Custom chevron icon. Shown when not loading.                                                         |
-| `loading`      | —                                                                               | Custom loading indicator. Shown when `loading` is true.                                              |
-| `clear`        | —                                                                               | Custom clear button content. Shown when `clearable` and a value is selected.                         |
-| `empty`        | `{ query: string }`                                                             | Custom empty state when no options match the search query.                                           |
-| `no-children`  | `{ option: OptionItem }`                                                        | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
-| `value-label`  | `{ option: OptionItem }`                                                        | Custom label for the selected value: the trigger label in single mode, each chip in `multiple` mode. |
-| `option-label` | `{ option: OptionItem, isBranch: boolean, isExpanded: boolean, depth: number }` | Custom label for each row in the list. The chevron, checkbox and check icon stay put.                |
+| Slot               | Scope                                                                           | Description                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `icon`             | —                                                                               | Custom chevron icon. Shown when not loading.                                                         |
+| `loading`          | —                                                                               | Custom loading indicator. Shown when `loading` is true.                                              |
+| `clear`            | —                                                                               | Custom clear button content. Shown when `clearable` and a value is selected.                         |
+| `empty`            | `{ query: string }`                                                             | Custom empty state when no options match the search query.                                           |
+| `no-children`      | `{ option: OptionItem }`                                                        | Custom content for an expanded branch whose `children` array is empty. Defaults to `noChildrenText`. |
+| `no-children-icon` | `{ option: OptionItem }`                                                        | Icon for that same row, rendered on the column the leaf checkboxes use.                              |
+| `value-label`      | `{ option: OptionItem }`                                                        | Custom label for the selected value: the trigger label in single mode, each chip in `multiple` mode. |
+| `option-label`     | `{ option: OptionItem, isBranch: boolean, isExpanded: boolean, depth: number }` | Custom label for each row in the list. The chevron, checkbox and check icon stay put.                |
 
 ## Events
 
@@ -362,11 +363,25 @@ markup rather than plain text:
 
 ```vue
 <VPick :options="options">
-  <template #no-children="{ option }">
-    <WarningIcon /> Nothing under {{ option.label }}
-  </template>
+  <template #no-children="{ option }"> Nothing under {{ option.label }} </template>
 </VPick>
 ```
+
+For an icon, use `no-children-icon` rather than putting one inside
+`no-children`. The row is laid out in the same columns as the options above it,
+so an icon in its own slot lands on the column the leaf checkboxes use and the
+text stays on the label column. An icon inside the text slot pushes the text one
+column to the right instead.
+
+```vue
+<VPick :options="options" multiple>
+  <template #no-children-icon><WarningIcon /></template>
+  <template #no-children="{ option }"> Nothing under {{ option.label }} </template>
+</VPick>
+```
+
+The column is held open whether or not the slot is filled, so adding an icon
+never moves the text.
 
 ## Always open
 
