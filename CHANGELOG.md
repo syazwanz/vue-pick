@@ -1,5 +1,40 @@
 # vue-pick
 
+## 0.21.0
+
+### Minor Changes
+
+- 1947971: New `no-children-icon` slot for the placeholder under an expanded branch with no
+  children. The row is laid out in the same columns as the options above it, so
+  the icon lands on the column the leaf checkboxes use and the text stays on the
+  label column.
+
+  ```vue
+  <VPick :options="options" multiple>
+    <template #no-children-icon><WarningIcon /></template>
+    <template #no-children="{ option }"> Nothing under {{ option.label }} </template>
+  </VPick>
+  ```
+
+  Putting an icon inside `no-children` instead pushes the text one column right,
+  which is what this replaces. The column is held open whether or not the slot is
+  filled, so a text-only placeholder sits exactly where it did before.
+
+### Patch Changes
+
+- 4824b77: The dropdown now closes when the click lands on a control that stops mousedown
+  propagation. The outside-click listener ran on the bubble phase, so any widget
+  calling `stopPropagation` in its own mousedown handler swallowed the event
+  before it reached the document and left the panel open on top of that control.
+  It runs on capture now. Clicks on the trigger and inside the panel are
+  unaffected.
+- 13bb028: The dropdown no longer trails the trigger when the page scrolls. With
+  `strategy="auto"`, a trigger with no scrollable ancestor now anchors to the page
+  instead of falling back to `position: fixed`, so its coordinates no longer
+  change as the page scrolls and the browser moves the panel itself.
+
+  `strategy="fixed"` is unchanged and still pins to the viewport.
+
 ## 0.20.0
 
 ### Minor Changes
