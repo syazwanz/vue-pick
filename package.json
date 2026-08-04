@@ -1,6 +1,6 @@
 {
   "name": "vue-pick",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "description": "Select, multiselect, and tree select for Vue 2.7 and Vue 3, from one codebase",
   "license": "MIT",
   "packageManager": "pnpm@10.32.1",
