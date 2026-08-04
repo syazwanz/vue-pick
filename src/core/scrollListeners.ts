@@ -31,6 +31,44 @@ export function findScrollParent(el: HTMLElement): HTMLElement | null {
   return scrollParents(el)[0] ?? null
 }
 
+/**
+ * Whether `el` is pinned to the viewport rather than carried by `scroller`.
+ *
+ * Anchoring the panel inside a scroll container assumes the trigger travels
+ * with that container. A `position: fixed` ancestor in between breaks the
+ * assumption: the container scrolls, the trigger does not, and the panel (a
+ * child of the container) slides away from a trigger that never moved. That is
+ * the trailing `absolute` exists to prevent, so a pinned trigger is the one
+ * case where anchoring is worse than staying with `fixed`.
+ *
+ * A null `scroller` means the page itself is the scroll container, and the
+ * walk runs to the root: a pinned trigger does not travel with the page
+ * either, so page-anchoring it has the same drift.
+ *
+ * The scroller itself is included in the walk. A pinned element that scrolls
+ * (a modal overlay once its content overflows) is geometrically anchorable,
+ * but whether such an element is the scroller at all flips with its content
+ * height, and a panel parented into it leaks wheel input to the page behind.
+ * `fixed` costs only the frame of trailing during the modal's own scroll, so
+ * pinned-and-scrolling resolves the same way as pinned-below-the-scroller and
+ * the behavior stops depending on how tall the modal happens to be.
+ *
+ * `sticky` is deliberately not treated as pinned. It travels with the content
+ * for most of its range and only parks at an edge, so it still benefits.
+ */
+export function isPinnedWithin(
+  el: HTMLElement,
+  scroller: HTMLElement | null,
+): boolean {
+  let node: HTMLElement | null = el
+  while (node) {
+    if (window.getComputedStyle(node).position === "fixed") return true
+    if (node === scroller) return false
+    node = node.parentElement
+  }
+  return false
+}
+
 export function setupScrollListeners(
   el: HTMLElement,
   callback: (e?: Event) => void,

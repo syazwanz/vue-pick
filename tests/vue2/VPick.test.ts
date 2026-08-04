@@ -440,6 +440,39 @@ describe("VPick (Vue 2) — keyboard navigation", () => {
     expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
   })
 
+  // `mouseenter` also fires when a row slides under a pointer that never moved,
+  // so anything that moves the list while it is open reads as a hover. The
+  // highlight follows, `scrollHighlightedIntoView` scrolls the list to reveal
+  // it, and the list ends up scrolling itself while the user is only scrolling
+  // the page. Only genuine pointer movement should move the highlight.
+  it("ignores hover from content moving under a still pointer", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+
+    const rows = wrapper.findAll('[role="option"]')
+    // The pointer settles somewhere over the list, then stops.
+    await rows.at(0).trigger("mousemove", { clientX: 50, clientY: 100 })
+    // Rows now slide past it. Same coordinates every time, because the pointer
+    // is not what moved.
+    await rows.at(1).trigger("mouseenter", { clientX: 50, clientY: 100 })
+    await rows.at(2).trigger("mouseenter", { clientX: 50, clientY: 100 })
+
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+  })
+
+  it("still moves the highlight when the pointer actually moves", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+
+    const rows = wrapper.findAll('[role="option"]')
+    await rows.at(0).trigger("mousemove", { clientX: 50, clientY: 100 })
+    await rows.at(2).trigger("mouseenter", { clientX: 50, clientY: 140 })
+
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Done")
+  })
+
   it("Home jumps to first enabled", async () => {
     const wrapper = mount(VPick, { propsData: { options: status } })
     const trigger = wrapper.find('[role="combobox"]')
@@ -1415,6 +1448,67 @@ describe("VPick (Vue 2) — multiple selection", () => {
     const css = readFileSync(resolve(__dirname, "../../src/style.css"), "utf-8")
     expect(css).toContain(".vpick-chip-enter-from")
     expect(css).toContain(".vpick-dropdown-enter-from")
+  })
+
+  // The selected row is tinted so the current value is findable at a glance.
+  // `multiple` is excluded because the checkboxes already say it, so the class
+  // pairing that drives the CSS is what gets asserted here.
+  it("marks the selected row so single-select can tint it", async () => {
+    const single = mount(VPick, {
+      propsData: { options: status, value: "in-progress" },
+    })
+    await single.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const selected = single.find(".vpick-option--selected")
+    expect(selected.text()).toContain("In Progress")
+    expect(selected.classes()).not.toContain("vpick-option--multi")
+
+    const multi = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["in-progress"] },
+    })
+    await multi.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    // Still marked selected, but carries --multi, which the CSS excludes.
+    expect(multi.find(".vpick-option--selected").classes()).toContain(
+      "vpick-option--multi",
+    )
+
+    const css = readFileSync(resolve(__dirname, "../../src/style.css"), "utf-8")
+    expect(css).toContain(".vpick-option--selected:not(.vpick-option--multi)")
+  })
+
+  // The input shares the transition group with the chips, so it inherits their
+  // FLIP move. With no chips it is the group's only child and has nothing to
+  // slide alongside, making every move a stray FLIP from an unrelated
+  // re-render such as opening the dropdown. happy-dom cannot run a FLIP, so
+  // what is assertable is the pairing: the empty class is present in the states
+  // that have no chips, and the stylesheet cancels the move for it.
+  it("marks the chip wrapper empty whenever no chips are rendered", () => {
+    const single = mount(VPick, {
+      propsData: { options: status, searchable: true, value: "todo" },
+    })
+    expect(single.find(".vpick-chips").classes()).toContain(
+      "vpick-chips--empty",
+    )
+
+    const emptyMulti = mount(VPick, {
+      propsData: { options: status, multiple: true, value: [] },
+    })
+    expect(emptyMulti.find(".vpick-chips").classes()).toContain(
+      "vpick-chips--empty",
+    )
+
+    const withChips = mount(VPick, {
+      propsData: { options: status, multiple: true, value: ["todo"] },
+    })
+    expect(withChips.find(".vpick-chips").classes()).not.toContain(
+      "vpick-chips--empty",
+    )
+
+    const css = readFileSync(resolve(__dirname, "../../src/style.css"), "utf-8")
+    expect(css).toMatch(
+      /\.vpick-chips--empty \.vpick-chip-move \{\s*transition: none;/,
+    )
   })
 
   it("keeps chips and the input in one transition group", () => {
@@ -2710,6 +2804,134 @@ describe("VPick (Vue 2) — anchoring strategy", () => {
     })
     return { wrapper, container }
   }
+
+  // Anchoring assumes the trigger travels with the container. A `position:
+  // fixed` ancestor in between breaks that: the container scrolls, the trigger
+  // does not, and the panel would slide away from a trigger that never moved,
+  // which is the trailing `absolute` exists to prevent. `fixed` has nothing to
+  // chase there, so it is the better answer and is picked without being asked.
+  it("stays fixed when a pinned ancestor sits between trigger and container", async () => {
+    const container = document.createElement("div")
+    Object.assign(container.style, {
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(container)
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    container.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attachTo: host,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    // Scoped to this wrapper: earlier tests can leave positioners behind in
+    // body, and a document-wide query picks up the stale one.
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.style.position).toBe("fixed")
+    expect(container.querySelector(".vpick-positioner")).toBe(null)
+
+    wrapper.destroy()
+    container.remove()
+  })
+
+  // A pinned trigger with no scrollable ancestor would otherwise take the
+  // page-anchoring branch, and the page is exactly what it does not travel
+  // with: the page scrolls, the trigger stays, the panel drifts. Same bug as
+  // the in-container case, one branch earlier.
+  it("stays fixed for a pinned trigger with no scroll ancestor", async () => {
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    document.body.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attachTo: host,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.style.position).toBe("fixed")
+
+    wrapper.destroy()
+    pinned.remove()
+  })
+
+  // The scroller itself being pinned is the same case: a modal overlay is
+  // `position: fixed` and becomes the scroll container once its content
+  // overflows. Anchoring into it parents the panel into a pinned subtree, and
+  // whether that subtree is the scroller at all flips with content height, so
+  // it resolves `fixed` like every other pinned trigger.
+  it("stays fixed when the scroll container itself is pinned", async () => {
+    const modal = document.createElement("div")
+    Object.assign(modal.style, {
+      position: "fixed",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(modal)
+    const host = document.createElement("div")
+    modal.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status, strategy: "absolute" },
+      attachTo: host,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.style.position).toBe("fixed")
+    expect(modal.querySelector(".vpick-positioner")).toBe(null)
+
+    wrapper.destroy()
+    modal.remove()
+  })
+
+  // The one case where an explicit `strategy="absolute"` does not win. It
+  // normally does, because the caller is choosing a tradeoff. A pinned trigger
+  // cannot trail, so anchoring has nothing to offer and only adds drift, which
+  // makes the prop a request that cannot help rather than a preference.
+  it("outranks an explicit absolute when the trigger is pinned", async () => {
+    const container = document.createElement("div")
+    Object.assign(container.style, {
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(container)
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    container.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      propsData: { options: status, strategy: "absolute" },
+      attachTo: host,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner = wrapper.find<HTMLElement>(".vpick-positioner").element
+    expect(positioner.style.position).toBe("fixed")
+    expect(container.querySelector(".vpick-positioner")).toBe(null)
+    // The container is never promoted either, so no inline style is left on the
+    // caller's DOM for a strategy that was not used.
+    expect(container.style.position).toBe("relative")
+
+    wrapper.destroy()
+    container.remove()
+  })
 
   it("anchors inside a positioned scroll container", async () => {
     const { wrapper, container } = mountInContainer({

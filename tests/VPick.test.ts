@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 import { nextTick } from "vue"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { VPick } from "../src/vue3"
 import { resetIdCounter, type OptionOrGroup } from "../src/core"
 
@@ -259,6 +261,41 @@ describe("VPick — keyboard navigation", () => {
     await trigger.trigger("keydown", { key: "ArrowDown" })
     await trigger.trigger("keydown", { key: "ArrowUp" })
     expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+  })
+
+  // `mouseenter` also fires when a row slides under a pointer that never moved,
+  // so anything that moves the list while it is open reads as a hover. The
+  // highlight follows, `scrollHighlightedIntoView` scrolls the list to reveal
+  // it, and the list ends up scrolling itself while the user is only scrolling
+  // the page. Only genuine pointer movement should move the highlight.
+  it("ignores hover from content moving under a still pointer", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+
+    const rows = wrapper.findAll('[role="option"]')
+    // The pointer settles somewhere over the list, then stops.
+    await rows[0].trigger("mousemove", { clientX: 50, clientY: 100 })
+    // Rows now slide past it. Same coordinates every time, because the pointer
+    // is not what moved.
+    await rows[1].trigger("mouseenter", { clientX: 50, clientY: 100 })
+    await rows[2].trigger("mouseenter", { clientX: 50, clientY: 100 })
+
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+  })
+
+  it("still moves the highlight when the pointer actually moves", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+    await trigger.trigger("click")
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Todo")
+
+    const rows = wrapper.findAll('[role="option"]')
+    await rows[0].trigger("mousemove", { clientX: 50, clientY: 100 })
+    await rows[2].trigger("mouseenter", { clientX: 50, clientY: 140 })
+
+    expect(wrapper.find(".vpick-option--highlighted").text()).toContain("Done")
   })
 
   it("Home jumps to first enabled", async () => {
@@ -1228,6 +1265,67 @@ describe("VPick — multiple selection", () => {
       },
     })
     expect(off.find(".vpick-chips").classes()).toContain("vpick-chips--static")
+  })
+
+  // The selected row is tinted so the current value is findable at a glance.
+  // `multiple` is excluded because the checkboxes already say it, so the class
+  // pairing that drives the CSS is what gets asserted here.
+  it("marks the selected row so single-select can tint it", async () => {
+    const single = mount(VPick, {
+      props: { options: status, modelValue: "in-progress" },
+    })
+    await single.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const selected = single.find(".vpick-option--selected")
+    expect(selected.text()).toContain("In Progress")
+    expect(selected.classes()).not.toContain("vpick-option--multi")
+
+    const multi = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["in-progress"] },
+    })
+    await multi.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    // Still marked selected, but carries --multi, which the CSS excludes.
+    expect(multi.find(".vpick-option--selected").classes()).toContain(
+      "vpick-option--multi",
+    )
+
+    const css = readFileSync(resolve(__dirname, "../src/style.css"), "utf-8")
+    expect(css).toContain(".vpick-option--selected:not(.vpick-option--multi)")
+  })
+
+  // The input shares the transition group with the chips, so it inherits their
+  // FLIP move. With no chips it is the group's only child and has nothing to
+  // slide alongside, making every move a stray FLIP from an unrelated
+  // re-render such as opening the dropdown. jsdom cannot run a FLIP, so what is
+  // assertable is the pairing: the empty class is present in the states that
+  // have no chips, and the stylesheet cancels the move for it.
+  it("marks the chip wrapper empty whenever no chips are rendered", () => {
+    const single = mount(VPick, {
+      props: { options: status, searchable: true, modelValue: "todo" },
+    })
+    expect(single.find(".vpick-chips").classes()).toContain(
+      "vpick-chips--empty",
+    )
+
+    const emptyMulti = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: [] },
+    })
+    expect(emptyMulti.find(".vpick-chips").classes()).toContain(
+      "vpick-chips--empty",
+    )
+
+    const withChips = mount(VPick, {
+      props: { options: status, multiple: true, modelValue: ["todo"] },
+    })
+    expect(withChips.find(".vpick-chips").classes()).not.toContain(
+      "vpick-chips--empty",
+    )
+
+    const css = readFileSync(resolve(__dirname, "../src/style.css"), "utf-8")
+    expect(css).toMatch(
+      /\.vpick-chips--empty \.vpick-chip-move \{\s*transition: none;/,
+    )
   })
 
   it("keeps chips and the input in one transition group", () => {

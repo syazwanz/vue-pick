@@ -107,6 +107,28 @@ describe("VPick — portal", () => {
     wrapper.unmount()
   })
 
+  it("forwards the selected-row variables to the teleported panel", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attrs: {
+        style:
+          "--vpick-option-selected-bg: #e3f2fd; --vpick-option-selected-weight: 600",
+      },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const style =
+      document.body
+        .querySelector<HTMLElement>(".vpick-positioner")
+        ?.getAttribute("style") ?? ""
+    expect(style).toContain("--vpick-option-selected-bg: #e3f2fd")
+    expect(style).toContain("--vpick-option-selected-weight: 600")
+    wrapper.unmount()
+  })
+
   it("clicking a teleported option still selects it", async () => {
     const wrapper = mount(VPick, {
       props: { options: opts, modelValue: "todo" },
@@ -286,6 +308,203 @@ describe("VPick — anchoring strategy", () => {
     })
     return { wrapper, container }
   }
+
+  // Anchoring assumes the trigger travels with the container. A `position:
+  // fixed` ancestor in between breaks that: the container scrolls, the trigger
+  // does not, and the panel would slide away from a trigger that never moved,
+  // which is the trailing `absolute` exists to prevent. `fixed` has nothing to
+  // chase there, so it is the better answer and is picked without being asked.
+  it("stays fixed when a pinned ancestor sits between trigger and container", async () => {
+    const container = document.createElement("div")
+    Object.assign(container.style, {
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(container)
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    container.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("fixed")
+    expect(container.querySelector(".vpick-positioner")).toBe(null)
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  // The scroll lock swallows wheel input aimed at the locked scroller instead
+  // of hiding its scrollbar, so layout never changes and nothing sized against
+  // the viewport can shift. Anchored inside a scroll container, the lock lands
+  // on the container: a body lock would leave it free to scroll. This is why
+  // the lock is decided after the anchor is resolved, not before.
+  it("locks the anchor container instead of the body", async () => {
+    const { wrapper, container } = mountInContainer({
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+    // happy-dom does no layout, so the container's scrollability is staged.
+    Object.defineProperty(container, "scrollHeight", { value: 800 })
+    Object.defineProperty(container, "clientHeight", { value: 400 })
+
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const wheelOn = (target: Element) => {
+      const e = new Event("wheel", { bubbles: true, cancelable: true })
+      target.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    expect(wheelOn(container.querySelector("div")!)).toBe(true)
+    expect(wheelOn(document.body)).toBe(false)
+    expect(container.style.overflow).not.toBe("hidden")
+
+    // Escape closes and must hand the container back.
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "Escape",
+    })
+    expect(wheelOn(container.querySelector("div")!)).toBe(false)
+
+    wrapper.unmount()
+    container.remove()
+  })
+
+  // With no anchor the page is the scroller, so the body keeps the lock. Pins
+  // the default that existed before element locks did.
+  it("locks the body when nothing else scrolls", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const wheelOn = () => {
+      const e = new Event("wheel", { bubbles: true, cancelable: true })
+      document.body.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    expect(wheelOn()).toBe(true)
+    expect(document.body.style.overflow).not.toBe("hidden")
+
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "Escape",
+    })
+    expect(wheelOn()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // A pinned trigger with no scrollable ancestor would otherwise take the
+  // page-anchoring branch, and the page is exactly what it does not travel
+  // with: the page scrolls, the trigger stays, the panel drifts. Same bug as
+  // the in-container case, one branch earlier.
+  it("stays fixed for a pinned trigger with no scroll ancestor", async () => {
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    document.body.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("fixed")
+
+    wrapper.unmount()
+    pinned.remove()
+  })
+
+  // The scroller itself being pinned is the same case: a modal overlay is
+  // `position: fixed` and becomes the scroll container once its content
+  // overflows. Anchoring into it parents the panel into a pinned subtree, and
+  // whether that subtree is the scroller at all flips with content height, so
+  // it resolves `fixed` like every other pinned trigger.
+  it("stays fixed when the scroll container itself is pinned", async () => {
+    const modal = document.createElement("div")
+    Object.assign(modal.style, {
+      position: "fixed",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(modal)
+    const host = document.createElement("div")
+    modal.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      props: { options: opts, strategy: "absolute" as const },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("fixed")
+    expect(modal.querySelector(".vpick-positioner")).toBe(null)
+
+    wrapper.unmount()
+    modal.remove()
+  })
+
+  // The one case where an explicit `strategy="absolute"` does not win. It
+  // normally does, because the caller is choosing a tradeoff. A pinned trigger
+  // cannot trail, so anchoring has nothing to offer and only adds drift, which
+  // makes the prop a request that cannot help rather than a preference.
+  it("outranks an explicit absolute when the trigger is pinned", async () => {
+    const container = document.createElement("div")
+    Object.assign(container.style, {
+      position: "relative",
+      overflowY: "auto",
+      height: "400px",
+    })
+    document.body.appendChild(container)
+    const pinned = document.createElement("div")
+    pinned.style.position = "fixed"
+    container.appendChild(pinned)
+    const host = document.createElement("div")
+    pinned.appendChild(host)
+
+    const wrapper = mount(VPick, {
+      props: { options: opts, strategy: "absolute" as const },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const positioner =
+      document.body.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.style.position).toBe("fixed")
+    expect(container.querySelector(".vpick-positioner")).toBe(null)
+    // The container is never promoted either, so no inline style is left on the
+    // caller's DOM for a strategy that was not used.
+    expect(container.style.position).toBe("relative")
+
+    wrapper.unmount()
+    container.remove()
+  })
 
   it("anchors inside a positioned scroll container", async () => {
     const { wrapper, container } = mountInContainer({

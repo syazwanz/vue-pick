@@ -267,36 +267,36 @@ These props apply to both `VPickNative` and `VPick`:
 
 ### VPick-only props
 
-| Prop                   | Type                                                                        | Default                  | Description                                                                                                                           |
-| ---------------------- | --------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `separators`           | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                                 |
-| `rotateIcon`           | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                    |
-| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                               |
-| `clearable`            | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                        |
-| `multiple`             | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                         |
-| `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                                |
-| `noResultsText`        | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                              |
-| `teleportTo`           | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                                |
-| `strategy`             | `"auto" \| "absolute" \| "fixed"`                                           | `"auto"`                 | How the dropdown is anchored. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                                |
-| `hideWhenDetached`     | `boolean`                                                                   | `true`                   | Hide the dropdown while its trigger is scrolled out of view. See [Anchoring and scroll containers](#anchoring-and-scroll-containers). |
-| `animate`              | `boolean`                                                                   | `true`                   | Animate the multiselect chips. Set to `false` to add and remove them outright.                                                        |
-| `bodyLock`             | `boolean`                                                                   | `undefined`              | Locks body scroll while open. Left unset, defaults to `true` in button mode and `false` in searchable mode.                           |
-| `childrenKey`          | `string`                                                                    | `"children"`             | Object key for nested children. Any option with a `children` array enables tree mode automatically.                                   |
-| `defaultExpandLevel`   | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                            |
-| `disableBranchNodes`   | `boolean`                                                                   | `false`                  | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                               |
-| `cascade`              | `boolean`                                                                   | `true`                   | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.               |
-| `valueConsistsOf`      | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`        | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                              |
-| `clearOnSelect`        | `boolean`                                                                   | `true`                   | Clear the search query after picking an option.                                                                                       |
-| `closeOnSelect`        | `boolean`                                                                   | see description          | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both.   |
-| `noChildrenText`       | `string`                                                                    | `"No sub-options"`       | Text shown under an expanded branch whose `children` array is empty.                                                                  |
-| `noOptionsText`        | `string`                                                                    | `"No options available"` | Text shown when there are no options at all.                                                                                          |
-| `backspaceRemoves`     | `boolean`                                                                   | `true`                   | Backspace on an empty search input removes the last chip.                                                                             |
-| `deleteRemoves`        | `boolean`                                                                   | `true`                   | Delete on an empty search input removes the last chip.                                                                                |
-| `searchNested`         | `boolean`                                                                   | `false`                  | In tree mode, let a multi-word query match across a node's ancestor path.                                                             |
-| `alwaysOpen`           | `boolean`                                                                   | `false`                  | Renders the list inline in the page instead of as a dropdown. See [Always open](#always-open).                                        |
-| `flattenSearchResults` | `boolean`                                                                   | `false`                  | In tree mode, show only nodes matching the query, as a flat list. See [Flattening search results](#flattening-search-results).        |
-| `valueFormat`          | `"id" \| "object"`                                                          | `"id"`                   | Whether `v-model` holds plain values or your original option objects. See [Object values](#object-values).                            |
-| `sortValueBy`          | `"ORDER_SELECTED" \| "LEVEL" \| "INDEX"`                                    | `"ORDER_SELECTED"`       | Order of the emitted array and the chips. See [Ordering selected values](#ordering-selected-values).                                  |
+| Prop                   | Type                                                                        | Default                  | Description                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `separators`           | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                                                                              |
+| `rotateIcon`           | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                                                                 |
+| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                                                                            |
+| `clearable`            | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                                                                     |
+| `multiple`             | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                                                                      |
+| `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                                                                             |
+| `noResultsText`        | `string`                                                                    | `"No results"`           | Text displayed when the search query matches no options.                                                                                                                           |
+| `teleportTo`           | `string \| HTMLElement`                                                     | `"body"`                 | CSS selector or element to mount the dropdown into. The dropdown escapes `overflow: hidden` ancestors.                                                                             |
+| `strategy`             | `"auto" \| "absolute" \| "fixed"`                                           | `"auto"`                 | How the dropdown is anchored. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                                                                             |
+| `hideWhenDetached`     | `boolean`                                                                   | `true`                   | Hide the dropdown while its trigger is scrolled out of view. See [Anchoring and scroll containers](#anchoring-and-scroll-containers).                                              |
+| `animate`              | `boolean`                                                                   | `true`                   | Animate the multiselect chips. Set to `false` to add and remove them outright.                                                                                                     |
+| `bodyLock`             | `boolean`                                                                   | `undefined`              | Locks scrolling while open: the scroll container the dropdown is anchored in, or the page otherwise. Left unset, defaults to `true` in button mode and `false` in searchable mode. |
+| `childrenKey`          | `string`                                                                    | `"children"`             | Object key for nested children. Any option with a `children` array enables tree mode automatically.                                                                                |
+| `defaultExpandLevel`   | `number`                                                                    | `undefined`              | Number of levels to pre-expand on open. `1` expands top-level branches, `2` expands two levels, and so on.                                                                         |
+| `disableBranchNodes`   | `boolean`                                                                   | `false`                  | Makes branch nodes (those with children) non-selectable. Only leaf nodes can be picked.                                                                                            |
+| `cascade`              | `boolean`                                                                   | `true`                   | In `multiple` tree mode, selecting a branch selects all its descendants. Set to `false` for independent node selection.                                                            |
+| `valueConsistsOf`      | `"LEAF_PRIORITY" \| "ALL" \| "BRANCH_PRIORITY" \| "ALL_WITH_INDETERMINATE"` | `"LEAF_PRIORITY"`        | Controls which nodes appear in `v-model` when `cascade` is active. See tree cascade section for details.                                                                           |
+| `clearOnSelect`        | `boolean`                                                                   | `true`                   | Clear the search query after picking an option.                                                                                                                                    |
+| `closeOnSelect`        | `boolean`                                                                   | see description          | Close the dropdown after picking. Defaults to `true` in single-select and `false` in `multiple`; an explicit value applies to both.                                                |
+| `noChildrenText`       | `string`                                                                    | `"No sub-options"`       | Text shown under an expanded branch whose `children` array is empty.                                                                                                               |
+| `noOptionsText`        | `string`                                                                    | `"No options available"` | Text shown when there are no options at all.                                                                                                                                       |
+| `backspaceRemoves`     | `boolean`                                                                   | `true`                   | Backspace on an empty search input removes the last chip.                                                                                                                          |
+| `deleteRemoves`        | `boolean`                                                                   | `true`                   | Delete on an empty search input removes the last chip.                                                                                                                             |
+| `searchNested`         | `boolean`                                                                   | `false`                  | In tree mode, let a multi-word query match across a node's ancestor path.                                                                                                          |
+| `alwaysOpen`           | `boolean`                                                                   | `false`                  | Renders the list inline in the page instead of as a dropdown. See [Always open](#always-open).                                                                                     |
+| `flattenSearchResults` | `boolean`                                                                   | `false`                  | In tree mode, show only nodes matching the query, as a flat list. See [Flattening search results](#flattening-search-results).                                                     |
+| `valueFormat`          | `"id" \| "object"`                                                          | `"id"`                   | Whether `v-model` holds plain values or your original option objects. See [Object values](#object-values).                                                                         |
+| `sortValueBy`          | `"ORDER_SELECTED" \| "LEVEL" \| "INDEX"`                                    | `"ORDER_SELECTED"`       | Order of the emitted array and the chips. See [Ordering selected values](#ordering-selected-values).                                                                               |
 
 ## Slots
 
@@ -404,17 +404,25 @@ Nothing is highlighted until the user presses a key, since a visible list is
 not the same as a focused one. A disabled control closes, so the panel is not
 left sitting there inert.
 
+## Scroll lock
+
+In button mode the scroll behind an open dropdown is locked (see `bodyLock`).
+The lock swallows wheel and touch input instead of hiding the scrollbar, so the
+page's layout is never touched: nothing shifts on open or close, and fixed
+headers and sidebars stay exactly where they are. The dropdown's own list keeps
+scrolling normally.
+
 ## Anchoring and scroll containers
 
 The dropdown is rendered outside the component so it is never clipped by an
 ancestor with `overflow: hidden`. Where it gets rendered, and how it is
 positioned, is decided by `strategy`.
 
-| Value              | Behavior                                                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `"auto"` (default) | Anchors to the page when nothing between the trigger and the root scrolls, to the nearest scrollable ancestor when that ancestor can hold it, and falls back to `"fixed"` otherwise. |
-| `"absolute"`       | Always anchors inside the nearest scrollable ancestor, setting `position: relative` on it if it has none.                                                                            |
-| `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                                                                                   |
+| Value              | Behavior                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"auto"` (default) | Anchors to the page when nothing between the trigger and the root scrolls, to the nearest scrollable ancestor when that ancestor can hold it and the trigger travels with it, and falls back to `"fixed"` otherwise. |
+| `"absolute"`       | Always anchors inside the nearest scrollable ancestor, setting `position: relative` on it if it has none.                                                                                                            |
+| `"fixed"`          | Always renders in `<body>` with `position: fixed`.                                                                                                                                                                   |
 
 This matters whenever the dropdown is open while something scrolls, whether that
 is the window on an ordinary page or a content pane in a dashboard with fixed
@@ -431,6 +439,15 @@ glued to the trigger and no work happens per frame.
 
 When the window is what scrolls, `"auto"` anchors to the page and needs nothing
 from you. That is the default on an ordinary page.
+
+A trigger inside a `position: fixed` ancestor, such as a modal, is also handled
+for you. It stays put while the container behind it scrolls, so there is no
+trailing to avoid and anchoring would only let the panel drift away from it.
+This is detected and `"fixed"` is kept.
+
+It is the one case where an explicit `strategy="absolute"` is overruled.
+Anchoring exists to stop the panel trailing a moving trigger, so with a trigger
+that cannot move it has nothing to offer.
 
 Inside a scroll container, `"auto"` prefers anchoring but needs an ancestor that
 establishes a containing block. A plain `overflow-y: auto` div does not, so

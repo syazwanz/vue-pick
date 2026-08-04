@@ -76,6 +76,7 @@ inherits from `--vpick-width` so a single override styles both.
 | ------------------------------------- | ---------------------------------------------------------------- |
 | `--vpick-option-radius`               | `0.5rem`                                                         |
 | `--vpick-option-padding-block`        | `0.25rem`                                                        |
+| `--vpick-option-gap`                  | `0.125rem`                                                       |
 | `--vpick-option-padding-inline-start` | `0.375rem`                                                       |
 | `--vpick-listbox-bg`                  | `#fff`                                                           |
 | `--vpick-listbox-shadow`              | `0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)` |
@@ -85,6 +86,8 @@ inherits from `--vpick-width` so a single override styles both.
 | `--vpick-option-hover-bg`             | `#f5f5f5`                                                        |
 | `--vpick-option-highlight-bg`         | `#f5f5f5`                                                        |
 | `--vpick-option-selected-color`       | `inherit`                                                        |
+| `--vpick-option-selected-bg`          | `#e3f2fd`                                                        |
+| `--vpick-option-selected-weight`      | `inherit`                                                        |
 | `--vpick-option-check-color`          | `currentColor`                                                   |
 | `--vpick-group-label-color`           | `#737373`                                                        |
 | `--vpick-group-label-size`            | `0.75rem`                                                        |
@@ -93,6 +96,30 @@ inherits from `--vpick-width` so a single override styles both.
 `--vpick-tree-indent` is the width of one level of nesting in tree mode, applied
 per depth. The default matches the width of the expand chevron and its gap, so a
 child's chevron lines up under its parent's label.
+
+`--vpick-option-gap` is the space between consecutive rows. Rows carry
+backgrounds for hover and selection, and stacked flush those backgrounds merge
+into one block; the gap keeps each row reading as its own object. Set it to `0`
+for a continuous list.
+
+### The selected row
+
+In single-select the row holding the current value is tinted with
+`--vpick-option-selected-bg`, so it can be found at a glance rather than by
+looking for the check icon. It outranks the hover and keyboard highlight, so a
+selected row keeps its tint while hovered. `multiple` is excluded, since the
+checkboxes already carry that meaning.
+
+`--vpick-option-selected-weight` is off by default, since bold text is wider and
+would nudge the selected row's label. Set it to `600` to bold the row as well,
+or set the tint to `transparent` to rely on the check icon alone.
+
+```vue
+<VPick
+  :options="options"
+  style="--vpick-option-selected-bg: #f4f4f5; --vpick-option-selected-weight: 600"
+/>
+```
 
 `--vpick-option-padding-inline-start` is the row's own padding, before any tree
 indent. Changing it shifts every row, including the placeholder under an empty
