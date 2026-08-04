@@ -157,6 +157,20 @@ describe("VPick (Vue 2) — rendering", () => {
     wrapper.destroy()
   })
 
+  it("forwards the empty-branch icon color to the moved panel", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status },
+      attrs: { style: "--vpick-option-empty-icon-color: #f97316" },
+      attachTo: document.body,
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+    const style =
+      wrapper.find(".vpick-positioner").element.getAttribute("style") ?? ""
+    expect(style).toContain("--vpick-option-empty-icon-color: #f97316")
+    wrapper.destroy()
+  })
+
   it("positioner uses translate3d for positioning", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: status },

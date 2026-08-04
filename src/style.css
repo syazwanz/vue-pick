@@ -505,7 +505,7 @@ button.vpick-trigger--loading:disabled,
 
 /* Rows carry backgrounds for both hover and selection, and stacked flush they
    merge into one block: moving between a selected row and the one under it
-   reads as a single shape changing colour rather than two rows. A small gap
+   reads as a single shape changing color rather than two rows. A small gap
    keeps the rounded corners visible so each row stays its own object. Applied
    between consecutive rows only, so the list's outer padding is unchanged. */
 .vpick-option + .vpick-option {
@@ -641,7 +641,7 @@ button.vpick-trigger--loading:disabled,
   transform: translateY(-50%);
 }
 
-/* Spinner in multi mode: translateY centres the container; animation rotates the SVG inside */
+/* Spinner in multi mode: translateY centers the container; animation rotates the SVG inside */
 .vpick-trigger--multi .vpick-trigger-spinner {
   animation: none;
 }
@@ -927,7 +927,9 @@ button.vpick-trigger--loading:disabled,
 }
 
 /* Holds the column open at the width of a chevron or checkbox whether or not
-   anything is in it, which is what keeps the text on the label column. */
+   anything is in it, which is what keeps the text on the label column. The
+   color is a variable rather than inherited outright, since the icon is
+   authored in the consumer and scoped CSS cannot reach it inside the panel. */
 .vpick-option-empty-icon {
   flex-shrink: 0;
   display: inline-flex;
@@ -935,6 +937,7 @@ button.vpick-trigger--loading:disabled,
   justify-content: center;
   width: 1rem;
   height: 1rem;
+  color: var(--vpick-option-empty-icon-color, inherit);
 }
 
 /* Alignment spacer for leaf nodes in tree mode. Not rendered once

@@ -768,6 +768,7 @@ const FORWARDED_VARS = [
   "--vpick-disabled-opacity",
   "--vpick-empty-color",
   "--vpick-empty-padding",
+  "--vpick-option-empty-icon-color",
   "--vpick-tree-indent",
 ]
 

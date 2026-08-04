@@ -129,6 +129,24 @@ describe("VPick — portal", () => {
     wrapper.unmount()
   })
 
+  it("forwards the empty-branch icon color to the teleported panel", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: opts },
+      attrs: { style: "--vpick-option-empty-icon-color: #f97316" },
+      attachTo: document.body,
+      global: { stubs: { Teleport: false } },
+    })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await nextTick()
+
+    const style =
+      document.body
+        .querySelector<HTMLElement>(".vpick-positioner")
+        ?.getAttribute("style") ?? ""
+    expect(style).toContain("--vpick-option-empty-icon-color: #f97316")
+    wrapper.unmount()
+  })
+
   it("clicking a teleported option still selects it", async () => {
     const wrapper = mount(VPick, {
       props: { options: opts, modelValue: "todo" },

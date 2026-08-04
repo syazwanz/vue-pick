@@ -89,6 +89,7 @@ inherits from `--vpick-width` so a single override styles both.
 | `--vpick-option-selected-bg`          | `#e3f2fd`                                                        |
 | `--vpick-option-selected-weight`      | `inherit`                                                        |
 | `--vpick-option-check-color`          | `currentColor`                                                   |
+| `--vpick-option-empty-icon-color`     | `inherit`                                                        |
 | `--vpick-group-label-color`           | `#737373`                                                        |
 | `--vpick-group-label-size`            | `0.75rem`                                                        |
 | `--vpick-tree-indent`                 | `1.375rem`                                                       |
@@ -124,6 +125,24 @@ or set the tint to `transparent` to rely on the check icon alone.
 `--vpick-option-padding-inline-start` is the row's own padding, before any tree
 indent. Changing it shifts every row, including the placeholder under an empty
 branch, and leaves the nesting steps intact.
+
+`--vpick-option-empty-icon-color` colors the icon in the `no-children-icon`
+slot, the one shown on the placeholder row under an empty branch. That icon is
+authored in your own template but renders inside the teleported panel, so scoped
+CSS cannot reach it. Set the variable on the component instead and have the
+icon draw with `currentColor`:
+
+```vue
+<VPick :options="categories" style="--vpick-option-empty-icon-color: #f97316">
+  <template #no-children-icon>
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor">
+      <circle cx="8" cy="8" r="6" />
+    </svg>
+  </template>
+</VPick>
+```
+
+It defaults to `inherit`, so an icon left alone still takes the row's color.
 
 ### Branch rows
 
