@@ -180,6 +180,12 @@ Use `disableBranchNodes` to make branch nodes non-selectable, so only leaves can
 
 Combine with `searchable` to filter the tree. Matching nodes auto-expand their ancestor branches so results are always visible, and expansion reverts when the query is cleared.
 
+A row survives the filter when it matches, or when it sits on the path to
+something that matches. A branch matching on its own label is treated as the
+whole category being asked for, so it comes through with everything inside it,
+matching or not. Branches with nothing matching under them are dropped, whether
+or not `defaultExpandLevel` had already opened them.
+
 <Preview :code="TreeSearchableCode">
   <TreeSearchableExample />
 </Preview>
