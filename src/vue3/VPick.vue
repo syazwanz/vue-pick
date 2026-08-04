@@ -18,10 +18,10 @@ import {
   filterFlat,
   filterFlatWith,
   computePosition,
-  lockBodyScroll,
-  unlockBodyScroll,
+  lockScroll,
   setupScrollListeners,
   findScrollParent,
+  isPinnedWithin,
   scrollParents,
   isClippedOutOfView,
   establishesContainingBlock,
@@ -745,9 +745,12 @@ const FORWARDED_VARS = [
   "--vpick-option-hover-bg",
   "--vpick-option-highlight-bg",
   "--vpick-option-selected-color",
+  "--vpick-option-selected-bg",
+  "--vpick-option-selected-weight",
   "--vpick-option-check-color",
   "--vpick-option-radius",
   "--vpick-option-padding-block",
+  "--vpick-option-gap",
   "--vpick-option-padding-inline-start",
   "--vpick-option-branch-padding-block",
   "--vpick-option-branch-weight",
@@ -785,7 +788,7 @@ function readForwardedVars(): Record<string, string> {
   return out
 }
 
-// Reading 28 custom properties means a style resolve, which is far too much to
+// Reading 31 custom properties means a style resolve, which is far too much to
 // repeat per scroll event. Theming cannot change mid-scroll, so cache on open
 // and refresh only where a change is actually possible.
 const forwarded = ref<Record<string, string>>({})
@@ -1008,6 +1011,24 @@ function resolveAnchor() {
   }
   const trigger = triggerRef.value
   const container = trigger ? findScrollParent(trigger) : null
+
+  // A trigger pinned to the viewport does not travel with its scroll container,
+  // and with no container it does not travel with the page either. Anchoring
+  // into either would let the panel scroll away from a trigger that never
+  // moved, so this is checked before both anchoring branches below.
+  //
+  // It also outranks an explicit `strategy="absolute"`, which is the one place
+  // that prop does not win. Explicit normally beats detection because the
+  // caller is choosing a tradeoff, but there is no tradeoff here: anchoring
+  // exists to remove trailing, a pinned trigger cannot trail, so `absolute`
+  // has nothing to offer and only introduces the drift. Honouring it would be
+  // honouring a request that cannot help.
+  if (trigger && isPinnedWithin(trigger, container)) {
+    anchorEl.value = null
+    resolvedStrategy.value = "fixed"
+    return
+  }
+
   // No scroll ancestor means the page itself scrolls, which is the common case
   // and was the one still left on `fixed`. Absolute in the body is the same
   // trade as anchoring inside a container: coordinates stop changing during
@@ -1110,7 +1131,7 @@ function highlightDefault() {
   highlightedIndex.value = idx >= 0 ? idx : list.findIndex(isNavigable)
 }
 
-let scrollLocked = false
+let releaseScrollLock: (() => void) | null = null
 let cleanupScroll: (() => void) | null = null
 let cleanupResize: (() => void) | null = null
 
@@ -1122,14 +1143,18 @@ function open() {
   highlightDefault()
   // Rendered in flow, so none of the dropdown machinery applies.
   if (isInline.value) return
-  // Default: lock body scroll for button mode (select-like, modal feel),
-  // leave unlocked for searchable mode (combobox, persistent typeahead).
+  resolveAnchor()
+  // Default: lock scroll for button mode (select-like, modal feel), leave
+  // unlocked for searchable mode (combobox, persistent typeahead).
+  //
+  // The lock freezes whatever can move content under the open panel. Anchored
+  // inside a scroll container, that is the container: the body lock this used
+  // to take would leave that container free to scroll, which is why the lock
+  // is decided after `resolveAnchor` and not before.
   const shouldLock = props.bodyLock ?? !isSearchable.value
   if (shouldLock) {
-    lockBodyScroll()
-    scrollLocked = true
+    releaseScrollLock = lockScroll(anchorEl.value ?? document.body)
   }
-  resolveAnchor()
   nextTick(() => {
     refreshForwardedVars()
     updatePosition()
@@ -1158,10 +1183,8 @@ function close() {
   // Defer searchQuery + isUserSearching reset to onAfterLeave so the dropdown
   // doesn't flicker to the full list mid-fade. Input text is part of the
   // displayed state, so it stays frozen during the leave animation too.
-  if (scrollLocked) {
-    unlockBodyScroll()
-    scrollLocked = false
-  }
+  releaseScrollLock?.()
+  releaseScrollLock = null
   cancelReposition()
   detached.value = false
   scrollAncestors = []
@@ -1373,6 +1396,36 @@ watch(highlightedIndex, () => {
   nextTick(scrollHighlightedIntoView)
 })
 
+// `mouseenter` fires whenever the pointer and the row change relation, which
+// includes the row sliding under a pointer that never moved. Anything that
+// moves the list while it is open (a scroll behind it, chips wrapping, the
+// panel being repositioned) therefore reads as a hover, moves the highlight,
+// and `scrollHighlightedIntoView` then scrolls the list to reveal it. The list
+// ends up scrolling itself while the user is only scrolling the page.
+//
+// Real pointer movement is the thing to test for, so the last seen coordinates
+// are compared and an event that repeats them is treated as the content having
+// moved instead. Coordinates are only recorded here, so a hover that follows a
+// genuine move still lands normally.
+let lastPointer: { x: number; y: number } | null = null
+
+function onPointerMove(e: MouseEvent) {
+  lastPointer = { x: e.clientX, y: e.clientY }
+}
+
+function isRealHover(e: MouseEvent): boolean {
+  const moved =
+    !lastPointer || lastPointer.x !== e.clientX || lastPointer.y !== e.clientY
+  lastPointer = { x: e.clientX, y: e.clientY }
+  return moved
+}
+
+function onOptionHover(e: MouseEvent, fo: FlatOption, flatIdx: number) {
+  if (fo.option.disabled || fo.groupDisabled) return
+  if (!isRealHover(e)) return
+  highlightedIndex.value = flatIdx
+}
+
 // `alwaysOpen` and `disabled` can both change after mount. Without this a
 // control disabled and then re-enabled would stay shut for good, since inline
 // mode hides the chevron and refuses ordinary open requests.
@@ -1566,10 +1619,8 @@ onBeforeUnmount(() => {
     cleanupResize()
     cleanupResize = null
   }
-  if (scrollLocked) {
-    unlockBodyScroll()
-    scrollLocked = false
-  }
+  releaseScrollLock?.()
+  releaseScrollLock = null
 })
 </script>
 
@@ -1991,10 +2042,8 @@ onBeforeUnmount(() => {
                       item.fo.isBranch ? item.fo.isExpanded : undefined
                     "
                     @click="selectOption(item.fo)"
-                    @mouseenter="
-                      !(item.fo.option.disabled || item.fo.groupDisabled) &&
-                      (highlightedIndex = item.flatIdx)
-                    "
+                    @mousemove="onPointerMove"
+                    @mouseenter="onOptionHover($event, item.fo, item.flatIdx)"
                   >
                     <!-- Tree expand chevron (branch nodes) or alignment spacer (leaves) -->
                     <button
