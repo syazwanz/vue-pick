@@ -3188,3 +3188,83 @@ describe("VPick (Vue 2) — hideWhenDetached", () => {
     container.remove()
   })
 })
+
+describe("VPick (Vue 2) — deselect on chip removal", () => {
+  const users = [
+    { id: 1, name: "Alice" },
+    { id: 2, name: "Bob" },
+  ]
+
+  const tree: OptionOrGroup[] = [
+    {
+      label: "Electronics",
+      value: "electronics",
+      children: [
+        { label: "Phones", value: "phones" },
+        { label: "Laptops", value: "laptops" },
+      ],
+    },
+    { label: "Books", value: "books" },
+  ]
+
+  function mountUsers(props = {}) {
+    return mount(VPick, {
+      propsData: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        value: [1, 2],
+        ...props,
+      },
+    })
+  }
+
+  it("emits deselect when a chip is removed", async () => {
+    const wrapper = mountUsers()
+    await wrapper.findAll(".vpick-chip-remove").at(0).trigger("click")
+
+    expect(wrapper.emitted("deselect")!.length).toBe(1)
+    expect(wrapper.emitted("deselect")![0][0]).toBe(users[0])
+  })
+
+  it("emits deselect once when a branch chip is removed in cascade mode", async () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: tree,
+        value: ["phones", "laptops"],
+        multiple: true,
+      },
+    })
+    // Both leaves are checked, so the branch collapses into one chip.
+    await wrapper.find(".vpick-chip-remove").trigger("click")
+
+    expect(wrapper.emitted("deselect")!.length).toBe(1)
+    expect(wrapper.emitted("deselect")![0][0]).toBe(tree[0])
+  })
+
+  it("emits deselect when backspace removes the last chip", async () => {
+    const wrapper = mountUsers()
+    await wrapper.find("input").trigger("keydown", { key: "Backspace" })
+
+    expect(wrapper.emitted("deselect")![0][0]).toBe(users[1])
+  })
+
+  it("does not emit deselect when the value is cleared", async () => {
+    const wrapper = mountUsers({ clearable: true })
+    await wrapper.find(".vpick-clear").trigger("click")
+
+    expect(wrapper.emitted("input")![0][0]).toEqual([])
+    expect(wrapper.emitted("deselect")).toBeFalsy()
+  })
+
+  it("removing a chip keeps valueFormat=object emitting objects", async () => {
+    const wrapper = mountUsers({
+      valueFormat: "object",
+      value: [users[0], users[1]],
+    })
+    await wrapper.findAll(".vpick-chip-remove").at(0).trigger("click")
+
+    expect(wrapper.emitted("input")![0][0]).toEqual([users[1]])
+  })
+})
