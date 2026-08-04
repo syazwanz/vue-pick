@@ -26,7 +26,7 @@ Zero runtime dependencies. CSS custom properties for theming. Built for accessib
 
 ## Next steps
 
-- [Installation](/guide/installation) — install the package and import the stylesheet
-- [Theming](/guide/theming) — customize with CSS variables
-- [VPickNative](/components/vpick-native) — full API reference
-- [VPick](/components/vpick) — full API reference
+- [Installation](/guide/installation): install the package and import the stylesheet
+- [Theming](/guide/theming): customize with CSS variables
+- [VPickNative](/components/vpick-native): full API reference
+- [VPick](/components/vpick): full API reference

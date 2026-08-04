@@ -2573,6 +2573,86 @@ describe("VPick — select / deselect events", () => {
     await wrapper.findAll('[role="option"]')[0].trigger("click")
     expect(wrapper.emitted("select")).toBeFalsy()
   })
+
+  it("emits deselect when a chip is removed", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        modelValue: [1, 2],
+      },
+    })
+    await wrapper.findAll(".vpick-chip-remove")[0].trigger("click")
+
+    expect(wrapper.emitted("deselect")?.length).toBe(1)
+    expect(wrapper.emitted("deselect")?.[0]?.[0]).toBe(users[0])
+  })
+
+  it("emits deselect once when a branch chip is removed in cascade mode", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: tree,
+        modelValue: ["phones", "gaming", "business"],
+        multiple: true,
+      },
+    })
+    // The whole branch is checked, so it collapses into one "Electronics" chip.
+    await wrapper.find(".vpick-chip-remove").trigger("click")
+
+    // Three leaves left the value, but the user acted on one node.
+    expect(wrapper.emitted("deselect")?.length).toBe(1)
+    expect(wrapper.emitted("deselect")?.[0]?.[0]).toBe(tree[0])
+  })
+
+  it("emits deselect when backspace removes the last chip", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        modelValue: [1, 2],
+      },
+    })
+    await wrapper.find("input").trigger("keydown", { key: "Backspace" })
+
+    expect(wrapper.emitted("deselect")?.[0]?.[0]).toBe(users[1])
+  })
+
+  it("does not emit deselect when the value is cleared", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        clearable: true,
+        modelValue: [1, 2],
+      },
+    })
+    await wrapper.find(".vpick-clear").trigger("click")
+
+    expect(wrapper.emitted("update:modelValue")?.[0]?.[0]).toEqual([])
+    expect(wrapper.emitted("deselect")).toBeFalsy()
+  })
+
+  it("removing a chip keeps valueFormat=object emitting objects", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: users,
+        labelKey: "name",
+        valueKey: "id",
+        multiple: true,
+        valueFormat: "object",
+        modelValue: [users[0], users[1]],
+      },
+    })
+    await wrapper.findAll(".vpick-chip-remove")[0].trigger("click")
+
+    expect(wrapper.emitted("update:modelValue")?.[0]?.[0]).toEqual([users[1]])
+  })
 })
 
 describe("VPick — sortValueBy", () => {

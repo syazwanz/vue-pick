@@ -1300,21 +1300,22 @@ function selectOption(flatOption: FlatOption) {
 
 function removeChip(value: OptionItem["value"]) {
   if (props.disabled) return
+  const removed = flatAll.value.find((f) => f.option.value === value)
   if (isCascadeMode.value) {
-    const fo = flatAll.value.find((f) => f.option.value === value)
-    if (fo) {
-      const leaves = getLeafDescendants(fo.option)
+    if (removed) {
+      const leaves = getLeafDescendants(removed.option)
       const newLeafSet = new Set(effectiveLeafSet.value)
       for (const v of leaves) newLeafSet.delete(v)
       emit("update:modelValue", toEmit(emitFromLeafSet(newLeafSet)))
     }
   } else {
     const arr = Array.isArray(model.value) ? model.value : []
-    emit(
-      "update:modelValue",
-      arr.filter((v) => v !== value),
-    )
+    emit("update:modelValue", toEmit(arr.filter((v) => v !== value)))
   }
+  // One deselect for the chip the user clicked, even in cascade mode where
+  // several leaves left the value. Matches the row toggle, which also emits
+  // once for the node that was acted on.
+  if (removed) emit("deselect", sourceOf(removed.option))
   focusTrigger()
 }
 

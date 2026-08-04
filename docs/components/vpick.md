@@ -157,7 +157,7 @@ and remove a few on each to compare:
 
 ### Tree select
 
-Pass options with a `children` array to enable tree mode. VPick detects nested data automatically — no extra prop needed. Click the chevron to expand or collapse a branch; clicking the row itself selects the node.
+Pass options with a `children` array to enable tree mode. VPick detects nested data automatically, no extra prop needed. Click the chevron to expand or collapse a branch; clicking the row itself selects the node.
 
 <Preview :code="TreeCode">
   <TreeExample />
@@ -172,7 +172,7 @@ Use `defaultExpandLevel` to pre-expand branches on open. A value of `1` expands 
 <VPick :options="options" :default-expand-level="1" />
 ```
 
-Use `disableBranchNodes` to make branch nodes non-selectable — only leaves can be picked.
+Use `disableBranchNodes` to make branch nodes non-selectable, so only leaves can be picked.
 
 ```vue
 <VPick :options="options" disable-branch-nodes />
@@ -198,9 +198,9 @@ Use `cascade: false` to opt out and get independent node selection instead.
 
 | Value                       | What is emitted                                                                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `"LEAF_PRIORITY"` (default) | Only leaf values. A fully-selected branch is implied by its leaves — no branch value appears in the array.                           |
+| `"LEAF_PRIORITY"` (default) | Only leaf values. A fully-selected branch is implied by its leaves, so no branch value appears in the array.                         |
 | `"BRANCH_PRIORITY"`         | The topmost selected ancestor replaces its descendants. Selecting all of Electronics emits `["electronics"]` rather than every leaf. |
-| `"ALL"`                     | Every checked node — both fully-selected branches and their leaf descendants.                                                        |
+| `"ALL"`                     | Every checked node, both fully-selected branches and their leaf descendants.                                                         |
 | `"ALL_WITH_INDETERMINATE"`  | Like `ALL` but also includes partially-selected (indeterminate) branch values.                                                       |
 
 ```vue
@@ -345,6 +345,20 @@ function onSelect(user) {
   />
 </template>
 ```
+
+### When `deselect` fires
+
+Every way of removing one option emits it: unpicking the row, clicking a chip's
+remove button, and `Backspace`/`Delete` on an empty search input.
+
+Two cases behave in a way worth knowing:
+
+- **Clearing emits nothing.** The clear button wipes the whole value in one go
+  and emits only `update:modelValue`. Watch the model if you need to react to
+  that.
+- **In a cascading tree, one event, not one per leaf.** Removing a checked
+  branch drops all of its leaves from the value, but `deselect` fires once,
+  carrying the branch you acted on.
 
 ## Branch nodes with no children
 
