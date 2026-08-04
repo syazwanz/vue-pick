@@ -1,5 +1,53 @@
 # vue-pick
 
+## 0.23.0
+
+### Minor Changes
+
+- fbae560: Add `--vpick-option-empty-icon-color`, which colors the icon in the
+  `no-children-icon` slot. That icon is authored in your own template but renders
+  inside the teleported panel, where scoped CSS cannot reach it. Set the variable
+  on the component and have the icon draw with `currentColor`:
+
+  ```vue
+  <VPick :options="categories" style="--vpick-option-empty-icon-color: #f97316">
+    <template #no-children-icon>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor">...</svg>
+    </template>
+  </VPick>
+  ```
+
+  It defaults to `inherit`, so existing icons are unchanged. Like the other row
+  variables it is forwarded to the panel, so setting it on one component styles
+  that instance rather than every VPick on the page.
+
+### Patch Changes
+
+- 3370482: Fix: searching a tree no longer keeps branches with nothing matching under
+  them. The filter tested whether a branch was expanded, and `defaultExpandLevel`
+  opens branches before anything is typed, so every top-level branch survived any
+  query. A row now survives when it matches, or when it is on the path to
+  something that matches.
+
+  A branch matching on its own label is read as the whole category being asked
+  for, so it comes through with its subtree, matching or not. An empty branch
+  that matches by name shows its `noChildrenText` placeholder rather than sitting
+  there with nothing under it.
+
+  `flattenSearchResults` was never affected.
+
+- 3370482: Fix: `valueConsistsOf="ALL_WITH_INDETERMINATE"` selected whole branches when
+  only part of one was picked. That mode emits a branch as soon as some
+  descendant is selected, but reading the value back expanded every branch entry
+  into all of its leaves, so ticking one leaf rendered its siblings as ticked too
+  and the parent showed a full check instead of a dash. The emitted value was
+  correct throughout; only the rendering disagreed with it.
+
+  Branch entries are now skipped when parsing an incoming value in that mode,
+  since the leaves are already listed individually. `ALL` and `BRANCH_PRIORITY`
+  are unchanged: they only emit a branch when every leaf under it is selected, so
+  expanding it back out is faithful.
+
 ## 0.22.1
 
 ### Patch Changes
