@@ -395,10 +395,37 @@ function collectAncestors(
   return out
 }
 
+// Every value beneath an option, branches included. `getLeafDescendants` stops
+// at leaves, which is what cascade maths wants but loses the intermediate
+// branches a search result has to render.
+function collectSubtreeValues(option: OptionItem): OptionItem["value"][] {
+  const out: OptionItem["value"][] = []
+  const walk = (items: OptionOrGroup[]) => {
+    for (const item of items) {
+      if (isOptionGroup(item)) {
+        walk(item.options)
+        continue
+      }
+      out.push(item.value)
+      if (item.children?.length) walk(item.children as OptionOrGroup[])
+    }
+  }
+  if (option.children?.length) walk(option.children as OptionOrGroup[])
+  return out
+}
+
 function autoExpandForSearch(q: string) {
   const ancestorValues = collectAncestors((fo) => matchesQuery(fo, q))
   const next = new Set(preSearchExpandedSet.value ?? expandedSet.value)
   for (const v of ancestorValues) next.add(v)
+  // A branch matching on its own label opens, along with everything inside it.
+  // The user named the branch, so the subtree it brings has to be rendered
+  // rather than left behind a collapsed row with nothing under it.
+  for (const fo of flatAll.value) {
+    if (!fo.isBranch || !matchesQuery(fo, q)) continue
+    next.add(fo.option.value)
+    for (const v of collectSubtreeValues(fo.option)) next.add(v)
+  }
   expandedSet.value = next
 }
 
@@ -466,12 +493,22 @@ const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
   if (!isCascadeMode.value) return selectedValues.value
   const arr = Array.isArray(model.value) ? model.value : []
   if (props.valueConsistsOf === "LEAF_PRIORITY") return new Set(arr)
-  // ALL / ALL_WITH_INDETERMINATE / BRANCH_PRIORITY: expand any branch values.
+  // ALL / BRANCH_PRIORITY: a branch value is only ever emitted when every leaf
+  // under it is selected, so expanding it back out is faithful.
+  //
+  // ALL_WITH_INDETERMINATE is the exception. It emits a branch as soon as
+  // *some* descendant is selected, which is the whole point of the mode, so a
+  // branch there cannot stand for its leaves. Expanding it anyway reads a
+  // partial selection back as a full one and the render disagrees with the
+  // model from the first click. The leaves are already listed individually,
+  // so the branch entries carry nothing on the way in and are skipped.
+  const partialBranches = props.valueConsistsOf === "ALL_WITH_INDETERMINATE"
   const set = new Set<OptionItem["value"]>()
   for (const v of arr) {
     const fo = flatAll.value.find((f) => f.option.value === v)
     if (!fo) continue
     if (fo.hasChildren) {
+      if (partialBranches) continue
       for (const lv of getLeafDescendants(fo.option)) set.add(lv)
     } else {
       set.add(v)
@@ -620,11 +657,32 @@ const filteredFlat = computed<FlatOption[]>(() => {
         .map((fo) => ({ ...fo, depth: 0, isExpanded: false }))
     }
 
-    // Show expanded branch nodes (ancestors of matches) + matching nodes.
+    // Branches on the path to a match, plus the matches themselves. Being
+    // expanded is not evidence of anything: `defaultExpandLevel` opens branches
+    // before a key is pressed, so testing for it keeps every top-level branch
+    // on screen no matter what was typed.
+    const onPathToMatch = collectAncestors(matches)
+    // Everything inside a branch that matched on its own label comes through
+    // whole, matching or not.
+    const insideSelfMatch = new Set<OptionItem["value"]>()
+    for (const fo of flatAll.value) {
+      if (!fo.isBranch || !matches(fo)) continue
+      for (const v of collectSubtreeValues(fo.option)) insideSelfMatch.add(v)
+    }
+
     return flat.value.filter((fo) => {
-      if (fo.isEmptyMessage) return false
-      if (fo.hasChildren && fo.isExpanded) return true
-      return matches(fo)
+      // The placeholder row under an empty branch carries that branch as its
+      // option, so this asks whether the branch itself matched. An empty
+      // branch has no descendants to match, so nothing else can put it here.
+      if (fo.isEmptyMessage) return matches(fo)
+      if (fo.isBranch) {
+        return (
+          matches(fo) ||
+          onPathToMatch.has(fo.option.value) ||
+          insideSelfMatch.has(fo.option.value)
+        )
+      }
+      return matches(fo) || insideSelfMatch.has(fo.option.value)
     })
   }
   if (props.filter) {
