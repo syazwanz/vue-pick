@@ -1,5 +1,66 @@
 # vue-pick
 
+## 0.22.0
+
+### Minor Changes
+
+- c44a1d5: In single-select the row holding the current value is now tinted, so it can be
+  found at a glance rather than by looking for the check icon. It outranks the
+  hover and keyboard highlight, so a selected row keeps its tint while hovered.
+  `multiple` is unchanged, since the checkboxes already carry that meaning.
+
+  Consecutive rows also gain a small gap, `--vpick-option-gap` (default
+  `0.125rem`), so backgrounds no longer merge into one block as the highlight
+  moves between rows. Set it to `0` for a continuous list.
+
+  Two further variables control the tint, all of them forwarded so they can be set
+  on a single component: `--vpick-option-selected-bg` (default `#e3f2fd`) and
+  `--vpick-option-selected-weight` (default `inherit`, since bold text is wider
+  and would nudge the row's label).
+
+  ```vue
+  <VPick
+    :options="options"
+    style="--vpick-option-selected-bg: #f4f4f5; --vpick-option-selected-weight: 600"
+  />
+  ```
+
+  Set `--vpick-option-selected-bg: transparent` to restore the previous
+  appearance.
+
+### Patch Changes
+
+- c44a1d5: The search input no longer slides sideways when the dropdown opens. It shares a
+  transition group with the chips so it can slide as they come and go, but with no
+  chips it has nothing to slide alongside and any re-render while open, such as
+  opening itself, played a stray move. Single-select searchable never has chips,
+  so it happened on every open there. Chip motion in `multiple` is unchanged.
+- c44a1d5: The highlight no longer jumps when list content slides under a resting pointer.
+  A row reports a hover in that case even though the pointer never moved, and the
+  list would then scroll on its own to reveal the new highlight. Only real
+  pointer movement moves the highlight now.
+
+  A trigger inside a `position: fixed` ancestor, such as a modal, now always
+  keeps `position: fixed` for the panel. The trigger stays put while things
+  scroll behind it, so anchoring the panel to a scroll container or to the page
+  only let the panel drift away, and wheeling over the panel could scroll the
+  container behind the modal. Passing `strategy="fixed"` for this case is no
+  longer needed.
+
+  This is the one case where an explicit `strategy="absolute"` does not win.
+  Anchoring exists to stop the panel trailing a moving trigger, and a pinned
+  trigger cannot trail, so `absolute` has nothing to offer there.
+
+- c44a1d5: The scroll lock no longer hides the scrollbar. It swallows wheel and touch
+  input aimed at the locked scroller instead, so the page's layout is never
+  touched: fixed headers and sidebars no longer shift when a dropdown opens or
+  closes, and no compensation CSS is needed. The dropdown's own list still
+  scrolls.
+
+  The lock also now lands on the scroll container the dropdown is anchored in
+  rather than always on the page, so a dropdown anchored inside a scrolling pane
+  freezes that pane while open.
+
 ## 0.21.0
 
 ### Minor Changes
