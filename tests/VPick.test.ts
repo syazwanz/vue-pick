@@ -3118,10 +3118,13 @@ describe("VPick — flattenSearchResults", () => {
     expect(row.attributes("data-depth")).toBe("0")
   })
 
-  it("flattened still includes branch nodes that match themselves", async () => {
+  // A branch matching on its own label means the whole category, the same as
+  // it does in nested mode. Flattening drops the ancestors and the indent, not
+  // the subtree, or a branch query would leave nothing under it to pick.
+  it("flattened includes a self-matching branch and its subtree", async () => {
     const wrapper = await openAndType("laptops", true)
     const labels = wrapper.findAll('[role="option"]').map((o) => o.text())
-    expect(labels).toEqual(["Laptops"])
+    expect(labels).toEqual(["Laptops", "Gaming", "Business"])
   })
 
   it("flattened options remain selectable", async () => {

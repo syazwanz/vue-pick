@@ -555,16 +555,19 @@ unaffected, and words from unrelated branches still do not match.
 By default, searching a tree keeps the hierarchy: matching nodes stay nested and
 their ancestor branches auto-expand so results are visible in context.
 
-`flattenSearchResults` drops that. Only nodes that match the query themselves
-are shown, as a flat list with no indent and no ancestors:
+`flattenSearchResults` drops the ancestors and the indent, leaving a flat list:
 
 ```vue
 <VPick :options="options" searchable flatten-search-results />
 ```
 
 Searching "gaming" in `Electronics > Laptops > Gaming` shows just `Gaming`,
-rather than all three rows. A branch that matches the query is still listed,
-since it is a direct match like any other.
+rather than all three rows.
+
+What survives the filter is otherwise the same as in nested mode. A branch
+matching on its own label still brings everything inside it, listed flat and in
+document order, and an empty branch matching by name still shows its
+placeholder. Only the ancestor rows and the indentation are dropped.
 
 Useful when the tree is deep and users want to scan results rather than navigate
 to them. Clearing the query restores the tree, and expansion state is left

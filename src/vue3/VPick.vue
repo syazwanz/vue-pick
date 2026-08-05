@@ -648,12 +648,25 @@ const filteredFlat = computed<FlatOption[]>(() => {
     if (!q) return flat.value
     const matches = (fo: FlatOption) => matchesQuery(fo, searchQuery.value)
 
+    // Everything inside a branch that matched on its own label comes through
+    // whole, matching or not.
+    const insideSelfMatch = new Set<OptionItem["value"]>()
+    for (const fo of flatAll.value) {
+      if (!fo.isBranch || !matches(fo)) continue
+      for (const v of collectSubtreeValues(fo.option)) insideSelfMatch.add(v)
+    }
+
     if (props.flattenSearchResults) {
-      // Direct matches only, ancestors excluded. Walk every node rather than
-      // only the expanded ones, and drop the indent: a nested match has no
-      // visible parent here, so keeping its depth would leave it floating.
-      return flatAll.value
-        .filter((fo) => !fo.isEmptyMessage && matches(fo))
+      // The same rows the nested branch keeps, minus the ancestors and minus
+      // the indent: a nested match has no visible parent here, so keeping its
+      // depth would leave it floating. Walking the whole tree rather than the
+      // expanded rows keeps document order, so the two modes list the same
+      // options in the same sequence.
+      return flattenOptions(normalized.value, instanceId.value, "all")
+        .filter((fo) => {
+          if (fo.isEmptyMessage) return matches(fo)
+          return matches(fo) || insideSelfMatch.has(fo.option.value)
+        })
         .map((fo) => ({ ...fo, depth: 0, isExpanded: false }))
     }
 
@@ -662,13 +675,6 @@ const filteredFlat = computed<FlatOption[]>(() => {
     // before a key is pressed, so testing for it keeps every top-level branch
     // on screen no matter what was typed.
     const onPathToMatch = collectAncestors(matches)
-    // Everything inside a branch that matched on its own label comes through
-    // whole, matching or not.
-    const insideSelfMatch = new Set<OptionItem["value"]>()
-    for (const fo of flatAll.value) {
-      if (!fo.isBranch || !matches(fo)) continue
-      for (const v of collectSubtreeValues(fo.option)) insideSelfMatch.add(v)
-    }
 
     return flat.value.filter((fo) => {
       // The placeholder row under an empty branch carries that branch as its

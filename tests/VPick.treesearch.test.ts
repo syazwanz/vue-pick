@@ -105,3 +105,51 @@ describe("VPick — tree search result set", () => {
     ])
   })
 })
+
+// Flattened mode drops the ancestor rows and the indent. It should not also
+// drop the subtree a self-matched branch brings, which left a branch label
+// query returning a single row and nothing to pick under it.
+describe("VPick — flattened search matches the nested result set", () => {
+  const flat = { flattenSearchResults: true }
+
+  it("a branch label match brings its subtree, in document order", async () => {
+    expect(await search("electronics", flat)).toEqual(["Electronics", "Phones"])
+  })
+
+  it("gives the same rows as nested mode, minus the ancestors", async () => {
+    const nested = await search("electronics")
+    const flattened = await search("electronics", flat)
+    expect(flattened).toEqual(nested)
+  })
+
+  it("still excludes the ancestors of a leaf match", async () => {
+    expect(await search("phones", flat)).toEqual(["Phones"])
+    expect(await search("phones")).toEqual(["Electronics", "Phones"])
+  })
+
+  it("does not depend on disableBranchNodes", async () => {
+    expect(
+      await search("electronics", { ...flat, disableBranchNodes: true }),
+    ).toEqual(await search("electronics", flat))
+  })
+
+  it("shows the placeholder when an empty branch matches by name", async () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: [{ label: "Archived", value: "archived", children: [] }],
+        searchable: true,
+        flattenSearchResults: true,
+      },
+    })
+    await wrapper.find("input").setValue("archived")
+    await nextTick()
+    expect(
+      wrapper.findAll('[role="option"]').map((o) => o.text().trim()),
+    ).toEqual(["Archived"])
+    expect(wrapper.find(".vpick-option-empty").exists()).toBe(true)
+  })
+
+  it("still reports nothing when nothing matches", async () => {
+    expect(await search("zzz", flat)).toEqual([])
+  })
+})
