@@ -1,5 +1,28 @@
 # vue-pick
 
+## 0.23.1
+
+### Patch Changes
+
+- fb33b0c: Fix: `flattenSearchResults` dropped the subtree that a matching branch brings
+  with it. Searching a branch by name returned that one row and nothing under it,
+  which left nothing to pick when the branch was not selectable. An empty branch
+  matching by name also lost its `noChildrenText` placeholder.
+
+  Flattened results are now the same rows as nested results, in document order,
+  minus the ancestors and the indentation. Searching a leaf is unchanged: its
+  ancestor branches are still left out.
+
+- 09e4da3: `searchable` has never had any effect alongside `multiple`, because the
+  searchable trigger is the only one that draws chips. Passing
+  `:searchable="false"` there now logs a warning in development instead of
+  silently doing nothing, and the docs say so.
+
+  Also documents three things about placing a control inside a popover or panel:
+  `overflow: hidden` on the container clips the trigger's focus ring, an
+  edge-to-edge trigger wants an inset ring, and percentages inside the control
+  resolve against `--vpick-width` once it is pinned.
+
 ## 0.23.0
 
 ### Minor Changes
