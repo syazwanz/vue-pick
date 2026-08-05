@@ -139,6 +139,8 @@ Use `multiple` to allow selecting more than one option. The trigger renders sele
 
 `multiple` always uses the searchable trigger so chips and the input share one row. Combine with `clearable` to expose a single button that empties the array.
 
+Because of that, `searchable` has no effect alongside `multiple`. The searchable trigger is the only one that draws chips, so passing `:searchable="false"` still renders the input. Doing so logs a warning in development.
+
 <Preview :code="MultipleCode">
   <MultipleExample />
 </Preview>
@@ -277,7 +279,7 @@ These props apply to both `VPickNative` and `VPick`:
 | ---------------------- | --------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `separators`           | `boolean`                                                                   | `false`                  | Renders a horizontal divider between adjacent groups in the dropdown.                                                                                                              |
 | `rotateIcon`           | `boolean`                                                                   | `false`                  | Rotates the trigger chevron 180 degrees when the dropdown is open.                                                                                                                 |
-| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button.                                                                                                            |
+| `searchable`           | `boolean`                                                                   | `false`                  | Renders an input trigger with type-ahead filtering instead of a button. No effect with `multiple`, which always uses that trigger.                                                 |
 | `clearable`            | `boolean`                                                                   | `false`                  | Shows a clear button when a value is selected.                                                                                                                                     |
 | `multiple`             | `boolean`                                                                   | `false`                  | Allows selecting multiple values. `v-model` becomes an array; selected values render as chips in the trigger.                                                                      |
 | `filter`               | `(option, query) => boolean`                                                | `undefined`              | Custom filter function for searchable mode. Receives each option and the query string.                                                                                             |

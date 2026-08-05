@@ -230,6 +230,45 @@ To switch the motion off entirely, use the `animate` prop rather than a zero
 duration. A duration of zero still runs the transition, just with no time to run
 it in, which leaves the chips mid-reflow for a frame.
 
+## Inside another container
+
+Dropping a control into a popover, card or panel brings up three things worth
+knowing before you spend an evening on them.
+
+**Do not clip the container.** The trigger's focus ring is drawn 3px outside its
+box, so `overflow: hidden` on the container cuts it off and a keyboard user
+loses the only cue telling them where they are. If square list corners are
+poking over a rounded frame, round the list itself instead:
+
+```css
+.my-panel .vpick-listbox {
+  border-end-start-radius: 0.3rem;
+  border-end-end-radius: 0.3rem;
+}
+```
+
+**An edge-to-edge trigger wants an inset ring.** When the trigger runs the full
+width of its container there is no room outside it for a ring to sit, so draw it
+inward:
+
+```css
+.my-panel .vpick-trigger:focus,
+.my-panel .vpick-trigger:focus-within {
+  box-shadow: inset 0 0 0 2px var(--vpick-focus-ring-color);
+}
+```
+
+**Percentages resolve against `--vpick-width`.** Once you pin it, `width: 100%`
+inside the control means 100% of that pinned value, not of the container. To
+bleed the list a pixel past the edge you need both the offset and the width:
+
+```css
+.my-panel .vpick-listbox {
+  margin-inline: -1px;
+  width: calc(100% + 2px);
+}
+```
+
 ## Reduced motion
 
 Every transition is disabled automatically for visitors whose system asks for
