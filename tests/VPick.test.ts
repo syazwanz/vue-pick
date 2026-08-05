@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { mount } from "@vue/test-utils"
 import { nextTick } from "vue"
 import { readFileSync } from "node:fs"
@@ -1141,6 +1141,50 @@ describe("VPick — slots", () => {
 })
 
 describe("VPick — multiple selection", () => {
+  // The searchable trigger is the only one that draws chips, so `multiple`
+  // forces it and an explicit `searchable: false` cannot be honored. Warned
+  // rather than silent, since from the outside the prop looks ignored.
+  it("warns when searchable is explicitly false with multiple", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        searchable: false,
+        modelValue: [],
+      },
+    })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toContain("`searchable: false` has no effect")
+    warn.mockRestore()
+  })
+
+  it("stays quiet for a multiselect that never passed searchable", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    mount(VPick, { props: { options: status, multiple: true, modelValue: [] } })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("stays quiet for searchable false without multiple", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    mount(VPick, { props: { options: status, searchable: false } })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("renders the searchable trigger despite searchable false", () => {
+    const wrapper = mount(VPick, {
+      props: {
+        options: status,
+        multiple: true,
+        searchable: false,
+        modelValue: [],
+      },
+    })
+    expect(wrapper.find("input").exists()).toBe(true)
+  })
+
   it("renders aria-multiselectable on listbox when multiple", async () => {
     const wrapper = mount(VPick, {
       props: { options: status, multiple: true, modelValue: [] },

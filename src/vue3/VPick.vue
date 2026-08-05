@@ -107,7 +107,7 @@ const props = withDefaults(
     hideWhenDetached: true,
     animate: true,
     bodyLock: undefined,
-    searchable: false,
+    searchable: undefined,
     searchNested: false,
     filter: undefined,
     noResultsText: "No results",
@@ -193,6 +193,28 @@ const isFormControl = ref(true)
 
 // Multi-select renders as a combobox so chips and the input share one trigger.
 const isSearchable = computed(() => props.searchable || props.multiple)
+
+// `multiple` renders the searchable trigger because that is the only one that
+// draws chips, so an explicit `searchable: false` cannot be honoured there.
+// Left silent it looks like the prop was ignored, which is what it looks like
+// from the outside too.
+let warnedAboutSearchable = false
+watch(
+  [() => props.searchable, () => props.multiple],
+  ([searchable, multiple]) => {
+    if (searchable !== false || !multiple) return
+    if (typeof process === "undefined") return
+    if (process.env?.NODE_ENV === "production") return
+    if (warnedAboutSearchable) return
+    warnedAboutSearchable = true
+    console.warn(
+      "[vue-pick] `searchable: false` has no effect with `multiple`. " +
+        "Multi-select uses the searchable trigger, which is the only one " +
+        "that renders chips.",
+    )
+  },
+  { immediate: true },
+)
 
 // `alwaysOpen` renders the listbox in flow instead of as a dropdown: no
 // teleport, no fixed positioning, no scroll tracking, no body lock.
@@ -1708,7 +1730,6 @@ onBeforeUnmount(() => {
       role="combobox"
       :class="[
         'vpick-trigger',
-        { 'vpick-trigger--multi': multiple },
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },
         { 'vpick-trigger--loading': loading },

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { mount } from "@vue/test-utils"
 import { nextTick } from "vue"
 import { readFileSync } from "node:fs"
@@ -1320,6 +1320,42 @@ describe("VPick (Vue 2) — slots", () => {
 })
 
 describe("VPick (Vue 2) — multiple selection", () => {
+  it("warns when searchable is explicitly false with multiple", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        searchable: false,
+        value: [],
+      },
+    })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toContain("`searchable: false` has no effect")
+    warn.mockRestore()
+  })
+
+  it("stays quiet for a multiselect that never passed searchable", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    mount(VPick, {
+      propsData: { options: status, multiple: true, value: [] },
+    })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("renders the searchable trigger despite searchable false", () => {
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: status,
+        multiple: true,
+        searchable: false,
+        value: [],
+      },
+    })
+    expect(wrapper.find("input").exists()).toBe(true)
+  })
+
   it("renders aria-multiselectable on listbox when multiple", async () => {
     const wrapper = mount(VPick, {
       propsData: { options: status, multiple: true, value: [] },
