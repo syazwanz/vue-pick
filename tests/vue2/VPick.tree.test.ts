@@ -58,6 +58,24 @@ describe("VPick (Vue 2) — tree search result set", () => {
       "Phones",
     ])
   })
+
+  it("flattened gives the same rows as nested, minus the ancestors", async () => {
+    const flat = { flattenSearchResults: true }
+    expect(await search("electronics", flat)).toEqual(
+      await search("electronics"),
+    )
+    expect(await search("electronics", flat)).toEqual(["Electronics", "Phones"])
+    expect(await search("phones", flat)).toEqual(["Phones"])
+  })
+
+  it("flattened does not depend on disableBranchNodes", async () => {
+    expect(
+      await search("electronics", {
+        flattenSearchResults: true,
+        disableBranchNodes: true,
+      }),
+    ).toEqual(["Electronics", "Phones"])
+  })
 })
 
 const nested: OptionOrGroup[] = [
