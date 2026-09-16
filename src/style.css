@@ -407,14 +407,10 @@ button.vpick-trigger--loading:disabled,
 /* The root is inline-flex for the dropdown case, where the panel is teleported
    away and the trigger is the only child, so the direction never shows. Inline
    mode keeps the panel here, making it a second child: without this it lands
-   beside the trigger and stretches it to match.
-
-   Not shipped yet: the docs carry the same rule as a stopgap in
-   .vitepress/theme/custom.css. Uncomment here, delete that block, add a patch
-   changeset. */
-/* .vpick--inline {
+   beside the trigger and stretches it to match. */
+.vpick--inline {
   flex-direction: column;
-} */
+}
 
 .vpick--inline .vpick-positioner {
   z-index: auto;
