@@ -9,3 +9,7 @@ coverage/
 docs/.vitepress/cache
 docs/.vitepress/dist
 temp/*
+.playwright-mcp
+.agents/
+.claude/skills/
+skills-lock.json

@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
 
-# A newer push to the same branch makes the in-flight run irrelevant.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -25,23 +24,20 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Cheapest first, so an obvious failure reports in seconds.
       - name: Lint
         run: pnpm lint
 
       - name: Format
         run: pnpm format:check
 
-      # Catches what ESLint cannot: prop and template types, and test files,
-      # which the build does not compile.
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
         run: pnpm test
 
-      # Not redundant with the tests: type errors in the SFCs only surface
-      # here. A conditional emit name once passed both lint and tests and
-      # still failed the build.
       - name: Build
         run: pnpm build
+
+      - name: Build docs
+        run: pnpm docs:build
