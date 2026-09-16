@@ -46,7 +46,7 @@ its own page:
 | [Positioning](/components/vpick/positioning)     | Where the panel renders, scroll containers, inline mode |
 | [Forms](/components/vpick/forms)                 | Labelling, submission, validation                       |
 | [Accessibility](/components/vpick/accessibility) | Keyboard navigation, ARIA roles, screen readers         |
-| [API](/components/vpick/api)                     | Every prop, slot, and event in one place                |
+| [API](/components/vpick/api)                     | Every prop, slot, event, and method in one place        |
 
 ## Options
 

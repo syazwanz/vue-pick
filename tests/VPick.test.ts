@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { mount } from "@vue/test-utils"
-import { nextTick } from "vue"
+import { defineComponent, h, nextTick, ref } from "vue"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { VPick } from "../src/vue3"
@@ -3633,5 +3633,52 @@ describe("VPick — empty-branch placeholders stay out of the option set", () =>
     })
     await wrapper.find('[role="combobox"]').trigger("click")
     expect(wrapper.find(".vpick-empty").exists()).toBe(false)
+  })
+})
+
+describe("VPick — focus()", () => {
+  // Called the way a parent would, through a template ref, so only what the
+  // component exposes is reachable.
+  function mountWithRef(props: Record<string, unknown>) {
+    const pick = ref<{ focus: () => void } | null>(null)
+    const Parent = defineComponent({
+      setup: () => () => h(VPick, { ref: pick, options: status, ...props }),
+    })
+    const wrapper = mount(Parent, { attachTo: document.body })
+    return { wrapper, pick }
+  }
+
+  it("focuses the button trigger without opening the list", async () => {
+    const { wrapper, pick } = mountWithRef({})
+    pick.value!.focus()
+    await nextTick()
+
+    const trigger = wrapper.find('[role="combobox"]')
+    expect(document.activeElement).toBe(trigger.element)
+    expect(trigger.attributes("aria-expanded")).toBe("false")
+    wrapper.unmount()
+  })
+
+  // Same as tabbing in: the search input opens the list on focus.
+  it("focuses the search input, which opens the list", async () => {
+    const { wrapper, pick } = mountWithRef({ searchable: true })
+    pick.value!.focus()
+    await nextTick()
+
+    const input = wrapper.find('input[role="combobox"]')
+    expect(document.activeElement).toBe(input.element)
+    expect(input.attributes("aria-expanded")).toBe("true")
+    wrapper.unmount()
+  })
+
+  it("does nothing while disabled", async () => {
+    const { wrapper, pick } = mountWithRef({ disabled: true })
+    pick.value!.focus()
+    await nextTick()
+
+    expect(document.activeElement).not.toBe(
+      wrapper.find('[role="combobox"]').element,
+    )
+    wrapper.unmount()
   })
 })

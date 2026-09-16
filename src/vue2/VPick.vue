@@ -1727,6 +1727,10 @@ onBeforeUnmount(() => {
     positionerRef.value.parentNode.removeChild(positionerRef.value)
   }
 })
+
+// Only `focus`. Everything else a parent might want to drive, such as which
+// branches are open, belongs in props rather than imperative methods.
+defineExpose({ focus: focusTrigger })
 </script>
 
 <template>
