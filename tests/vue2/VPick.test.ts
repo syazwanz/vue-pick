@@ -3343,3 +3343,21 @@ describe("VPick (Vue 2) — open / close events", () => {
     expect(wrapper.emitted("close")).toBeFalsy()
   })
 })
+
+describe("VPick (Vue 2) — focus()", () => {
+  it("is reachable through a template ref and focuses the trigger", async () => {
+    const Parent = {
+      components: { VPick },
+      data: () => ({ options: status }),
+      template: '<VPick ref="pick" :options="options" />',
+    }
+    const wrapper = mount(Parent, { attachTo: document.body })
+    ;(wrapper.vm.$refs.pick as { focus: () => void }).focus()
+    await nextTick()
+
+    expect(document.activeElement).toBe(
+      wrapper.find('[role="combobox"]').element,
+    )
+    wrapper.destroy()
+  })
+})

@@ -1,11 +1,11 @@
 ---
 title: VPick API
-description: Complete API reference for VPick. Every prop, slot, and event, with types and defaults, for Vue 2.7 and Vue 3.
+description: Complete API reference for VPick. Every prop, slot, event, and method, with types and defaults, for Vue 2.7 and Vue 3.
 ---
 
 # VPick API
 
-Every prop, slot and event in one place. Each prop links to the page that
+Every prop, slot, event, and method in one place. Each prop links to the page that
 explains it in context.
 
 ## Props
@@ -41,6 +41,27 @@ Usage for each is on the [Slots page](/components/vpick/slots).
 `select` and `deselect` hand back the exact object you passed in `options`. See
 [when `deselect` fires](/components/vpick/multiselect#when-deselect-fires) for
 the two cases that are not obvious.
+
+## Methods
+
+Reach these through a template ref.
+
+| Method    | Description                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| `focus()` | Moves focus to the control. In searchable and `multiple` mode the list opens, the same as tabbing into it. |
+
+```vue
+<script setup>
+import { ref } from "vue"
+
+const pick = ref()
+</script>
+
+<template>
+  <VPick ref="pick" :options="options" />
+  <button @click="pick.focus()">Edit</button>
+</template>
+```
 
 ## CSS custom properties
 
