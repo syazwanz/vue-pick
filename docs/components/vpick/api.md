@@ -35,6 +35,8 @@ Usage for each is on the [Slots page](/components/vpick/slots).
 | `search`            | `string` | Emitted on every keystroke in searchable mode.                                                      |
 | `select`            | `object` | Emitted when an option is picked. Payload is your original option object.                           |
 | `deselect`          | `object` | Emitted when an option is unpicked in `multiple` mode. Same payload as `select`.                    |
+| `open`              | none     | Emitted when the list opens. An `alwaysOpen` list starts open, so it does not emit this on mount.   |
+| `close`             | none     | Emitted when the list closes, whether by `Escape`, an outside click, a pick, or becoming disabled.  |
 
 `select` and `deselect` hand back the exact object you passed in `options`. See
 [when `deselect` fires](/components/vpick/multiselect#when-deselect-fires) for

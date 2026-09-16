@@ -2699,6 +2699,87 @@ describe("VPick — select / deselect events", () => {
   })
 })
 
+describe("VPick — open / close events", () => {
+  it("emits open, then close, as the list opens and shuts", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+
+    await trigger.trigger("click")
+    expect(wrapper.emitted("open")).toHaveLength(1)
+    expect(wrapper.emitted("close")).toBeFalsy()
+
+    await trigger.trigger("keydown", { key: "Escape" })
+    expect(wrapper.emitted("close")).toHaveLength(1)
+  })
+
+  it("emits close when picking an option shuts the list", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.findAll('[role="option"]')[0].trigger("click")
+    expect(wrapper.emitted("close")).toHaveLength(1)
+  })
+
+  // Only real transitions count, so a handler never runs for a state the list
+  // was already in.
+  it("emits nothing when the state does not change", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status },
+      attachTo: document.body,
+    })
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await nextTick()
+    expect(wrapper.emitted("close")).toBeFalsy()
+
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "ArrowDown",
+    })
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "ArrowDown",
+    })
+    expect(wrapper.emitted("open")).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it("emits nothing while disabled", async () => {
+    const wrapper = mount(VPick, { props: { options: status, disabled: true } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    expect(wrapper.emitted("open")).toBeFalsy()
+  })
+
+  it("emits close when disabling shuts an open list", async () => {
+    const wrapper = mount(VPick, { props: { options: status } })
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await wrapper.setProps({ disabled: true })
+    expect(wrapper.emitted("close")).toHaveLength(1)
+  })
+
+  // An alwaysOpen list is open from the start rather than opened, and Escape
+  // cannot close it, so neither event has anything to report.
+  it("emits nothing for an alwaysOpen list left alone", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "Escape",
+    })
+    expect(wrapper.emitted("open")).toBeFalsy()
+    expect(wrapper.emitted("close")).toBeFalsy()
+  })
+
+  // Disabling is the one thing that shuts an alwaysOpen list, and re-enabling
+  // opens it again. Both are real transitions, so both are reported.
+  it("emits close and open when an alwaysOpen list is disabled and re-enabled", async () => {
+    const wrapper = mount(VPick, {
+      props: { options: status, alwaysOpen: true },
+    })
+    await wrapper.setProps({ disabled: true })
+    expect(wrapper.emitted("close")).toHaveLength(1)
+
+    await wrapper.setProps({ disabled: false })
+    expect(wrapper.emitted("open")).toHaveLength(1)
+  })
+})
+
 describe("VPick — sortValueBy", () => {
   // Document order of `tree`: electronics(0), phones(1), laptops(1),
   // gaming(2), business(2), books(0). Numbers in brackets are depth.

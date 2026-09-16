@@ -140,6 +140,8 @@ const emit = defineEmits<{
   (e: "search", query: string): void
   (e: "select", option: unknown): void
   (e: "deselect", option: unknown): void
+  (e: "open"): void
+  (e: "close"): void
 }>()
 
 const shouldCloseOnSelect = computed(
@@ -1240,6 +1242,7 @@ function open() {
   isOpen.value = true
   expandToSelected()
   highlightDefault()
+  emit("open")
   // Rendered in flow, so none of the dropdown machinery applies.
   if (isInline.value) return
   resolveAnchor()
@@ -1281,6 +1284,7 @@ function close() {
   if (!isOpen.value) return
   isOpen.value = false
   highlightedIndex.value = -1
+  emit("close")
   // Defer searchQuery + isUserSearching reset to onAfterLeave so the dropdown
   // doesn't flicker to the full list mid-fade. Input text is part of the
   // displayed state, so it stays frozen during the leave animation too.
