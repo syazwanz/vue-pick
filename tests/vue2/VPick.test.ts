@@ -3318,3 +3318,28 @@ describe("VPick (Vue 2) — deselect on chip removal", () => {
     expect(wrapper.emitted("input")![0][0]).toEqual([users[1]])
   })
 })
+
+describe("VPick (Vue 2) — open / close events", () => {
+  it("emits open, then close, as the list opens and shuts", async () => {
+    const wrapper = mount(VPick, { propsData: { options: status } })
+    const trigger = wrapper.find('[role="combobox"]')
+
+    await trigger.trigger("click")
+    expect(wrapper.emitted("open")).toHaveLength(1)
+    expect(wrapper.emitted("close")).toBeFalsy()
+
+    await trigger.trigger("keydown", { key: "Escape" })
+    expect(wrapper.emitted("close")).toHaveLength(1)
+  })
+
+  it("emits nothing for an alwaysOpen list", async () => {
+    const wrapper = mount(VPick, {
+      propsData: { options: status, alwaysOpen: true },
+    })
+    await wrapper.find('[role="combobox"]').trigger("keydown", {
+      key: "Escape",
+    })
+    expect(wrapper.emitted("open")).toBeFalsy()
+    expect(wrapper.emitted("close")).toBeFalsy()
+  })
+})
