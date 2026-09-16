@@ -3266,6 +3266,14 @@ describe("VPick — alwaysOpen", () => {
     expect(wrapper.classes()).toContain("vpick--inline")
   })
 
+  // The root is inline-flex, so an in-flow panel is a second flex item and sits
+  // beside the trigger unless the root stacks. jsdom does no layout, so what is
+  // assertable is the stylesheet rule that stacks it.
+  it("stacks the panel under the trigger", () => {
+    const css = readFileSync(resolve(__dirname, "../src/style.css"), "utf-8")
+    expect(css).toMatch(/^\.vpick--inline \{\s*flex-direction: column;/m)
+  })
+
   it("hides the chevron", () => {
     const inline = mount(VPick, {
       props: { options: status, alwaysOpen: true },

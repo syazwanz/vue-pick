@@ -361,10 +361,3 @@
   border-color: var(--vp-c-divider) !important;
   transition: none !important;
 }
-
-/* Stopgap for `alwaysOpen` rendering the list beside the trigger: the root is
-   inline-flex, and inline mode makes the panel a second flex item. The same
-   rule sits commented out in src/style.css. Delete this when that ships. */
-.vpick--inline {
-  flex-direction: column;
-}
