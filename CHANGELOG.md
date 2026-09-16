@@ -1,5 +1,12 @@
 # vue-pick
 
+## 0.23.2
+
+### Patch Changes
+
+- 7eb6772: `alwaysOpen` now renders the list under the trigger. It previously sat beside
+  the trigger and stretched the trigger to the list's height.
+
 ## 0.23.1
 
 ### Patch Changes
