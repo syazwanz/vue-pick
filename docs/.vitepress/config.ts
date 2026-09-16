@@ -42,7 +42,8 @@ export default defineConfig({
       },
     ],
     ["meta", { name: "author", content: "syazwanz" }],
-    ["meta", { name: "theme-color", content: "#10b981" }],
+    // The green from the logo, not a near-miss from a utility palette.
+    ["meta", { name: "theme-color", content: "#41b883" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: siteTitle }],
     ["meta", { property: "og:title", content: siteTitle }],
@@ -119,8 +120,17 @@ export default defineConfig({
   themeConfig: {
     logo: "/icon.webp",
     nav: [
-      { text: "Docs", link: "/guide/introduction" },
-      { text: "Components", link: "/components/vpick-native" },
+      { text: "Guide", link: "/guide/introduction" },
+      {
+        text: "VPickNative",
+        link: "/components/vpick-native",
+        activeMatch: "/components/vpick-native",
+      },
+      {
+        text: "VPick",
+        link: "/components/vpick",
+        activeMatch: "/components/vpick/",
+      },
       {
         text: `v${pkg.version}`,
         items: [
@@ -142,11 +152,33 @@ export default defineConfig({
           { text: "Theming", link: "/guide/theming" },
         ],
       },
+      // VPickNative first: it is the simpler of the two and the one to reach
+      // for by default, so the sidebar reads in the order someone should
+      // consider them rather than by how much documentation each has.
       {
-        text: "Components",
+        text: "VPickNative",
         items: [
-          { text: "VPickNative", link: "/components/vpick-native" },
-          { text: "VPick", link: "/components/vpick" },
+          { text: "Overview", link: "/components/vpick-native" },
+          { text: "Forms", link: "/components/vpick-native/forms" },
+          {
+            text: "Accessibility",
+            link: "/components/vpick-native/accessibility",
+          },
+          { text: "API Reference", link: "/components/vpick-native/api" },
+        ],
+      },
+      {
+        text: "VPick",
+        items: [
+          { text: "Overview", link: "/components/vpick" },
+          { text: "Search", link: "/components/vpick/search" },
+          { text: "Multiselect", link: "/components/vpick/multiselect" },
+          { text: "Tree Select", link: "/components/vpick/tree-select" },
+          { text: "Slots", link: "/components/vpick/slots" },
+          { text: "Positioning", link: "/components/vpick/positioning" },
+          { text: "Forms", link: "/components/vpick/forms" },
+          { text: "Accessibility", link: "/components/vpick/accessibility" },
+          { text: "API Reference", link: "/components/vpick/api" },
         ],
       },
     ],

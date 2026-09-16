@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    // The docs build resolves this through a Vite alias (.vitepress/config.ts).
+    // vue-tsc does not read that, so the same mapping is repeated here.
+    "paths": {
+      "vue-pick": ["../src/vue3/index.ts"]
+    }
+  },
+  "include": [".vitepress/**/*.ts", ".vitepress/**/*.vue", "examples/**/*.vue"],
+  // Both are gitignored build output, so their contents vary by machine.
+  "exclude": [".vitepress/cache", ".vitepress/dist"]
+}

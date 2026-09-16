@@ -269,6 +269,38 @@ bleed the list a pixel past the edge you need both the offset and the width:
 }
 ```
 
+## Dark mode
+
+There is no dark palette yet. The defaults above are a light theme, and nothing
+switches on `prefers-color-scheme`. This site's own appearance toggle is
+disabled for that reason.
+
+Everything visual is a variable, though, so a dark theme is a block of
+overrides under whatever selector your app already uses:
+
+```css
+.dark {
+  --vpick-border-color: #3f3f46;
+  --vpick-bg: #18181b;
+  --vpick-text-color: #fafafa;
+  --vpick-placeholder-color: #a1a1aa;
+  --vpick-icon-color: #a1a1aa;
+  --vpick-listbox-bg: #18181b;
+  --vpick-listbox-ring: rgba(255, 255, 255, 0.08);
+  --vpick-option-hover-bg: #27272a;
+  --vpick-option-highlight-bg: #27272a;
+  --vpick-option-selected-bg: #1e3a5f;
+  --vpick-chip-bg: #27272a;
+  --vpick-checkbox-bg-checked: #fafafa;
+  --vpick-checkbox-border-checked: #fafafa;
+  --vpick-checkbox-color: #18181b;
+}
+```
+
+Set these on `:root` or a wrapper rather than on the component, so the listbox
+picks them up too. The panel is teleported, and only variables set on the
+component are forwarded to it; ones set higher up are inherited normally.
+
 ## Reduced motion
 
 Every transition is disabled automatically for visitors whose system asks for

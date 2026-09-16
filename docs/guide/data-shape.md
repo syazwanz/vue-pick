@@ -119,7 +119,7 @@ Flat groups (`{ label, options: [] }`) and tree nodes (`{ label, value, children
 
 An empty `children: []` still counts as a branch: it renders a chevron, and
 expanding it shows `noChildrenText`. Omit the key entirely for a leaf. See
-[branch nodes with no children](/components/vpick#branch-nodes-with-no-children).
+[branches with no children](/components/vpick/tree-select#branches-with-no-children).
 
 Use `childrenKey` if your API uses a different key name:
 

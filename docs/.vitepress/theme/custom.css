@@ -1,13 +1,49 @@
-@import url("https://fonts.googleapis.com/css2?family=Cal+Sans&family=Outfit:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Inter:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
 :root {
+  /* Bricolage everywhere, body copy included. Its optical size axis is loaded
+     from 12, so small sizes get a text cut, not a shrunk headline. */
   --vp-font-family-base:
-    "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --vp-font-family-mono: "Geist Mono", "Fira Code", ui-monospace, monospace;
+    "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, -apple-system,
+    sans-serif;
+  --vp-font-family-mono: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  /* Display face, used only at heading sizes and only with tight tracking. */
+  --font-display: "Bricolage Grotesque", "Inter", sans-serif;
+}
+
+/* Taken from the logo, which is a two-colour mark: an emerald V over a slate
+   one. Those two are the identity, so they are the palette.
+ *
+ * The green cannot carry text: #41b883 is 2.43:1 on paper, under the 4.5 it
+ * would need. So it is only ever a mark or a fill; anything carrying words uses
+ * the slate, or the darkened green where it has to read as interactive. */
+:root {
+  /* Near-black, not the logo's slate. The slate passes AAA on white and still
+     reads blurry at body size, so a contrast check will not catch the swap. */
+  --ink: #18181b;
+  --paper: #ffffff;
+  --paper-2: #f4f4f5;
+  --rule: #e4e4e7;
+  --muted: #71717a;
+
+  /* Brand, from the logo. Accents only: marks, fills, links. Never body copy. */
+  --brand: #41b883; /* logo green. 2.43:1, so never text */
+  --brand-rgb: 65, 184, 131; /* the green, for rgba() tints */
+  --shadow-rgb: 11, 58, 39; /* the green taken to near-black, for shadows */
+  --brand-deep: #278059; /* 4.73:1 on white, 4.86:1 under white */
+  /* A pale tint, not the green itself. Full strength clears AAA and still
+     competes with the letters instead of receding behind them. */
+  --highlight: #b7edd3;
+  --slate: #34495e; /* logo slate. available, but not the ink */
+}
+
+::selection {
+  background-color: var(--highlight);
+  color: var(--ink);
 }
 
 /* The dropdown is teleported to <body> and its default z-index of 50 sits above
-   VitePress's fixed navbar (--vp-z-index-nav: 30), so an open dropdown painted
+   VitePress's fixed navbar (--vp-z-index-nav: 30), so an open dropdown paints
    over the header while scrolling. 29 keeps it above page content and the
    desktop sidebar (25) but under the navbar. */
 :root {
@@ -15,10 +51,10 @@
 }
 
 :root {
-  --vp-c-brand-1: #18181b;
-  --vp-c-brand-2: #27272a;
-  --vp-c-brand-3: #3f3f46;
-  --vp-c-brand-soft: rgba(24, 24, 27, 0.08);
+  --vp-c-brand-1: var(--brand-deep);
+  --vp-c-brand-2: #1f6f4c;
+  --vp-c-brand-3: var(--brand);
+  --vp-c-brand-soft: rgba(65, 184, 131, 0.14);
 }
 
 .dark {
@@ -29,10 +65,10 @@
 }
 
 :root {
-  --vp-c-bg: #ffffff;
-  --vp-c-bg-alt: #f9f9f9;
+  --vp-c-bg: var(--paper);
+  --vp-c-bg-alt: var(--paper-2);
   --vp-c-bg-elv: #ffffff;
-  --vp-c-bg-soft: #f4f4f5;
+  --vp-c-bg-soft: var(--paper-2);
 }
 
 .dark {
@@ -43,9 +79,9 @@
 }
 
 :root {
-  --vp-c-text-1: #18181b;
+  --vp-c-text-1: var(--ink);
   --vp-c-text-2: #52525b;
-  --vp-c-text-3: #71717a;
+  --vp-c-text-3: var(--muted);
 }
 
 .dark {
@@ -55,8 +91,8 @@
 }
 
 :root {
-  --vp-c-divider: #e4e4e7;
-  --vp-c-gutter: #f4f4f5;
+  --vp-c-divider: var(--rule);
+  --vp-c-gutter: var(--paper-2);
 }
 
 .dark {
@@ -65,11 +101,11 @@
 }
 
 :root {
-  --vp-code-block-bg: #f4f4f5;
-  --vp-code-color: #18181b;
-  --vp-code-line-highlight-color: rgba(0, 0, 0, 0.04);
-  --vp-code-copy-code-bg: #e4e4e7;
-  --vp-code-copy-code-hover-bg: #d4d4d8;
+  --vp-code-block-bg: var(--paper-2);
+  --vp-code-color: var(--ink);
+  --vp-code-line-highlight-color: rgba(65, 184, 131, 0.1);
+  --vp-code-copy-code-bg: var(--rule);
+  --vp-code-copy-code-hover-bg: #c9d4e2;
 }
 
 .dark {
@@ -111,7 +147,6 @@
 
 .VPButton.brand:hover {
   background-color: var(--vp-c-brand-2) !important;
-  /* border-color: var(--vp-c-brand-2) !important; */
 }
 
 .VPButton.alt {
@@ -145,7 +180,7 @@
 }
 
 .VPNavBarTitle .title {
-  font-family: "Cal Sans", sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 24px;
   letter-spacing: -0.02em;
@@ -232,7 +267,7 @@
 }
 
 .VPHero .name {
-  font-family: "Cal Sans", sans-serif;
+  font-family: var(--font-display);
 }
 
 .VPHero .tagline {
@@ -260,9 +295,32 @@
 }
 
 .VPFooter {
-  font-family: "Cal Sans", sans-serif;
-  border-top: 1px solid var(--vp-c-divider) !important;
+  font-family: var(--font-display);
+  border-top: none !important;
   background-color: var(--vp-c-bg) !important;
+  /* Matches the container's padding-top below, so the text sits centred
+     between the rule and the bottom of the page. */
+  padding-bottom: 3rem !important;
+}
+
+/* A short centred rule rather than one spanning the page, drawn as a pseudo
+   element so its width is independent of the container. The padding below it
+   is what puts air between the rule and the licence line. */
+.VPFooter .container {
+  position: relative;
+  padding-top: 3rem !important;
+}
+
+.VPFooter .container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  /* The landing page's own max width. The footer's container is wider than
+     that and carries no padding, so this cannot be a plain border on it. */
+  width: min(72rem, 100%);
+  transform: translateX(-50%);
+  border-top: 1px solid var(--vp-c-divider);
 }
 
 .DocSearch-Button:hover {
@@ -302,4 +360,11 @@
 .VPSwitch:hover {
   border-color: var(--vp-c-divider) !important;
   transition: none !important;
+}
+
+/* Stopgap for `alwaysOpen` rendering the list beside the trigger: the root is
+   inline-flex, and inline mode makes the panel a second flex item. The same
+   rule sits commented out in src/style.css. Delete this when that ships. */
+.vpick--inline {
+  flex-direction: column;
 }

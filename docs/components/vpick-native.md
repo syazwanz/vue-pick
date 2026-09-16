@@ -24,8 +24,6 @@ import CustomKeysCode from '../examples/vpick-native/custom-keys.vue?raw'
 
 A styled wrapper around the native `<select>` element. Same browser behaviour, consistent design.
 
-## Usage
-
 <Preview :code="BasicCode">
   <BasicExample />
 </Preview>
@@ -34,17 +32,31 @@ A styled wrapper around the native `<select>` element. Same browser behaviour, c
 Same code works in Vue 2.7. Just change the import to `import { VPickNative } from "vue-pick/vue2"`.
 :::
 
+| Page                                                    | What it covers                           |
+| ------------------------------------------------------- | ---------------------------------------- |
+| [Forms](/components/vpick-native/forms)                 | Labelling, submission, validation        |
+| [Accessibility](/components/vpick-native/accessibility) | Keyboard, screen readers, state          |
+| [API](/components/vpick-native/api)                     | Every prop, slot, and event in one place |
+
 ## Options
 
 The `options` prop accepts a flat array or a nested array with groups. Groups are detected automatically when an item has an `options` array.
-
-## Examples
 
 ### Grouped
 
 <Preview :code="GroupedCode">
   <GroupedExample />
 </Preview>
+
+### Custom data shape
+
+Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
+
+<Preview :code="CustomKeysCode">
+  <CustomKeysExample />
+</Preview>
+
+## States
 
 ### Disabled
 
@@ -64,7 +76,7 @@ The `options` prop accepts a flat array or a nested array with groups. Groups ar
   <ErrorExample />
 </Preview>
 
-### Height
+## Height
 
 Set `--vpick-height-default` to resize the control. There is no size prop.
 
@@ -72,62 +84,11 @@ Set `--vpick-height-default` to resize the control. There is no size prop.
   <SizesExample />
 </Preview>
 
-### Custom data shape
+Every other visual token is a CSS custom property too, and most are shared with
+`VPick`. See [Theming](/guide/theming).
 
-Use `labelKey`, `valueKey`, `disabledKey`, and `groupOptionsKey` to pass data straight from your API without mapping. See the [Data Shape guide](/guide/data-shape) for the full reference.
+## Core props
 
-<Preview :code="CustomKeysCode">
-  <CustomKeysExample />
-</Preview>
+The rest are on the [API Reference](/components/vpick-native/api).
 
-## Props
-
-| Prop                   | Type                 | Default      | Description                                                                             |
-| ---------------------- | -------------------- | ------------ | --------------------------------------------------------------------------------------- |
-| `modelValue` / `value` | `any`                | `undefined`  | Selected value. Use `v-model` for two-way binding.                                      |
-| `options`              | `OptionOrGroup[]`    | **required** | Array of options or option groups.                                                      |
-| `placeholder`          | `string`             | `undefined`  | Placeholder text shown when no value is selected.                                       |
-| `disabled`             | `boolean`            | `false`      | Disables the select.                                                                    |
-| `loading`              | `boolean`            | `false`      | Shows a spinner and disables interaction.                                               |
-| `error`                | `string`             | `undefined`  | Error message. Applies error styling and `aria-invalid`.                                |
-| `id`                   | `string`             | `undefined`  | HTML `id` attribute.                                                                    |
-| `name`                 | `string`             | `undefined`  | HTML `name` attribute for form submission.                                              |
-| `required`             | `boolean`            | `false`      | HTML `required` attribute.                                                              |
-| `ariaLabel`            | `string`             | `undefined`  | `aria-label` for accessibility.                                                         |
-| `ariaDescribedby`      | `string`             | `undefined`  | `aria-describedby` for accessibility.                                                   |
-| `labelKey`             | `string \| string[]` | `"label"`    | Object key to read each option's visible label from. An array acts as a fallback chain. |
-| `valueKey`             | `string`             | `"value"`    | Object key to read each option's value from.                                            |
-| `disabledKey`          | `string`             | `"disabled"` | Object key to read each option's disabled flag from.                                    |
-| `groupOptionsKey`      | `string`             | `"options"`  | Object key for the options array inside a group.                                        |
-
-## Slots
-
-| Slot      | Description                                             |
-| --------- | ------------------------------------------------------- |
-| `icon`    | Custom chevron icon. Shown when not loading.            |
-| `loading` | Custom loading indicator. Shown when `loading` is true. |
-
-```vue
-<VPickNative :options="options">
-  <template #icon>
-    <MyCustomChevron />
-  </template>
-  <template #loading>
-    <MySpinner />
-  </template>
-</VPickNative>
-```
-
-## Events
-
-| Event               | Payload | Description                                                                                                 |
-| ------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| `update:modelValue` | `any`   | Emitted when the selection changes. Vue 2 emits `input` instead, which is what `v-model` listens for there. |
-
-## Accessibility
-
-- Uses a real native `<select>` element for full browser and screen reader support.
-- `aria-invalid` is set when the `error` prop is present.
-- `aria-busy` is set when `loading` is true.
-- `aria-describedby` wired via the `ariaDescribedby` prop.
-- Disabled state uses native `disabled` attribute (not pointer-events).
+<PropList component="VPickNative" group="core" />
