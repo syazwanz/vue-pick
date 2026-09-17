@@ -1,5 +1,14 @@
 # vue-pick
 
+## 0.27.1
+
+### Patch Changes
+
+- f484d25: With both `fetchOptions` and `loadChildren`, branches in search results that
+  still have `children: null` now stay closed until opened. Previously every such
+  branch opened with the results, sending one `loadChildren` request per branch on
+  every search.
+
 ## 0.27.0
 
 ### Minor Changes
