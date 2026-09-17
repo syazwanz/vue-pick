@@ -1,5 +1,58 @@
 # vue-pick
 
+## 0.24.0
+
+### Minor Changes
+
+- 770abac: `VPick` exposes a `focus()` method, reachable through a template ref.
+
+  ```vue
+  <VPick ref="pick" :options="options" />
+  <button @click="$refs.pick.focus()">Edit</button>
+  ```
+
+  In searchable and `multiple` mode, focusing opens the list, the same as tabbing
+  into the control.
+
+- a05cd04: `VPick` can fetch a branch's children when it is first opened. Mark the branch
+  with `children: null` and pass `loadChildren`, which receives the option and
+  returns a promise of its children:
+
+  ```vue
+  <VPick
+    :options="[{ label: 'Electronics', value: 'electronics', children: null }]"
+    :load-children="(option) => api.children(option.value)"
+    multiple
+  />
+  ```
+
+  - Loading shows a spinner and a "Loading..." row; a failed load shows a row that
+    retries on click. Both texts are props: `loadingChildrenText` and
+    `loadChildrenErrorText`.
+  - Ticking an unloaded branch loads it, and anything unloaded inside it, before
+    the tick lands.
+  - Selected values under a branch that has not loaded are kept, submitted, and
+    shown as chips with their raw value. A selected branch whose children load
+    later is expanded to include them.
+  - Search only matches loaded options.
+
+  Without `loadChildren`, `children: null` is still a leaf.
+
+  Also changes cascade selection for everyone: a selected value that is not in
+  `options` is now kept when something else is ticked, instead of being dropped.
+  Selection without `cascade` already worked this way.
+
+- 3c8bd17: `VPick` now emits `open` and `close` when its list opens and closes. Neither
+  carries a payload.
+
+  ```vue
+  <VPick :options="options" @open="onOpen" @close="onClose" />
+  ```
+
+  They fire only on a real change, so closing a list that is already closed emits
+  nothing. An `alwaysOpen` list starts open, so it emits no `open` on mount; it
+  emits `close` if it is disabled and `open` again when re-enabled.
+
 ## 0.23.2
 
 ### Patch Changes
