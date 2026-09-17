@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { filterFlat, filterFlatWith } from "../../src/core/filter"
+import {
+  filterFlat,
+  filterFlatWith,
+  foldForSearch,
+} from "../../src/core/filter"
 import { flattenOptions } from "../../src/core/flatten"
 import type { OptionOrGroup } from "../../src/core"
 
@@ -63,6 +67,23 @@ describe("filterFlat", () => {
     expect(filterFlat(flat, "zzz")).toEqual([])
   })
 
+  it("ignores accents on either side", () => {
+    const flat = flattenOptions(
+      [
+        { label: "Café", value: "cafe" },
+        { label: "Muller", value: "muller" },
+        { label: "Tea", value: "tea" },
+      ],
+      "t",
+    )
+    expect(filterFlat(flat, "cafe").map((f) => f.option.value)).toEqual([
+      "cafe",
+    ])
+    expect(filterFlat(flat, "MÜLLER").map((f) => f.option.value)).toEqual([
+      "muller",
+    ])
+  })
+
   it("preserves groupLabel on matched options", () => {
     const flat = flattenOptions(grouped, "t")
     const result = filterFlat(flat, "apple")
@@ -105,5 +126,20 @@ describe("filterFlatWith", () => {
       String(opt.value).toLowerCase().includes(q.toLowerCase()),
     )
     expect(result.map((f) => f.option.value)).toEqual(["a"])
+  })
+})
+
+describe("foldForSearch", () => {
+  it("lowercases and strips Latin accents", () => {
+    expect(foldForSearch("Crème Brûlée")).toBe("creme brulee")
+    expect(foldForSearch("São Paulo")).toBe("sao paulo")
+  })
+
+  it("leaves letters with no decomposition as they are", () => {
+    expect(foldForSearch("Øresund Łódź Straße")).toBe("øresund łodz straße")
+  })
+
+  it("keeps vowel signs in scripts where they change the word", () => {
+    expect(foldForSearch("कि")).not.toBe(foldForSearch("क"))
   })
 })

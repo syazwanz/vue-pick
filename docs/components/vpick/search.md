@@ -42,7 +42,8 @@ the list is already closed and `clearable` is set, it clears the selection.
 
 ## Custom matching
 
-The built-in matcher is a case-insensitive substring test against the label.
+The built-in matcher is a substring test against the label that ignores case
+and accents, so "cafe" finds "Café" and "MÜLLER" finds "Muller".
 Pass `filter` to replace it. It receives each option and the current query, and
 returns whether that option survives:
 

@@ -18,6 +18,7 @@ import {
   normalizeOptions,
   filterFlat,
   filterFlatWith,
+  foldForSearch,
   computePosition,
   lockScroll,
   setupScrollListeners,
@@ -446,7 +447,7 @@ const nestedLabels = computed(() => {
       parts.unshift(parent.option.label)
       pv = parent.parentValue
     }
-    map.set(fo.option.value, parts.join(" ").toLowerCase())
+    map.set(fo.option.value, foldForSearch(parts.join(" ")))
   }
   return map
 })
@@ -456,14 +457,14 @@ const nestedLabels = computed(() => {
 function matchesQuery(fo: FlatOption, raw: string): boolean {
   const trimmed = raw.trim()
   if (props.filter) return props.filter(fo.option, trimmed)
-  const q = trimmed.toLowerCase()
+  const q = foldForSearch(trimmed)
   const words = q.split(/\s+/).filter(Boolean)
   // Multi-word queries may span the ancestor path: "electronics gaming".
   if (props.searchNested && words.length > 1) {
     const nested = nestedLabels.value.get(fo.option.value) ?? ""
     return words.every((w) => nested.includes(w))
   }
-  return fo.option.label.toLowerCase().includes(q)
+  return foldForSearch(fo.option.label).includes(q)
 }
 
 // Ancestor values of every node the predicate accepts. Walks the whole tree
