@@ -7,6 +7,7 @@ import {
   watch,
   nextTick,
   toRaw,
+  shallowRef,
 } from "vue"
 import {
   type OptionItem,
@@ -29,6 +30,7 @@ import {
   releaseContainingBlock,
   setupResizeObserver,
   isOptionGroup,
+  isUnloaded,
 } from "../core"
 
 defineOptions({ name: "VPick" })
@@ -83,6 +85,9 @@ const props = withDefaults(
     noOptionsText?: string
     backspaceRemoves?: boolean
     deleteRemoves?: boolean
+    loadChildren?: (option: unknown) => Promise<readonly unknown[]>
+    loadingChildrenText?: string
+    loadChildrenErrorText?: string
   }>(),
   {
     modelValue: undefined,
@@ -129,6 +134,9 @@ const props = withDefaults(
     noOptionsText: "No options available",
     backspaceRemoves: true,
     deleteRemoves: true,
+    loadChildren: undefined,
+    loadingChildrenText: "Loading...",
+    loadChildrenErrorText: "Could not load. Click to retry",
   },
 )
 
@@ -232,14 +240,58 @@ const fallbackId = generateId()
 const instanceId = computed(() => props.id ?? fallbackId)
 const listboxId = computed(() => `${instanceId.value}-listbox`)
 
+// --- Lazy children ---
+
+// Children fetched by `loadChildren`, keyed by the caller's own option object.
+// Keying by object rather than value means a fresh `options` array, such as a
+// form reopened with new data, starts unloaded instead of showing children
+// fetched for the old one. A WeakMap is not reactive, so `loadedVersion` is the
+// signal that something landed.
+const loadedChildren = new WeakMap<object, readonly unknown[]>()
+const loadedVersion = ref(0)
+// Loading and failure are tracked per option object too. A branch that failed,
+// or is still loading, for an `options` array since replaced says nothing about
+// the same value in the new one, which gets its own request.
+const loadingKeys = shallowRef<ReadonlySet<object>>(new Set())
+const failedKeys = shallowRef<ReadonlySet<object>>(new Set())
+const inflight = new Map<object, Promise<boolean>>()
+
+function isLoadingBranch(option: OptionItem): boolean {
+  const key = childrenKeyOf(option)
+  return !!key && loadingKeys.value.has(key)
+}
+
+function isFailedBranch(option: OptionItem): boolean {
+  const key = childrenKeyOf(option)
+  return !!key && failedKeys.value.has(key)
+}
+
+function childrenKeyOf(option: OptionItem): object | null {
+  const raw = option.raw
+  return raw && typeof raw === "object" ? (toRaw(raw) as object) : null
+}
+
 const normalized = computed(() =>
-  normalizeOptions(props.options, {
-    label: props.labelKey,
-    value: props.valueKey,
-    disabled: props.disabledKey,
-    children: props.childrenKey,
-    groupOptions: props.groupOptionsKey,
-  }),
+  normalizeOptions(
+    props.options,
+    {
+      label: props.labelKey,
+      value: props.valueKey,
+      disabled: props.disabledKey,
+      children: props.childrenKey,
+      groupOptions: props.groupOptionsKey,
+    },
+    props.loadChildren
+      ? {
+          resolve: (item) => {
+            void loadedVersion.value
+            return item && typeof item === "object"
+              ? loadedChildren.get(toRaw(item) as object)
+              : undefined
+          },
+        }
+      : undefined,
+  ),
 )
 
 // --- Tree support ---
@@ -360,6 +412,9 @@ function toggleExpand(value: OptionItem["value"]) {
   const next = new Set(expandedSet.value)
   if (next.has(value)) {
     next.delete(value)
+    // Collapsing is how a failed load is dismissed, so opening it again retries.
+    const branch = flatAll.value.find((f) => f.option.value === value)
+    if (branch) clearFailed(branch.option)
   } else {
     next.add(value)
   }
@@ -409,6 +464,10 @@ function collectAncestors(
   const allFlat = flattenOptions(normalized.value, instanceId.value, "all")
   const out = new Set<OptionItem["value"]>()
   for (const fo of allFlat) {
+    // A placeholder row carries its branch's option with the branch as its
+    // parent, so accepting one would open the branch itself rather than the
+    // path to it.
+    if (fo.isEmptyMessage) continue
     if (!predicate(fo)) continue
     let parentVal = fo.parentValue
     while (parentVal !== undefined) {
@@ -530,7 +589,12 @@ const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
   const set = new Set<OptionItem["value"]>()
   for (const v of arr) {
     const fo = flatAll.value.find((f) => f.option.value === v)
-    if (!fo) continue
+    // A value the tree does not contain, typically one under a branch that has
+    // not loaded yet. It is carried as-is so the next emit does not drop it.
+    if (!fo) {
+      set.add(v)
+      continue
+    }
     if (fo.hasChildren) {
       if (partialBranches) continue
       for (const lv of getLeafDescendants(fo.option)) set.add(lv)
@@ -568,7 +632,15 @@ function sortValues(values: OptionItem["value"][]): OptionItem["value"][] {
 function emitFromLeafSet(
   newLeafSet: ReadonlySet<OptionItem["value"]>,
 ): OptionItem["value"][] {
-  return sortValues(collectEmitValues(newLeafSet))
+  const values = collectEmitValues(newLeafSet)
+  // The walks above only see the tree, so a value it does not contain would be
+  // lost the moment anything else is ticked. Non-cascade selection already
+  // keeps such values; this keeps cascade consistent with it.
+  const emitted = new Set(values)
+  for (const v of newLeafSet) {
+    if (!knownValues.value.has(v) && !emitted.has(v)) values.push(v)
+  }
+  return sortValues(values)
 }
 
 function collectEmitValues(
@@ -661,6 +733,10 @@ const flatAll = computed<FlatOption[]>(() =>
         (fo) => !fo.isEmptyMessage,
       )
     : flat.value,
+)
+
+const knownValues = computed(
+  () => new Set(flatAll.value.map((fo) => fo.option.value)),
 )
 
 const filteredFlat = computed<FlatOption[]>(() => {
@@ -772,23 +848,71 @@ const selectedOptions = computed(() => {
   if (!props.multiple) return []
   const compact = isCascadeMode.value && !props.disableBranchNodes
   const displayValues = compact
-    ? compactToBranchPriority(effectiveLeafSet.value, normalized.value)
+    ? [
+        ...compactToBranchPriority(effectiveLeafSet.value, normalized.value),
+        // Compaction walks the tree, so it cannot see values outside it.
+        ...[...effectiveLeafSet.value].filter((v) => !knownValues.value.has(v)),
+      ]
     : Array.isArray(model.value)
       ? model.value
       : []
   return sortValues(displayValues)
-    .map((v) => flatAll.value.find((f) => f.option.value === v))
+    .map(
+      (v, i) =>
+        flatAll.value.find((f) => f.option.value === v) ?? unknownChip(v, i),
+    )
     .filter(Boolean) as FlatOption[]
 })
+
+// A selected value the loaded tree does not contain yet. With lazy children
+// that is expected, so it gets a chip showing the value itself, which the user
+// can still remove. Without them it stays unrendered, as it always has.
+function unknownChip(v: OptionItem["value"], i: number): FlatOption | null {
+  if (!props.loadChildren) return null
+  // Built through the same normalizer as real options, so `option.raw` exists
+  // and a slot reading a custom field off it gets `undefined` rather than a
+  // crash. The raw object holds only the value and, as its label, the value.
+  const labelKey = Array.isArray(props.labelKey)
+    ? props.labelKey[0]
+    : props.labelKey
+  const [option] = normalizeOptions(
+    [{ [props.valueKey ?? "value"]: v, [labelKey ?? "label"]: String(v) }],
+    { label: labelKey, value: props.valueKey },
+  ) as OptionItem[]
+  return {
+    id: `${instanceId.value}-unknown-${i}`,
+    option,
+    depth: 0,
+    isBranch: false,
+    hasChildren: false,
+    isExpanded: false,
+  }
+}
 
 const selectedOption = computed<OptionItem | null>(() => {
   if (model.value == null) return null
   return (
-    flatAll.value.find((f) => f.option.value === model.value)?.option ?? null
+    flatAll.value.find((f) => f.option.value === model.value)?.option ??
+    unknownChip(model.value, 0)?.option ??
+    null
   )
 })
 
 const selectedLabel = computed(() => selectedOption.value?.label ?? "")
+
+// Selected values the loaded tree does not contain, so the form still submits
+// them. Only with lazy children, where such values are expected.
+const unloadedSelection = computed<OptionItem["value"][]>(() => {
+  if (!props.loadChildren) return []
+  const current = props.multiple
+    ? Array.isArray(model.value)
+      ? model.value
+      : []
+    : model.value == null
+      ? []
+      : [model.value]
+  return current.filter((v: OptionItem["value"]) => !knownValues.value.has(v))
+})
 
 // Nothing to show at all, as opposed to a search that matched nothing. Both
 // need a message: an empty panel just looks broken.
@@ -1337,6 +1461,152 @@ function focusTrigger() {
   else (triggerRef.value as HTMLButtonElement | null)?.focus()
 }
 
+function clearFailed(option: OptionItem) {
+  const key = childrenKeyOf(option)
+  if (!key || !failedKeys.value.has(key)) return
+  const next = new Set(failedKeys.value)
+  next.delete(key)
+  failedKeys.value = next
+}
+
+function warnLoadFailed(option: OptionItem, err: unknown) {
+  if (typeof process === "undefined") return
+  if (process.env?.NODE_ENV === "production") return
+  console.warn(`[vue-pick] \`loadChildren\` failed for "${option.label}".`, err)
+}
+
+// Fetch one branch's children. Every caller for the same branch shares one
+// request, and the result says whether the children arrived.
+function loadBranch(option: OptionItem): Promise<boolean> {
+  const value = option.value
+  const loader = props.loadChildren
+  const key = childrenKeyOf(option)
+  if (!loader || !key || !isUnloaded(option)) return Promise.resolve(!!key)
+  const pending = inflight.get(key)
+  if (pending) return pending
+
+  loadingKeys.value = new Set(loadingKeys.value).add(key)
+  clearFailed(option)
+  const run = Promise.resolve()
+    .then(() => loader(sourceOf(option)))
+    .then(
+      (children) => {
+        loadedChildren.set(key, Array.isArray(children) ? children : [])
+        loadedVersion.value++
+        queueReconcile(value)
+        return true
+      },
+      (err) => {
+        failedKeys.value = new Set(failedKeys.value).add(key)
+        warnLoadFailed(option, err)
+        return false
+      },
+    )
+    .finally(() => {
+      inflight.delete(key)
+      const next = new Set(loadingKeys.value)
+      next.delete(key)
+      loadingKeys.value = next
+    })
+  inflight.set(key, run)
+  return run
+}
+
+function collectUnloaded(option: OptionItem): OptionItem[] {
+  if (isUnloaded(option)) return [option]
+  return (option.children ?? []).flatMap((c) =>
+    collectUnloaded(c as OptionItem),
+  )
+}
+
+// Load everything at or under a branch. What comes back can hold unloaded
+// branches of its own, so this repeats until nothing under it is pending.
+async function loadSubtree(value: OptionItem["value"]): Promise<boolean> {
+  for (;;) {
+    const fo = flatAll.value.find((f) => f.option.value === value)
+    if (!fo) return false
+    const pending = collectUnloaded(fo.option)
+    if (!pending.length) return true
+    const results = await Promise.all(pending.map(loadBranch))
+    if (results.includes(false)) return false
+  }
+}
+
+// A branch can be selected before its children exist, typically because a saved
+// value names it. Once they arrive, and the value names none of them, the branch
+// stood for all of them, so it is replaced by its leaves in whatever shape
+// `valueConsistsOf` asks for. Batched to the next tick so several branches
+// landing together emit once, against an up-to-date `modelValue`.
+const reconcileQueue = new Set<OptionItem["value"]>()
+function queueReconcile(value: OptionItem["value"]) {
+  const first = reconcileQueue.size === 0
+  reconcileQueue.add(value)
+  if (first) nextTick(reconcileLoaded)
+}
+
+function reconcileLoaded() {
+  const values = [...reconcileQueue]
+  reconcileQueue.clear()
+  if (!isCascadeMode.value) return
+  const arr: OptionItem["value"][] = Array.isArray(model.value)
+    ? model.value
+    : []
+  const inModel = new Set(arr)
+  const leafSet = new Set(effectiveLeafSet.value)
+  let changed = false
+  for (const value of values) {
+    if (!inModel.has(value)) continue
+    const fo = flatAll.value.find((f) => f.option.value === value)
+    if (!fo?.hasChildren) continue
+    if (collectSubtreeValues(fo.option).some((v) => inModel.has(v))) continue
+    leafSet.delete(value)
+    for (const v of getLeafDescendants(fo.option)) leafSet.add(v)
+    changed = true
+  }
+  if (!changed) return
+  const next = emitFromLeafSet(leafSet)
+  if (next.length === arr.length && next.every((v, i) => v === arr[i])) return
+  emit("update:modelValue", toEmit(next))
+}
+
+// Load whatever the open list is showing as pending. Watching the visible rows
+// rather than each way a branch can open covers the chevron, arrow keys,
+// `defaultExpandLevel`, revealing the selection and search alike, and nothing
+// loads for a list nobody opened. A failed branch waits for a retry.
+watch(
+  () => (isOpen.value && props.loadChildren ? flat.value : null),
+  (rows) => {
+    if (!rows) return
+    for (const fo of rows) {
+      if (!fo.isEmptyMessage || !fo.isUnloaded) continue
+      if (isFailedBranch(fo.option)) continue
+      void loadBranch(fo.option)
+    }
+  },
+  { immediate: true },
+)
+
+function retryLoad(option: OptionItem) {
+  clearFailed(option)
+  void loadBranch(option)
+}
+
+// Ticking a branch whose leaves are not all known yet has to wait for them, or
+// the value would hold a branch where leaves belong. One click per branch.
+const pendingTicks = new Set<OptionItem["value"]>()
+async function tickAfterLoad(flatOption: FlatOption) {
+  const value = flatOption.option.value
+  if (pendingTicks.has(value)) return
+  pendingTicks.add(value)
+  try {
+    if (!(await loadSubtree(value))) return
+  } finally {
+    pendingTicks.delete(value)
+  }
+  const fresh = flatAll.value.find((f) => f.option.value === value)
+  if (fresh) selectOption(fresh)
+}
+
 function selectOption(flatOption: FlatOption) {
   if (props.disabled || props.loading) return
   if (flatOption.isEmptyMessage) return
@@ -1351,9 +1621,15 @@ function selectOption(flatOption: FlatOption) {
   const source = sourceOf(flatOption.option)
   if (props.multiple) {
     if (isCascadeMode.value) {
+      const wasChecked = isCascadeChecked(flatOption)
+      // Unticking needs nothing loaded: whatever is selected under the branch,
+      // loaded or not, is removed along with it.
+      if (!wasChecked && collectUnloaded(flatOption.option).length) {
+        void tickAfterLoad(flatOption)
+        return
+      }
       const leaves = getLeafDescendants(flatOption.option)
       const newLeafSet = new Set(effectiveLeafSet.value)
-      const wasChecked = isCascadeChecked(flatOption)
       if (wasChecked) {
         for (const v of leaves) newLeafSet.delete(v)
       } else {
@@ -1393,12 +1669,10 @@ function removeChip(value: OptionItem["value"]) {
   if (props.disabled) return
   const removed = flatAll.value.find((f) => f.option.value === value)
   if (isCascadeMode.value) {
-    if (removed) {
-      const leaves = getLeafDescendants(removed.option)
-      const newLeafSet = new Set(effectiveLeafSet.value)
-      for (const v of leaves) newLeafSet.delete(v)
-      emit("update:modelValue", toEmit(emitFromLeafSet(newLeafSet)))
-    }
+    const leaves = removed ? getLeafDescendants(removed.option) : [value]
+    const newLeafSet = new Set(effectiveLeafSet.value)
+    for (const v of leaves) newLeafSet.delete(v)
+    emit("update:modelValue", toEmit(emitFromLeafSet(newLeafSet)))
   } else {
     const arr = Array.isArray(model.value) ? model.value : []
     emit("update:modelValue", toEmit(arr.filter((v) => v !== value)))
@@ -2075,7 +2349,62 @@ defineExpose({ focus: focusTrigger })
                 </div>
                 <template v-for="item in section.items" :key="item.fo.id">
                   <div
-                    v-if="item.fo.isEmptyMessage"
+                    v-if="
+                      item.fo.isUnloaded &&
+                      item.fo.isEmptyMessage &&
+                      isFailedBranch(item.fo.option)
+                    "
+                    :class="[
+                      'vpick-option-empty',
+                      'vpick-option-empty--error',
+                      {
+                        'vpick-option-empty--multi': multiple && showLeafSpacer,
+                      },
+                    ]"
+                    :style="{ '--vpick-option-depth': item.fo.depth }"
+                    @mousedown.prevent
+                    @click="retryLoad(item.fo.option)"
+                  >
+                    <span class="vpick-option-empty-icon" aria-hidden="true" />
+                    <span class="vpick-option-empty-label">{{
+                      loadChildrenErrorText
+                    }}</span>
+                  </div>
+                  <div
+                    v-else-if="item.fo.isUnloaded && item.fo.isEmptyMessage"
+                    :class="[
+                      'vpick-option-empty',
+                      'vpick-option-empty--loading',
+                      {
+                        'vpick-option-empty--multi': multiple && showLeafSpacer,
+                      },
+                    ]"
+                    :style="{ '--vpick-option-depth': item.fo.depth }"
+                  >
+                    <span
+                      class="vpick-option-empty-icon vpick-option-spinner"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                    </span>
+                    <span class="vpick-option-empty-label">{{
+                      loadingChildrenText
+                    }}</span>
+                  </div>
+                  <div
+                    v-else-if="item.fo.isEmptyMessage"
                     :class="[
                       'vpick-option-empty',
                       {
@@ -2136,6 +2465,7 @@ defineExpose({ focus: focusTrigger })
                     :aria-expanded="
                       item.fo.isBranch ? item.fo.isExpanded : undefined
                     "
+                    :aria-busy="isLoadingBranch(item.fo.option) || undefined"
                     @click="selectOption(item.fo)"
                     @mousemove="onPointerMove"
                     @mouseenter="onOptionHover($event, item.fo, item.flatIdx)"
@@ -2154,6 +2484,22 @@ defineExpose({ focus: focusTrigger })
                       @click.stop="toggleExpand(item.fo.option.value)"
                     >
                       <svg
+                        v-if="isLoadingBranch(item.fo.option)"
+                        class="vpick-option-spinner"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      <svg
+                        v-else
                         xmlns="http://www.w3.org/2000/svg"
                         width="12"
                         height="12"
@@ -2281,6 +2627,14 @@ defineExpose({ focus: focusTrigger })
         :selected="multiple ? isSelected(item.option.value) : undefined"
       >
         {{ item.option.label }}
+      </option>
+      <option
+        v-for="v in unloadedSelection"
+        :key="`unknown-${String(v)}`"
+        :value="String(v)"
+        :selected="multiple || undefined"
+      >
+        {{ String(v) }}
       </option>
     </select>
   </div>

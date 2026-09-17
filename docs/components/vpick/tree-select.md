@@ -14,6 +14,8 @@ import TreeExpandLevelExample from '../../examples/vpick/tree-expand-level.vue'
 import TreeExpandLevelCode from '../../examples/vpick/tree-expand-level.vue?raw'
 import FlattenExample from '../../examples/vpick/flatten-search-results.vue'
 import FlattenCode from '../../examples/vpick/flatten-search-results.vue?raw'
+import LoadChildrenExample from '../../examples/vpick/load-children.vue'
+import LoadChildrenCode from '../../examples/vpick/load-children.vue?raw'
 </script>
 
 # Tree Select
@@ -167,6 +169,61 @@ placeholder. Only the ancestor rows and the indentation are dropped.
 Useful when the tree is deep and users want to scan results rather than navigate
 to them. Clearing the query restores the tree, and expansion state is left
 untouched throughout, since nothing needs expanding to reveal a match.
+
+## Loading children on demand
+
+For a tree too large to send up front, fetch each branch's children when it is
+first opened. Mark those branches with `children: null` and pass
+`loadChildren`, which receives the option and returns a promise of its children,
+in the same shape as the rest of your options:
+
+```vue
+<script setup>
+const options = [
+  { label: "Electronics", value: "electronics", children: null },
+  { label: "Gift card", value: "gift-card" },
+]
+
+async function loadChildren(option) {
+  const res = await fetch(`/api/categories/${option.value}`)
+  return res.json()
+}
+</script>
+
+<template>
+  <VPick :options="options" :load-children="loadChildren" multiple />
+</template>
+```
+
+Open a branch to load it. Laptops is itself loaded on demand, one level down.
+
+<Preview :code="LoadChildrenCode">
+  <LoadChildrenExample />
+</Preview>
+
+- **When it loads.** When the branch is opened in an open list, whether by the
+  chevron, the arrow keys, `defaultExpandLevel`, or search. A control that is
+  never opened sends no requests. Each branch is requested once, and the result
+  is kept for as long as you pass the same option objects.
+- **While it loads.** The branch shows a spinner and a
+  [`loadingChildrenText`](#props) row. If the promise rejects, the row shows
+  `loadChildrenErrorText` instead. Clicking it, or closing and reopening the
+  branch, tries again.
+- **Ticking an unloaded branch.** In `multiple` mode with `cascade`, its children
+  load first, and the tick lands once they have, following `valueConsistsOf` as
+  usual. Anything nested inside that is also unloaded loads too. If a load fails,
+  the selection is left as it was.
+- **Values that have not loaded yet.** A saved value can name options under a
+  branch nobody has opened. Those values are kept, submitted with the form, and
+  shown as chips carrying the raw value until their branch loads.
+- **A selected branch that loads later.** If the value names a branch but none of
+  its children, the branch stood for all of them. Once they load, the value is
+  rewritten to include them, in the shape `valueConsistsOf` asks for, with a
+  single `update:modelValue`.
+
+Search only matches options that have loaded. Ticking a branch that holds many
+unloaded branches sends one request for each, so if that is the common path,
+fetch the tree up front instead.
 
 ## Styling branch and leaf rows
 

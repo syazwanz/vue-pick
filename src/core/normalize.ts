@@ -19,9 +19,26 @@ export const DEFAULT_KEYS: OptionKeys = {
   groupOptions: "options",
 }
 
+// Lazy children. With this set, a `children: null` marks a branch whose children
+// have not been fetched yet: `resolve` returns them once they have, or
+// `undefined` until then. Without it `null` is not an array, so the node is a
+// leaf, which is what it has always been.
+export interface LazyChildren {
+  resolve: (item: unknown) => readonly unknown[] | undefined
+}
+
+// Branches still waiting on their children. A WeakSet rather than a flag on the
+// option, so the public `OptionItem` shape does not grow an internal field.
+const unloaded = new WeakSet<OptionItem>()
+
+export function isUnloaded(option: OptionItem): boolean {
+  return unloaded.has(option)
+}
+
 export function normalizeOptions(
   raw: readonly unknown[] | undefined | null,
   keys: Partial<OptionKeys> = {},
+  lazy?: LazyChildren,
 ): OptionOrGroup[] {
   if (!raw) return []
   const k: OptionKeys = {
@@ -31,7 +48,7 @@ export function normalizeOptions(
     children: keys.children ?? DEFAULT_KEYS.children,
     groupOptions: keys.groupOptions ?? DEFAULT_KEYS.groupOptions,
   }
-  return raw.map((item) => normalizeItem(item, k))
+  return raw.map((item) => normalizeItem(item, k, lazy))
 }
 
 function readLabel(obj: Record<string, unknown>, key: string | string[]) {
@@ -43,14 +60,18 @@ function readLabel(obj: Record<string, unknown>, key: string | string[]) {
   return undefined as unknown as string
 }
 
-function normalizeItem(item: unknown, k: OptionKeys): OptionOrGroup {
+function normalizeItem(
+  item: unknown,
+  k: OptionKeys,
+  lazy: LazyChildren | undefined,
+): OptionOrGroup {
   const obj = (item ?? {}) as Record<string, unknown>
   const groupOptions = obj[k.groupOptions]
   if (Array.isArray(groupOptions)) {
     const group: OptionGroup = {
       label: readLabel(obj, k.label),
       options: groupOptions.map((child) =>
-        normalizeItem(child, k),
+        normalizeItem(child, k, lazy),
       ) as OptionItem[],
     }
     if (obj[k.disabled] !== undefined) {
@@ -73,11 +94,17 @@ function normalizeItem(item: unknown, k: OptionKeys): OptionOrGroup {
   if (obj[k.disabled] !== undefined) {
     normalized.disabled = Boolean(obj[k.disabled])
   }
-  const children = obj[k.children]
+  const children =
+    lazy && obj[k.children] === null ? lazy.resolve(item) : obj[k.children]
   if (Array.isArray(children)) {
     normalized.children = children.map((c) =>
-      normalizeItem(c, k),
+      normalizeItem(c, k, lazy),
     ) as OptionItem[]
+  } else if (lazy && obj[k.children] === null) {
+    // A branch with nothing under it yet. An empty array keeps every branch
+    // check (chevron, expansion, `disableBranchNodes`) treating it as one.
+    normalized.children = []
+    unloaded.add(normalized)
   }
   return normalized
 }

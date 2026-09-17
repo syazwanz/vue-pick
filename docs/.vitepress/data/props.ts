@@ -385,6 +385,35 @@ export const props: PropDoc[] = [
       "Shown under an expanded branch whose `children` array is empty.",
     more: "/components/vpick/tree-select#branches-with-no-children",
   },
+  {
+    name: "loadChildren",
+    type: "(option: unknown) => Promise<unknown[]>",
+    default: "undefined",
+    group: "tree",
+    components: ["VPick"],
+    description:
+      "Fetches a branch's children when it first opens. Mark those branches with `children: null`.",
+    more: "/components/vpick/tree-select#loading-children-on-demand",
+  },
+  {
+    name: "loadingChildrenText",
+    type: "string",
+    default: '"Loading..."',
+    group: "tree",
+    components: ["VPick"],
+    description: "Shown under a branch while its children load.",
+    more: "/components/vpick/tree-select#loading-children-on-demand",
+  },
+  {
+    name: "loadChildrenErrorText",
+    type: "string",
+    default: '"Could not load. Click to retry"',
+    group: "tree",
+    components: ["VPick"],
+    description:
+      "Shown under a branch whose children failed to load. Clicking it retries.",
+    more: "/components/vpick/tree-select#loading-children-on-demand",
+  },
 
   // Positioning
   {
