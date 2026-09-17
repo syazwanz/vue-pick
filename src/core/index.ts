@@ -29,7 +29,7 @@ export function isOptionGroup(item: OptionOrGroup): item is OptionGroup {
 export { generateId, resetIdCounter } from "./id"
 export { flattenOptions } from "./flatten"
 export type { FlatOption } from "./flatten"
-export { filterFlat, filterFlatWith } from "./filter"
+export { filterFlat, filterFlatWith, foldForSearch } from "./filter"
 export { normalizeOptions, isUnloaded, DEFAULT_KEYS } from "./normalize"
 export type { OptionKeys, LazyChildren } from "./normalize"
 export { computePosition } from "./positioning"
