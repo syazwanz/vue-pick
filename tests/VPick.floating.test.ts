@@ -185,3 +185,103 @@ describe("VPick — floatingUi", () => {
     wrapper.unmount()
   })
 })
+
+describe("VPick — floatingUi keeps VPick's anchoring", () => {
+  function anyAnswer() {
+    return fakeLibrary(() => ({
+      x: 0,
+      y: 0,
+      placement: "bottom-start",
+      strategy: "absolute",
+    }))
+  }
+
+  function rectAt(top: number): DOMRect {
+    return {
+      top,
+      bottom: top + 36,
+      left: 20,
+      right: 220,
+      width: 200,
+      height: 36,
+      x: 20,
+      y: top,
+      toJSON: () => ({}),
+    } as DOMRect
+  }
+
+  function scrollContainer() {
+    const container = document.createElement("div")
+    container.style.overflowY = "auto"
+    container.style.position = "relative"
+    document.body.appendChild(container)
+    container.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 300, left: 0, right: 300 }) as DOMRect
+    const host = document.createElement("div")
+    container.appendChild(host)
+    return { container, host }
+  }
+
+  it("passes the strategy VPick resolved", async () => {
+    const lib = anyAnswer()
+    const { wrapper } = await openWith(lib, { strategy: "fixed" })
+    expect(lib.computePosition.mock.calls[0][2]).toMatchObject({
+      strategy: "fixed",
+    })
+    wrapper.unmount()
+  })
+
+  it("places the panel inside a scroll container, as the built-in positioning does", async () => {
+    const { container, host } = scrollContainer()
+    const lib = anyAnswer()
+    const wrapper = mount(VPick, {
+      props: { options: opts, floatingUi: lib },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    ;(
+      wrapper.find('[role="combobox"]').element as HTMLElement
+    ).getBoundingClientRect = () => rectAt(150)
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await flushPromises()
+
+    const positioner = container.querySelector(".vpick-positioner")
+    expect(positioner?.parentElement).toBe(container)
+    expect(lib.computePosition.mock.calls[0][2]).toMatchObject({
+      strategy: "absolute",
+    })
+    wrapper.unmount()
+    container.remove()
+  })
+
+  it("still hides the panel while its trigger is scrolled out of view", async () => {
+    const { container, host } = scrollContainer()
+    const lib = anyAnswer()
+    const wrapper = mount(VPick, {
+      props: { options: opts, floatingUi: lib },
+      attachTo: host,
+      global: { stubs: { Teleport: false } },
+    })
+    let top = 150
+    ;(
+      wrapper.find('[role="combobox"]').element as HTMLElement
+    ).getBoundingClientRect = () => rectAt(top)
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await flushPromises()
+
+    const positioner =
+      container.querySelector<HTMLElement>(".vpick-positioner")!
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+    top = 40
+    container.dispatchEvent(new Event("scroll"))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await flushPromises()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      true,
+    )
+    wrapper.unmount()
+    container.remove()
+  })
+})

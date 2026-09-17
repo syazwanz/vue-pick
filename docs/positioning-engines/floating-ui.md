@@ -28,8 +28,9 @@ Open both. The second lines up with the trigger's end edge.
 - You pass the Floating UI library as a prop. There is no function to write.
 - VPick calls Floating UI's `computePosition` with `offset`, `flip` and `shift`,
   and applies the position it returns.
-- VPick still decides when to reposition: on open, on scroll, on resize, and when
-  the list changes size.
+- VPick still decides where the dropdown lives and when it moves: inside the
+  scroll container or modal it belongs to, repositioned on open, scroll, resize,
+  and when the list changes size.
 - Floating UI is not bundled into VPick. VPick uses the copy you pass.
 
 ## Anatomy
@@ -76,15 +77,14 @@ import * as FloatingUI from "@floating-ui/dom"
 
 ## What changes
 
-While `floatingUi` is set, VPick's own positioning is off, and with it:
+Only who works out the coordinates. Everything else behaves as it does without
+`floatingUi`:
 
-- **Anchoring inside scroll containers.** `strategy` has no effect. Floating UI
-  places the dropdown in the page and follows the trigger as things scroll.
-- **`hideWhenDetached`.** The dropdown is no longer hidden when its trigger
-  scrolls out of view.
-
-Everything else is unchanged: keyboard support, search, selection, scroll lock,
-theming, and `teleportTo`.
+- **`strategy` and `teleportTo`** still decide where the dropdown lives, so inside
+  a scrolling modal it stays in the modal, above the modal's backdrop.
+- **`hideWhenDetached`** still hides the dropdown while its trigger is scrolled
+  out of view.
+- Keyboard support, search, selection, scroll lock and theming are unchanged.
 
 ## When not to use it
 

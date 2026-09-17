@@ -491,7 +491,7 @@ export const props: PropDoc[] = [
     group: "positioning",
     components: ["VPick"],
     description:
-      "Positions the dropdown with Floating UI instead of the built-in positioning. Pass the library itself.",
+      "Lets Floating UI work out the dropdown's coordinates. VPick still decides where the dropdown lives and when it moves. Pass the library itself.",
     more: "/positioning-engines/floating-ui",
   },
   {

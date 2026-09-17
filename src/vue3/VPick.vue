@@ -1267,14 +1267,14 @@ async function updatePosition(skipSecondPass = false) {
   if (isInline.value) return
   const trigger = triggerRef.value
   if (!trigger) return
-  if (props.floatingUi) {
-    await positionWithFloatingUi(trigger, props.floatingUi)
-    return
-  }
   // One layout read per frame, shared by the detachment check and the maths.
   const rect = trigger.getBoundingClientRect()
   if (props.hideWhenDetached) {
     detached.value = isClippedOutOfView(rect, scrollAncestors)
+  }
+  if (props.floatingUi) {
+    await positionWithFloatingUi(trigger, props.floatingUi)
+    return
   }
   // First paint: use a sensible default height; next frame remeasures actual.
   const initial = measure(
@@ -1319,11 +1319,14 @@ async function updatePosition(skipSecondPass = false) {
   }
 }
 
-// Floating UI in place of the built-in maths. VPick still decides when to
-// position (open, scroll, resize, the list changing size); Floating UI decides
-// where. The panel is measured as it will be placed, so it is taken out of flow
-// and given its minimum width before the first measurement. A later call can
-// finish first, so only the newest result is applied.
+// Floating UI in place of the built-in maths, and only the maths. Where the
+// panel lives (the anchor chosen by `strategy`, or `teleportTo`), when it moves
+// (open, scroll, resize, the list changing size) and whether it hides while its
+// trigger is scrolled away all stay VPick's. Keeping the anchor matters: inside a
+// modal the panel lives in the modal's scroll container, so it stacks above the
+// modal rather than behind it. The panel is taken out of flow and given its
+// minimum width before it is measured, and a later call can finish first, so
+// only the newest result is applied.
 let floatingRequest = 0
 
 async function positionWithFloatingUi(
@@ -1334,10 +1337,11 @@ async function positionWithFloatingUi(
   if (!panel) return
   const request = ++floatingRequest
   const triggerWidth = `${trigger.getBoundingClientRect().width}px`
-  if (!positionerStyle.value.position) {
+  const strategy = resolvedStrategy.value
+  if (positionerStyle.value.position !== strategy) {
     positionerStyle.value = {
       ...forwarded.value,
-      position: "absolute",
+      position: strategy,
       top: "0px",
       left: "0px",
       "--vpick-trigger-width": triggerWidth,
@@ -1358,7 +1362,7 @@ async function positionWithFloatingUi(
     panel as never,
     {
       placement: floatingPlacement,
-      strategy: "absolute",
+      strategy,
       middleware: [
         floatingUi.offset(
           (listboxOffset ?? (isSearchable.value ? 6 : 4)) as never,
@@ -1459,12 +1463,6 @@ function warnCannotAnchor(container: HTMLElement) {
 
 function resolveAnchor() {
   releasePromotion()
-  // Floating UI works out its own coordinates, so there is nothing to anchor.
-  if (props.floatingUi) {
-    anchorEl.value = null
-    resolvedStrategy.value = "absolute"
-    return
-  }
   const explicit = explicitTeleportTarget()
 
   // `teleportTo` decides *where* the panel goes and `strategy` decides *how* it

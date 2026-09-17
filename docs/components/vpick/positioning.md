@@ -114,8 +114,8 @@ The gap between trigger and panel is `--vpick-listbox-offset`, in `px`, `rem` or
 ## Using Floating UI instead
 
 If the rest of your app positions its popovers with Floating UI, VPick can use
-it too. Pass the library, and VPick hands it the placement work while still
-deciding when to reposition:
+it too. Pass the library, and VPick hands it the coordinate maths while still
+deciding where the dropdown lives and when it repositions:
 
 ```vue
 <script setup>
