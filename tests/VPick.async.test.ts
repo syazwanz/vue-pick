@@ -336,3 +336,76 @@ describe("VPick — fetchOptions: selections outlive the results", () => {
     wrapper.unmount()
   })
 })
+
+describe("VPick — fetchOptions: answering straight away", () => {
+  it("shows results returned directly, with no searching row", async () => {
+    const fetchOptions = vi.fn((query: string) =>
+      query === "cat" ? [cat] : [],
+    )
+    const wrapper = mountAsync({ fetchOptions, searchDebounce: 0 })
+    await type(wrapper, "cat")
+
+    expect(fetchOptions).toHaveBeenCalledWith("cat", expect.anything())
+    expect(wrapper.find(".vpick-empty--searching").exists()).toBe(false)
+    expect(rows(wrapper)).toEqual(["Cat"])
+    wrapper.unmount()
+  })
+
+  it("keeps the order the engine ranked them in", async () => {
+    const wrapper = mountAsync({
+      fetchOptions: () => [zebra, dog, cat],
+      searchDebounce: 0,
+    })
+    await type(wrapper, "a")
+    expect(rows(wrapper)).toEqual(["Zebra", "Dog", "Cat"])
+    wrapper.unmount()
+  })
+
+  it("updates on every keystroke", async () => {
+    const fetchOptions = vi.fn((query: string) =>
+      [cat, dog].filter((a) => a.value.startsWith(query)),
+    )
+    const wrapper = mountAsync({ fetchOptions, searchDebounce: 0 })
+    await type(wrapper, "c")
+    expect(rows(wrapper)).toEqual(["Cat"])
+    await type(wrapper, "d")
+    expect(rows(wrapper)).toEqual(["Dog"])
+    expect(fetchOptions).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it("shows the error row when the engine throws", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    const wrapper = mountAsync({
+      fetchOptions: () => {
+        throw new Error("bad index")
+      },
+      searchDebounce: 0,
+    })
+    await type(wrapper, "cat")
+    expect(wrapper.find(".vpick-empty--error").exists()).toBe(true)
+    vi.restoreAllMocks()
+  })
+
+  it("still waits for the pause when a debounce is set", async () => {
+    const fetchOptions = vi.fn(() => [cat])
+    const wrapper = mountAsync({ fetchOptions })
+    await type(wrapper, "cat")
+    expect(fetchOptions).not.toHaveBeenCalled()
+    expect(wrapper.find(".vpick-empty--searching").exists()).toBe(true)
+
+    await settle()
+    expect(rows(wrapper)).toEqual(["Cat"])
+    wrapper.unmount()
+  })
+
+  it("still shows the searching row for a promise with no debounce", async () => {
+    const wrapper = mountAsync({
+      fetchOptions: () => new Promise(() => {}),
+      searchDebounce: 0,
+    })
+    await type(wrapper, "cat")
+    expect(wrapper.find(".vpick-empty--searching").exists()).toBe(true)
+    wrapper.unmount()
+  })
+})

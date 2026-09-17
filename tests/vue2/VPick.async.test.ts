@@ -91,3 +91,15 @@ describe("VPick (Vue 2) — fetchOptions", () => {
     expect(wrapper.emitted("deselect")![0][0]).toBe(cat)
   })
 })
+
+describe("VPick (Vue 2) — fetchOptions answering straight away", () => {
+  it("shows ranked results on the keystroke, with no searching row", async () => {
+    const wrapper = mountAsync({
+      fetchOptions: () => [dog, cat],
+      searchDebounce: 0,
+    })
+    await type(wrapper, "a")
+    expect(wrapper.find(".vpick-empty--searching").exists()).toBe(false)
+    expect(rows(wrapper)).toEqual(["Dog", "Cat"])
+  })
+})

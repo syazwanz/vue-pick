@@ -181,6 +181,15 @@ export default defineConfig({
           { text: "API Reference", link: "/components/vpick/api" },
         ],
       },
+      {
+        text: "Search engines",
+        items: [
+          { text: "Overview", link: "/search-engines/" },
+          { text: "Fuse.js", link: "/search-engines/fuse" },
+          { text: "FlexSearch", link: "/search-engines/flexsearch" },
+          { text: "Your server", link: "/search-engines/server" },
+        ],
+      },
     ],
     socialLinks: [
       { icon: "github", link: "https://github.com/syazwanz/vue-pick" },
