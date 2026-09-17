@@ -949,6 +949,24 @@ button.vpick-trigger--loading:disabled,
   color: var(--vpick-option-empty-icon-color, inherit);
 }
 
+/* Lazy children. The loading row keeps the placeholder's inert styling; the
+   error row is the one placeholder that takes a click, since clicking it
+   retries. The spinner stands in for the chevron on a branch that is loading,
+   and turns in place of the rotation the chevron uses when expanded. */
+.vpick-option-empty--error {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.vpick-option-empty--error:hover .vpick-option-empty-label {
+  text-decoration: underline;
+}
+
+.vpick-option-spinner,
+.vpick-option-expand > svg.vpick-option-spinner {
+  animation: vpick-trigger-spin 0.6s linear infinite;
+}
+
 /* Alignment spacer for leaf nodes in tree mode. Not rendered once
    `disableBranchNodes` takes the checkbox off branch rows, since the leaf would
    then be a slot longer than the branch above it. See `showLeafSpacer`. */

@@ -1,5 +1,6 @@
 import type { OptionItem, OptionOrGroup } from "./index"
 import { isOptionGroup } from "./index"
+import { isUnloaded } from "./normalize"
 
 export interface FlatOption {
   id: string
@@ -15,6 +16,10 @@ export interface FlatOption {
   // Placeholder row under an expanded branch whose `children` array is empty.
   // Inert: not selectable, not navigable.
   isEmptyMessage?: boolean
+  // The branch's children have not been fetched yet. On a placeholder row it
+  // means the row stands in for a pending or failed load rather than an empty
+  // branch.
+  isUnloaded?: boolean
   parentValue?: OptionItem["value"]
   groupLabel?: string
   groupDisabled?: boolean
@@ -52,6 +57,7 @@ function flattenRecursive(
 
     const isBranch = Array.isArray(item.children)
     const hasChildren = isBranch && item.children!.length > 0
+    const unloaded = isBranch && isUnloaded(item)
     const isExpanded =
       isBranch && (expandedSet === "all" || expandedSet.has(item.value))
 
@@ -62,6 +68,7 @@ function flattenRecursive(
       isBranch,
       hasChildren,
       isExpanded,
+      ...(unloaded && { isUnloaded: true }),
       parentValue,
       groupLabel,
       groupDisabled,
@@ -89,6 +96,7 @@ function flattenRecursive(
         hasChildren: false,
         isExpanded: false,
         isEmptyMessage: true,
+        ...(unloaded && { isUnloaded: true }),
         parentValue: item.value,
         groupLabel,
         groupDisabled,
