@@ -361,3 +361,33 @@
   border-color: var(--vp-c-divider) !important;
   transition: none !important;
 }
+
+/* Search engines overview: one card per guide. */
+.engine-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.vp-doc a.engine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 0.5rem;
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.vp-doc a.engine-card:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.engine-card span {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}

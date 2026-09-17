@@ -3,6 +3,7 @@ import {
   filterFlat,
   filterFlatWith,
   foldForSearch,
+  optionMatches,
 } from "../../src/core/filter"
 import { flattenOptions } from "../../src/core/flatten"
 import type { OptionOrGroup } from "../../src/core"
@@ -141,5 +142,45 @@ describe("foldForSearch", () => {
 
   it("keeps vowel signs in scripts where they change the word", () => {
     expect(foldForSearch("कि")).not.toBe(foldForSearch("क"))
+  })
+})
+
+describe("optionMatches", () => {
+  const option = (raw: Record<string, unknown>) => {
+    const o = { label: String(raw.name), value: raw.id } as {
+      label: string
+      value: unknown
+      raw?: unknown
+    }
+    Object.defineProperty(o, "raw", { value: raw, enumerable: false })
+    return o as Parameters<typeof optionMatches>[0]
+  }
+  const ada = option({
+    id: 1,
+    name: "Ada Lovelace",
+    email: "ada@example.com",
+    code: 1815,
+    tags: ["Mathématique", "engine"],
+  })
+
+  it("matches the label with or without extra keys", () => {
+    expect(optionMatches(ada, "lovelace")).toBe(true)
+    expect(optionMatches(ada, "lovelace", ["email"])).toBe(true)
+  })
+
+  it("matches a string, number or array field named in searchKeys", () => {
+    expect(optionMatches(ada, "example.com")).toBe(false)
+    expect(optionMatches(ada, "example.com", ["email"])).toBe(true)
+    expect(optionMatches(ada, "181", "code")).toBe(true)
+    expect(optionMatches(ada, "engine", ["tags"])).toBe(true)
+  })
+
+  it("ignores accents in fields too", () => {
+    expect(optionMatches(ada, "mathematique", ["tags"])).toBe(true)
+  })
+
+  it("skips missing fields and values that are not text or numbers", () => {
+    const odd = option({ id: 2, name: "Odd", meta: { note: "hidden" } })
+    expect(optionMatches(odd, "hidden", ["meta", "nope"])).toBe(false)
   })
 })

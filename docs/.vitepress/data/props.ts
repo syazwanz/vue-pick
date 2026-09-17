@@ -268,13 +268,23 @@ export const props: PropDoc[] = [
     more: "/components/vpick/search#after-picking",
   },
   {
-    name: "fetchOptions",
-    type: "(query: string, context: { signal?: AbortSignal }) => Promise<unknown[]>",
+    name: "searchKeys",
+    type: "string | string[]",
     default: "undefined",
     group: "search",
     components: ["VPick"],
     description:
-      "Fetches the options for what the user types, instead of filtering `options`.",
+      "Extra fields on your option objects to search, alongside the label.",
+    more: "/components/vpick/search#searching-other-fields",
+  },
+  {
+    name: "fetchOptions",
+    type: "(query: string, context: { signal?: AbortSignal }) => unknown[] | Promise<unknown[]>",
+    default: "undefined",
+    group: "search",
+    components: ["VPick"],
+    description:
+      "Answers what the user types with options, from a server or an in-browser search engine, instead of filtering `options`.",
     more: "/components/vpick/search#searching-a-server",
   },
   {
@@ -284,7 +294,7 @@ export const props: PropDoc[] = [
     group: "search",
     components: ["VPick"],
     description:
-      "Milliseconds to wait after the last keystroke before calling `fetchOptions`.",
+      "Milliseconds to wait after the last keystroke before calling `fetchOptions`. `0` asks on every keystroke.",
     more: "/components/vpick/search#searching-a-server",
   },
   {

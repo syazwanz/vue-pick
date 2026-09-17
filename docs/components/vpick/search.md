@@ -79,6 +79,29 @@ it does, so you do not have to walk children yourself.
 `filter` replaces the whole matcher, `searchNested` included. If you set both,
 only `filter` runs, and matching the ancestor path is then yours to implement.
 
+## Searching other fields
+
+The built-in search looks at the label. `searchKeys` names more fields to look
+at, read straight from your option objects. The label still counts:
+
+```vue
+<VPick
+  :options="people"
+  label-key="name"
+  value-key="id"
+  :search-keys="['email', 'tags']"
+  searchable
+/>
+```
+
+With that, typing "bletchley" finds `{ name: "Alan Turing", email:
+"alan@bletchley.uk" }`. A field can hold a string, a number, or an array of
+either, such as a list of tags. Case and accents are ignored in every field, and
+a tree opens the path to a node that matched on one of them.
+
+A custom `filter` replaces the built-in search entirely, so `searchKeys` has no
+effect alongside it.
+
 ## After picking
 
 Two props decide what happens once an option is chosen.
@@ -180,6 +203,19 @@ Type a few letters. The results come back after a short delay.
   chip or label, its form value and its `select` / `deselect` payload when a
   later search no longer returns it. Put already-selected options in `options`
   so they have a label before any search runs.
+
+**Searching in the browser.** `fetchOptions` does not have to fetch anything. It
+can return the results directly instead of a promise, which is how to plug in a
+search engine that runs in the page, with its own ranking. Set
+`searchDebounce` to `0` so the list updates on every keystroke:
+
+```vue
+<VPick
+  :options="[]"
+  :fetch-options="(query) => myEngine.search(query)"
+  :search-debounce="0"
+/>
+```
 
 `fetchOptions` always uses the search input, even without `searchable`.
 

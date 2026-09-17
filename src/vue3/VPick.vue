@@ -19,6 +19,7 @@ import {
   filterFlat,
   filterFlatWith,
   foldForSearch,
+  optionMatches,
   computePosition,
   lockScroll,
   setupScrollListeners,
@@ -64,6 +65,7 @@ const props = withDefaults(
     bodyLock?: boolean
     searchable?: boolean
     searchNested?: boolean
+    searchKeys?: string | string[]
     filter?: (option: OptionItem, query: string) => boolean
     noResultsText?: string
     clearable?: boolean
@@ -92,7 +94,7 @@ const props = withDefaults(
     fetchOptions?: (
       query: string,
       context: { signal?: AbortSignal },
-    ) => Promise<readonly unknown[]>
+    ) => readonly unknown[] | Promise<readonly unknown[]>
     searchDebounce?: number
     searchingText?: string
     searchErrorText?: string
@@ -123,6 +125,7 @@ const props = withDefaults(
     bodyLock: undefined,
     searchable: undefined,
     searchNested: false,
+    searchKeys: undefined,
     filter: undefined,
     noResultsText: "No results",
     clearable: false,
@@ -516,7 +519,7 @@ function matchesQuery(fo: FlatOption, raw: string): boolean {
     const nested = nestedLabels.value.get(fo.option.value) ?? ""
     return words.every((w) => nested.includes(w))
   }
-  return foldForSearch(fo.option.label).includes(q)
+  return optionMatches(fo.option, q, props.searchKeys)
 }
 
 // Ancestor values of every node the predicate accepts. Walks the whole tree
@@ -886,7 +889,7 @@ const filteredFlat = computed<FlatOption[]>(() => {
   if (props.filter) {
     return filterFlatWith(flat.value, searchQuery.value, props.filter)
   }
-  return filterFlat(flat.value, searchQuery.value)
+  return filterFlat(flat.value, searchQuery.value, props.searchKeys)
 })
 
 interface Section {
@@ -1715,6 +1718,8 @@ function isAbortError(err: unknown): boolean {
   )
 }
 
+// A fetcher may answer with a promise, as a server does, or with the results
+// themselves, as an in-browser search engine does. `await` takes either.
 async function runAsyncSearch(query: string) {
   const fetcher = props.fetchOptions
   if (!fetcher) return
@@ -1767,9 +1772,15 @@ watch(asyncQuery, (query) => {
     return
   }
   cancelAsyncSearch()
+  // No debounce asks on the keystroke itself, which is what lets an in-browser
+  // engine update the list as the user types.
+  if (props.searchDebounce <= 0) {
+    void runAsyncSearch(query)
+    return
+  }
   asyncTimer = setTimeout(
     () => void runAsyncSearch(query),
-    Math.max(0, props.searchDebounce),
+    props.searchDebounce,
   )
 })
 
