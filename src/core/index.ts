@@ -38,6 +38,7 @@ export {
 export { normalizeOptions, isUnloaded, DEFAULT_KEYS } from "./normalize"
 export type { OptionKeys, LazyChildren } from "./normalize"
 export { computePosition } from "./positioning"
+export type { FloatingUiLibrary } from "./positioning"
 export type { PositionResult } from "./positioning"
 export { lockScroll, lockBodyScroll, unlockBodyScroll } from "./bodyScrollLock"
 export {
