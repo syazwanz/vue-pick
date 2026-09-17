@@ -10,6 +10,8 @@ import ClearableExample from '../../examples/vpick/clearable.vue'
 import ClearableCode from '../../examples/vpick/clearable.vue?raw'
 import EmptyStatesExample from '../../examples/vpick/empty-states.vue'
 import EmptyStatesCode from '../../examples/vpick/empty-states.vue?raw'
+import AsyncSearchExample from '../../examples/vpick/async-search.vue'
+import AsyncSearchCode from '../../examples/vpick/async-search.vue?raw'
 </script>
 
 # Search
@@ -132,6 +134,54 @@ unaffected, and words from unrelated branches still do not match.
 
 Only useful in tree mode. See [Tree Select](/components/vpick/tree-select) for
 how search interacts with branches and expansion.
+
+## Searching a server
+
+When the options live on a server, pass `fetchOptions` instead of filtering
+`options` in the browser. It receives what the user typed and returns a promise
+of the matching options, in the same shape as the rest:
+
+```vue
+<script setup>
+async function fetchOptions(query, { signal }) {
+  const res = await fetch(`/api/countries?q=${encodeURIComponent(query)}`, {
+    signal,
+  })
+  return res.json()
+}
+</script>
+
+<template>
+  <VPick :options="[]" :fetch-options="fetchOptions" multiple />
+</template>
+```
+
+Type a few letters. The results come back after a short delay.
+
+<Preview :code="AsyncSearchCode">
+  <AsyncSearchExample />
+</Preview>
+
+- **When it asks.** Once typing pauses for `searchDebounce` milliseconds (300 by
+  default). The input is never disabled, so the user can keep typing.
+- **Newer typing wins.** Starting a new query aborts the previous request through
+  `signal`, and a late answer to an older query is never shown. Passing `signal`
+  on to `fetch` is optional, but saves the request.
+- **While waiting.** The list shows only `searchingText`, so nothing out of date
+  can be picked.
+- **Results** are shown as returned, with no filtering on top. `filter` does not
+  apply here. Each query's answer is kept, so deleting a letter shows the earlier
+  results without asking again.
+- **Nothing typed.** The list shows `options`, which is a good place for recent
+  or suggested picks. With `options` empty it shows `searchPromptText` instead.
+- **Failure.** A rejected promise shows `searchErrorText`. Clicking it asks
+  again.
+- **Selections** outlive the results they came from. A picked option keeps its
+  chip or label, its form value and its `select` / `deselect` payload when a
+  later search no longer returns it. Put already-selected options in `options`
+  so they have a label before any search runs.
+
+`fetchOptions` always uses the search input, even without `searchable`.
 
 ## Search with multiple
 
