@@ -47,6 +47,8 @@ export default tseslint.config(
     files: ["**/*.vue"],
     languageOptions: {
       globals: {
+        AbortController: "readonly",
+        AbortSignal: "readonly",
         Event: "readonly",
         FormData: "readonly",
         HTMLElement: "readonly",

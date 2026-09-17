@@ -92,6 +92,14 @@ const props = withDefaults(
     loadChildren?: (option: unknown) => Promise<readonly unknown[]>
     loadingChildrenText?: string
     loadChildrenErrorText?: string
+    fetchOptions?: (
+      query: string,
+      context: { signal?: AbortSignal },
+    ) => Promise<readonly unknown[]>
+    searchDebounce?: number
+    searchingText?: string
+    searchErrorText?: string
+    searchPromptText?: string
   }>(),
   {
     value: undefined,
@@ -141,6 +149,11 @@ const props = withDefaults(
     loadChildren: undefined,
     loadingChildrenText: "Loading...",
     loadChildrenErrorText: "Could not load. Click to retry",
+    fetchOptions: undefined,
+    searchDebounce: 300,
+    searchingText: "Searching...",
+    searchErrorText: "Could not search. Click to retry",
+    searchPromptText: "Type to search",
   },
 )
 
@@ -199,8 +212,8 @@ const model = computed(() => {
 function toEmit(v: OptionItem["value"] | OptionItem["value"][]): unknown {
   if (props.valueFormat !== "object") return v
   const expand = (x: OptionItem["value"]) => {
-    const found = flatAll.value.find((f) => f.option.value === x)
-    return found ? sourceOf(found.option) : x
+    const found = findOption(x)
+    return found ? sourceOf(found) : x
   }
   return Array.isArray(v) ? v.map(expand) : v == null ? v : expand(v)
 }
@@ -215,7 +228,10 @@ const isUserSearching = ref(false)
 const isFormControl = ref(true)
 
 // Multi-select renders as a combobox so chips and the input share one trigger.
-const isSearchable = computed(() => props.searchable || props.multiple)
+// So does async search, which has nothing to ask the server without an input.
+const isSearchable = computed(
+  () => props.searchable || props.multiple || !!props.fetchOptions,
+)
 
 // `multiple` renders the searchable trigger because that is the only one that
 // draws chips, so an explicit `searchable: false` cannot be honoured there.
@@ -284,9 +300,45 @@ function childrenKeyOf(option: OptionItem): object | null {
   return raw && typeof raw === "object" ? (toRaw(raw) as object) : null
 }
 
+// --- Async search ---
+
+// With `fetchOptions`, what the user types is answered by the caller's server
+// rather than by filtering `options`. The typed query picks which list is shown:
+// none, and it is `options`; otherwise the results fetched for that query.
+const asyncQuery = computed(() =>
+  props.fetchOptions && isUserSearching.value ? searchQuery.value.trim() : "",
+)
+// Results per query, kept for the life of the component so deleting a letter
+// shows the earlier answer instead of asking again.
+const asyncResults = shallowRef<ReadonlyMap<string, readonly unknown[]>>(
+  new Map(),
+)
+const asyncFailedQuery = ref<string | null>(null)
+let asyncRequestId = 0
+let asyncController: AbortController | null = null
+let asyncTimer: ReturnType<typeof setTimeout> | null = null
+
+// Waiting on an answer for what is typed, debounce included. Nothing from an
+// earlier query is shown meanwhile, so nothing out of date can be picked.
+const asyncSearching = computed(
+  () =>
+    !!asyncQuery.value &&
+    !asyncResults.value.has(asyncQuery.value) &&
+    asyncFailedQuery.value !== asyncQuery.value,
+)
+const asyncFailed = computed(
+  () => !!asyncQuery.value && asyncFailedQuery.value === asyncQuery.value,
+)
+
+const optionSource = computed<readonly unknown[]>(() =>
+  asyncQuery.value
+    ? (asyncResults.value.get(asyncQuery.value) ?? [])
+    : props.options,
+)
+
 const normalized = computed(() =>
   normalizeOptions(
-    props.options,
+    optionSource.value,
     {
       label: props.labelKey,
       value: props.valueKey,
@@ -742,7 +794,36 @@ const knownValues = computed(
   () => new Set(flatAll.value.map((fo) => fo.option.value)),
 )
 
+// Every option shown so far, by value. With async search the list changes on
+// every query, and a selection has to outlive the results it was picked from:
+// its chip, label, form value and event payloads all come from here once the
+// current list no longer holds it.
+const seenOptions = new Map<OptionItem["value"], OptionItem>()
+watch(
+  flatAll,
+  (rows) => {
+    if (!props.fetchOptions) return
+    for (const fo of rows) seenOptions.set(fo.option.value, fo.option)
+  },
+  { immediate: true },
+)
+
+function findOption(value: OptionItem["value"]): OptionItem | undefined {
+  return (
+    flatAll.value.find((f) => f.option.value === value)?.option ??
+    (props.fetchOptions ? seenOptions.get(value) : undefined)
+  )
+}
+
 const filteredFlat = computed<FlatOption[]>(() => {
+  // Server results already match the query, so they are shown as returned,
+  // with no local filter on top. Until they arrive the source is empty.
+  if (asyncQuery.value) {
+    if (!props.flattenSearchResults) return flat.value
+    return flattenOptions(normalized.value, instanceId.value, "all")
+      .filter((fo) => !fo.isEmptyMessage)
+      .map((fo) => ({ ...fo, depth: 0, isExpanded: false }))
+  }
   // Only filter when the user is actively typing. Opening the dropdown with a
   // selection should show the full list (WAI-ARIA combobox pattern).
   if (!isUserSearching.value) return flat.value
@@ -862,16 +943,33 @@ const selectedOptions = computed(() => {
   return sortValues(displayValues)
     .map(
       (v, i) =>
-        flatAll.value.find((f) => f.option.value === v) ?? unknownChip(v, i),
+        flatAll.value.find((f) => f.option.value === v) ??
+        rememberedChip(v, i) ??
+        unknownChip(v, i),
     )
     .filter(Boolean) as FlatOption[]
 })
 
-// A selected value the loaded tree does not contain yet. With lazy children
-// that is expected, so it gets a chip showing the value itself, which the user
-// can still remove. Without them it stays unrendered, as it always has.
+// A selection picked from earlier search results, no longer in the current list.
+function rememberedChip(v: OptionItem["value"], i: number): FlatOption | null {
+  const option = props.fetchOptions ? seenOptions.get(v) : undefined
+  if (!option) return null
+  return {
+    id: `${instanceId.value}-seen-${i}`,
+    option,
+    depth: 0,
+    isBranch: false,
+    hasChildren: false,
+    isExpanded: false,
+  }
+}
+
+// A selected value the loaded tree does not contain yet. With lazy children or
+// async search that is expected, so it gets a chip showing the value itself,
+// which the user can still remove. Otherwise it stays unrendered, as it always
+// has.
 function unknownChip(v: OptionItem["value"], i: number): FlatOption | null {
-  if (!props.loadChildren) return null
+  if (!props.loadChildren && !props.fetchOptions) return null
   // Built through the same normalizer as real options, so `option.raw` exists
   // and a slot reading a custom field off it gets `undefined` rather than a
   // crash. The raw object holds only the value and, as its label, the value.
@@ -894,19 +992,15 @@ function unknownChip(v: OptionItem["value"], i: number): FlatOption | null {
 
 const selectedOption = computed<OptionItem | null>(() => {
   if (model.value == null) return null
-  return (
-    flatAll.value.find((f) => f.option.value === model.value)?.option ??
-    unknownChip(model.value, 0)?.option ??
-    null
-  )
+  return findOption(model.value) ?? unknownChip(model.value, 0)?.option ?? null
 })
 
 const selectedLabel = computed(() => selectedOption.value?.label ?? "")
 
-// Selected values the loaded tree does not contain, so the form still submits
-// them. Only with lazy children, where such values are expected.
+// Selected values the current list does not contain, so the form still submits
+// them. Only with lazy children or async search, where such values are expected.
 const unloadedSelection = computed<OptionItem["value"][]>(() => {
-  if (!props.loadChildren) return []
+  if (!props.loadChildren && !props.fetchOptions) return []
   const current = props.multiple
     ? Array.isArray(model.value)
       ? model.value
@@ -925,9 +1019,15 @@ const showEmpty = computed(
   () => isOpen.value && !props.loading && filteredFlat.value.length === 0,
 )
 
-const emptyText = computed(() =>
-  hasNoOptions.value ? props.noOptionsText : props.noResultsText,
-)
+const emptyText = computed(() => {
+  if (props.fetchOptions) {
+    if (asyncQuery.value) return props.noResultsText
+    // Nothing typed and no defaults passed: the list is empty because it is
+    // waiting for a query, not because there is nothing to pick.
+    if (hasNoOptions.value) return props.searchPromptText
+  }
+  return hasNoOptions.value ? props.noOptionsText : props.noResultsText
+})
 
 const hiddenSelectValue = computed<string | string[]>(() => {
   if (props.multiple) {
@@ -1611,6 +1711,105 @@ watch(
   { immediate: true },
 )
 
+function cancelAsyncSearch() {
+  if (asyncTimer) clearTimeout(asyncTimer)
+  asyncTimer = null
+  asyncController?.abort()
+  asyncController = null
+  // Anything still on its way belongs to a query that is no longer current,
+  // whether or not the caller's code honoured the abort signal.
+  asyncRequestId++
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    (err as { name?: unknown }).name === "AbortError"
+  )
+}
+
+async function runAsyncSearch(query: string) {
+  const fetcher = props.fetchOptions
+  if (!fetcher) return
+  cancelAsyncSearch()
+  const id = asyncRequestId
+  const controller =
+    typeof AbortController === "undefined" ? null : new AbortController()
+  asyncController = controller
+  if (asyncFailedQuery.value === query) asyncFailedQuery.value = null
+  try {
+    const results = await fetcher(query, { signal: controller?.signal })
+    if (id !== asyncRequestId) return
+    const next = new Map(asyncResults.value)
+    next.set(query, Array.isArray(results) ? results : [])
+    asyncResults.value = next
+    openAsyncResults()
+  } catch (err) {
+    if (id !== asyncRequestId || isAbortError(err)) return
+    asyncFailedQuery.value = query
+    if (
+      typeof process !== "undefined" &&
+      process.env?.NODE_ENV !== "production"
+    )
+      console.warn(`[vue-pick] \`fetchOptions\` failed for "${query}".`, err)
+  } finally {
+    if (id === asyncRequestId) asyncController = null
+  }
+}
+
+// Results can be trees, and a match hidden inside a collapsed branch looks like
+// no match at all, so every branch in them opens. Expansion from before the
+// search is restored when the query clears.
+function openAsyncResults() {
+  if (!isTreeMode.value) return
+  const next = new Set(expandedSet.value)
+  for (const v of collectBranchValues(normalized.value)) next.add(v)
+  expandedSet.value = next
+}
+
+// Typing waits out the debounce before asking. A newer query cancels the older
+// request straight away; a query already answered is shown from the cache.
+watch(asyncQuery, (query) => {
+  if (!query) {
+    cancelAsyncSearch()
+    return
+  }
+  if (asyncResults.value.has(query)) {
+    cancelAsyncSearch()
+    openAsyncResults()
+    return
+  }
+  cancelAsyncSearch()
+  asyncTimer = setTimeout(
+    () => void runAsyncSearch(query),
+    Math.max(0, props.searchDebounce),
+  )
+})
+
+// A different fetcher can answer the same query differently.
+watch(
+  () => props.fetchOptions,
+  () => {
+    cancelAsyncSearch()
+    asyncResults.value = new Map()
+    asyncFailedQuery.value = null
+  },
+)
+
+// Results land after the keystroke that asked for them, so the highlight the
+// keystroke set has nothing to point at. Point it at the first result.
+watch(filteredFlat, (list) => {
+  if (!asyncQuery.value || !isOpen.value) return
+  const cur = highlightedIndex.value
+  if (cur >= 0 && cur < list.length && isNavigable(list[cur])) return
+  highlightedIndex.value = list.findIndex(isNavigable)
+})
+
+function retryAsyncSearch() {
+  if (asyncQuery.value) void runAsyncSearch(asyncQuery.value)
+}
+
 function retryLoad(option: OptionItem) {
   clearFailed(option)
   void loadBranch(option)
@@ -1689,7 +1888,8 @@ function selectOption(flatOption: FlatOption) {
 
 function removeChip(value: OptionItem["value"]) {
   if (props.disabled) return
-  const removed = flatAll.value.find((f) => f.option.value === value)
+  const removedOption = findOption(value)
+  const removed = removedOption ? { option: removedOption } : undefined
   if (isCascadeMode.value) {
     const leaves = removed ? getLeafDescendants(removed.option) : [value]
     const newLeafSet = new Set(effectiveLeafSet.value)
@@ -1730,6 +1930,8 @@ function onInput(e: Event) {
       if (preSearchExpandedSet.value === null) {
         preSearchExpandedSet.value = new Set(expandedSet.value)
       }
+      // Server results are opened when they arrive, not matched locally.
+      if (props.fetchOptions) return
       autoExpandForSearch(q)
     } else if (preSearchExpandedSet.value !== null) {
       // Query cleared: restore pre-search expansion (D6)
@@ -1997,6 +2199,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  cancelAsyncSearch()
   document.removeEventListener("mousedown", onClickOutside, CLICK_OUTSIDE_OPTS)
   cancelReposition()
   // An unmount while open never reaches onAfterLeave, so the container would
@@ -2363,6 +2566,7 @@ defineExpose({ focus: focusTrigger })
           role="listbox"
           class="vpick-listbox"
           :aria-multiselectable="multiple ? 'true' : undefined"
+          :aria-busy="asyncSearching ? 'true' : undefined"
         >
           <div v-for="(section, si) in sections" :key="'s' + si">
             <div
@@ -2640,7 +2844,36 @@ defineExpose({ focus: focusTrigger })
               </template>
             </div>
           </div>
-          <div v-if="showEmpty" class="vpick-empty">
+          <div v-if="asyncSearching" class="vpick-empty vpick-empty--searching">
+            <span
+              class="vpick-empty-spinner vpick-option-spinner"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            </span>
+            {{ searchingText }}
+          </div>
+          <div
+            v-else-if="asyncFailed"
+            class="vpick-empty vpick-empty--error"
+            @mousedown.prevent
+            @click="retryAsyncSearch"
+          >
+            {{ searchErrorText }}
+          </div>
+          <div v-else-if="showEmpty" class="vpick-empty">
             <slot name="empty" :query="searchQuery">{{ emptyText }}</slot>
           </div>
         </div>
