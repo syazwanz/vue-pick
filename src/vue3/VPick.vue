@@ -1750,12 +1750,18 @@ async function runAsyncSearch(query: string) {
 }
 
 // Results can be trees, and a match hidden inside a collapsed branch looks like
-// no match at all, so every branch in them opens. Expansion from before the
-// search is restored when the query clears.
+// no match at all, so every branch in them opens. Not a branch whose children
+// are still to be fetched with `loadChildren`: opening it would send a request
+// for every such branch on every search. Those stay shut until opened by hand.
+// Expansion from before the search is restored when the query clears.
 function openAsyncResults() {
   if (!isTreeMode.value) return
   const next = new Set(expandedSet.value)
-  for (const v of collectBranchValues(normalized.value)) next.add(v)
+  for (const fo of flattenOptions(normalized.value, instanceId.value, "all")) {
+    if (fo.isBranch && !fo.isUnloaded && !fo.isEmptyMessage) {
+      next.add(fo.option.value)
+    }
+  }
   expandedSet.value = next
 }
 
