@@ -247,6 +247,16 @@ you can style branches differently from leaves without a slot:
 `--leaf` and `data-depth` are only applied in tree mode, so flat lists stay
 untouched.
 
+To style one specific option, every row, flat or tree, also carries its value
+as `data-value`. It is set for string, number and boolean values:
+
+```css
+/* a "Select all" branch that should not show its chevron */
+.vpick-option[data-value="all"] .vpick-option-expand {
+  visibility: hidden;
+}
+```
+
 These rules have to be global. `.vpick-option` and the rest belong to Vue Pick
 and carry its scope, not yours, so a `<style scoped>` rule cannot reach them,
 and a global rule restyles every VPick on the page. To change one instance, set

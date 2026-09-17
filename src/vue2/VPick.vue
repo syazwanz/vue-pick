@@ -156,6 +156,16 @@ const shouldCloseOnSelect = computed(
   () => props.closeOnSelect ?? !props.multiple,
 )
 
+// A CSS handle on each option row, so one specific option can be styled without
+// a slot. Only primitive values render: an object would stringify to the same
+// "[object Object]" on every row and match all of them.
+function dataValueOf(value: OptionItem["value"]): string | undefined {
+  const t = typeof value
+  return t === "string" || t === "number" || t === "boolean"
+    ? String(value)
+    : undefined
+}
+
 // Hand back what the caller passed in, not our normalized copy.
 function sourceOf(option: OptionItem): unknown {
   return toRaw(option.raw ?? option)
@@ -2450,6 +2460,7 @@ defineExpose({ focus: focusTrigger })
                   :id="item.fo.id"
                   :key="item.fo.id"
                   role="option"
+                  :data-value="dataValueOf(item.fo.option.value)"
                   :data-depth="isTreeMode ? item.fo.depth : undefined"
                   :style="
                     isTreeMode && item.fo.depth > 0
