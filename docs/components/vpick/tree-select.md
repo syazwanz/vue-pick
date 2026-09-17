@@ -204,7 +204,9 @@ Open a branch to load it. Laptops is itself loaded on demand, one level down.
 - **When it loads.** When the branch is opened in an open list, whether by the
   chevron, the arrow keys, `defaultExpandLevel`, or search. A control that is
   never opened sends no requests. Each branch is requested once, and the result
-  is kept for as long as you pass the same option objects.
+  is kept for as long as you pass the same option objects. With
+  [`fetchOptions`](/components/vpick/search#searching-a-server), unloaded
+  branches in the results stay closed until someone opens them.
 - **While it loads.** The branch shows a spinner and a
   [`loadingChildrenText`](#props) row. If the promise rejects, the row shows
   `loadChildrenErrorText` instead. Clicking it, or closing and reopening the
