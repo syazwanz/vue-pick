@@ -1,5 +1,37 @@
 # vue-pick
 
+## 0.27.0
+
+### Minor Changes
+
+- dff5266: `fetchOptions` can return results directly instead of a promise, so a search
+  engine that runs in the page plugs in the same way a server does, with its own
+  ranking kept. With `searchDebounce: 0`, results now appear on the keystroke
+  itself:
+
+  ```vue
+  <VPick
+    :options="[]"
+    :fetch-options="(query) => myEngine.search(query)"
+    :search-debounce="0"
+  />
+  ```
+
+- dff5266: `searchKeys` makes the built-in search look at more fields than the label:
+
+  ```vue
+  <VPick
+    :options="people"
+    label-key="name"
+    :search-keys="['email', 'tags']"
+    searchable
+  />
+  ```
+
+  Fields can hold strings, numbers, or arrays of either. Case and accents are
+  ignored, and trees open the path to a match. A custom `filter` still replaces
+  the built-in search, keys included.
+
 ## 0.26.0
 
 ### Minor Changes
