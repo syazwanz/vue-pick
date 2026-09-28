@@ -77,8 +77,9 @@ export function computePosition({
   }
 }
 
-// The part of Floating UI that VPick calls. Declared here rather than imported,
-// so VPick has no dependency on it: the caller passes in their own copy, as
+// The part of Floating UI that VPick hands positioning to: the coordinates, when
+// to recompute them and when to hide. Declared here rather than imported, so
+// VPick has no dependency on it: the caller passes in their own copy, as
 // `import * as FloatingUI from "@floating-ui/dom"`.
 //
 // The arguments are typed `never` on purpose. Floating UI's own option and
@@ -96,8 +97,16 @@ export interface FloatingUiLibrary {
     y: number
     placement: string
     strategy: "absolute" | "fixed"
+    middlewareData?: { hide?: { referenceHidden?: boolean } }
   }>
+  autoUpdate(
+    reference: never,
+    floating: never,
+    update: () => void,
+    options?: never,
+  ): () => void
   offset(options?: never): unknown
   flip(options?: never): unknown
   shift(options?: never): unknown
+  hide(options?: never): unknown
 }

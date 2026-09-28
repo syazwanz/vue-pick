@@ -491,7 +491,7 @@ export const props: PropDoc[] = [
     group: "positioning",
     components: ["VPick"],
     description:
-      "Lets Floating UI work out the dropdown's coordinates. VPick still decides where the dropdown lives and when it moves. Pass the library itself.",
+      "Hands positioning to Floating UI: where the dropdown goes, when it moves and when it hides. VPick still renders it into its container. Pass the library itself.",
     more: "/positioning-engines/floating-ui",
   },
   {
@@ -519,7 +519,8 @@ export const props: PropDoc[] = [
     default: "true",
     group: "positioning",
     components: ["VPick"],
-    description: "Hides the panel while its trigger is scrolled out of view.",
+    description:
+      "Hides the panel while its trigger is scrolled out of view. With `floatingUi`, Floating UI's `hide` decides.",
     more: "/components/vpick/positioning#when-the-trigger-scrolls-away",
   },
   {

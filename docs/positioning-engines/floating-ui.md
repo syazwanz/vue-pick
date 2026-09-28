@@ -1,6 +1,6 @@
 ---
 title: Floating UI
-description: Position the VPick dropdown with Floating UI. Pass the library and VPick uses it for placement, keeping its own timing, alignment and gap.
+description: Position the VPick dropdown with Floating UI. Pass the library and Floating UI places the dropdown, keeps it in place and hides it, the same as your other popovers.
 ---
 
 <script setup>
@@ -26,11 +26,11 @@ Open both. The second lines up with the trigger's end edge.
 ## Approach
 
 - You pass the Floating UI library as a prop. There is no function to write.
-- VPick calls Floating UI's `computePosition` with `offset`, `flip` and `shift`,
-  and applies the position it returns.
-- VPick still decides where the dropdown lives and when it moves: inside the
-  scroll container or modal it belongs to, repositioned on open, scroll, resize,
-  and when the list changes size.
+- Floating UI does the positioning: `computePosition` with `offset`, `flip`,
+  `shift` and `hide` works out where the dropdown goes, and `autoUpdate` keeps
+  it there.
+- VPick renders the dropdown into the container it belongs to, such as a scroll
+  container or a modal, which Floating UI does not do.
 - Floating UI is not bundled into VPick. VPick uses the copy you pass.
 
 ## Anatomy
@@ -53,7 +53,7 @@ import * as FloatingUI from "@floating-ui/dom"
 npm install @floating-ui/dom
 ```
 
-VPick works with `@floating-ui/dom` 1.x.
+VPick works with `@floating-ui/dom` 1.4 or newer.
 
 ### Pass the library
 
@@ -67,31 +67,31 @@ import * as FloatingUI from "@floating-ui/dom"
 <VPick :options="options" :floating-ui="FloatingUI" />
 ```
 
-## What carries over
+## What Floating UI does
 
-- **`align`** becomes the placement, lining up with the trigger's start or end
-  edge. It follows the trigger's writing direction, the same as the built-in
-  positioning.
-- **`--vpick-listbox-offset`** becomes the `offset` middleware.
-- **Staying on screen** is Floating UI's `flip`, which opens the dropdown above
-  when there is more room there, and `shift`, which keeps it 8px inside the
-  visible edges. Both are set up to leave `align` alone: a dropdown too wide for
-  the room beside its trigger slides back on screen rather than lining up with
-  the trigger's other edge, so the layout matches the built-in positioning.
+- **Placement.** `align` becomes the placement, lining up with the trigger's
+  start or end edge and following the trigger's writing direction.
+  `--vpick-listbox-offset` becomes the `offset` middleware.
+- **Staying on screen.** `flip` opens the dropdown above when there is more room
+  there, and `shift` keeps it 8px inside the visible edges. When a dropdown is
+  too wide for the room beside its trigger, `flip` lines it up with the
+  trigger's other edge instead.
+- **Staying in place.** `autoUpdate` repositions the dropdown on scroll and
+  resize, when the trigger or the dropdown changes size, and when the trigger
+  moves on its own, such as when a message appears above it.
+- **Hiding.** With `hideWhenDetached` on, `hide` hides the dropdown while its
+  trigger is cut off by any container around it, including one with
+  `overflow: hidden`.
 
-## What changes
+## What VPick still does
 
-Only who works out the coordinates. Everything else behaves as it does without
-`floatingUi`:
-
-- **`strategy` and `teleportTo`** still decide where the dropdown lives, so inside
-  a scrolling modal it stays in the modal, above the modal's backdrop.
-- **`hideWhenDetached`** still hides the dropdown while its trigger is scrolled
-  out of view.
+- **`strategy` and `teleportTo`** decide where the dropdown is rendered, so
+  inside a scrolling modal it stays in the modal, above the modal's backdrop.
 - Keyboard support, search, selection, scroll lock and theming are unchanged.
 
 ## When not to use it
 
 VPick's built-in positioning needs no setup and handles dropdowns inside scroll
-containers and modals. If Floating UI is not already part of your app, adding it
-only for dropdowns buys little.
+containers and modals. Reach for Floating UI when it already positions the rest
+of your app, or when a dropdown needs to follow content that moves while it is
+open.
