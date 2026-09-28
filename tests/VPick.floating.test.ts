@@ -32,7 +32,7 @@ function fakeLibrary(answer: () => Result | Promise<Result>) {
       Promise<Result>
     >(() => Promise.resolve(answer())),
     offset: vi.fn((value?: number) => ({ name: "offset", value })),
-    flip: vi.fn(() => ({ name: "flip" })),
+    flip: vi.fn((options?: unknown) => ({ name: "flip", options })),
     shift: vi.fn((options?: { padding: number }) => ({
       name: "shift",
       options,
@@ -76,7 +76,10 @@ describe("VPick — floatingUi", () => {
       strategy: "absolute",
     })
     expect(lib.offset).toHaveBeenCalledWith(4)
-    expect(lib.flip).toHaveBeenCalled()
+    expect(lib.flip).toHaveBeenCalledWith({
+      crossAxis: false,
+      flipAlignment: false,
+    })
     expect(lib.shift).toHaveBeenCalledWith({ padding: 8 })
     wrapper.unmount()
   })
@@ -183,6 +186,81 @@ describe("VPick — floatingUi", () => {
       /^translate3d\(-?[\d.]+px, -?[\d.]+px, 0\)$/,
     )
     wrapper.unmount()
+  })
+})
+
+// The middleware VPick hands the real library, checked against the library
+// itself: a panel too wide for the room beside a trigger near the right edge
+// must slide back on screen, the way the built-in maths does, rather than jump
+// to the trigger's other edge and leave `align` unhonoured.
+describe("floatingUi middleware", () => {
+  const VIEWPORT = 1024
+  const PANEL_WIDTH = 400
+  const TRIGGER_RIGHT = VIEWPORT - 20
+
+  function panelOf(width: number, height: number) {
+    const panel = document.createElement("div")
+    document.body.appendChild(panel)
+    // Floating UI measures a panel by its offset size, which happy-dom leaves
+    // at zero, and reads the viewport from the root element's client size.
+    Object.defineProperty(panel, "offsetWidth", { value: width })
+    Object.defineProperty(panel, "offsetHeight", { value: height })
+    Object.defineProperty(document.documentElement, "clientWidth", {
+      value: VIEWPORT,
+      configurable: true,
+    })
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      value: 768,
+      configurable: true,
+    })
+    return panel
+  }
+
+  const triggerNearRightEdge = {
+    getBoundingClientRect: () =>
+      ({
+        top: 100,
+        bottom: 136,
+        left: TRIGGER_RIGHT - 200,
+        right: TRIGGER_RIGHT,
+        width: 200,
+        height: 36,
+        x: TRIGGER_RIGHT - 200,
+        y: 100,
+      }) as DOMRect,
+  }
+
+  async function place(flipOptions?: Parameters<typeof FloatingUI.flip>[0]) {
+    const panel = panelOf(PANEL_WIDTH, 200)
+    const result = await FloatingUI.computePosition(
+      triggerNearRightEdge,
+      panel,
+      {
+        placement: "bottom-start",
+        strategy: "fixed",
+        middleware: [
+          FloatingUI.offset(4),
+          FloatingUI.flip(flipOptions),
+          FloatingUI.shift({ padding: 8 }),
+        ],
+      },
+    )
+    panel.remove()
+    return { ...result, right: result.x + PANEL_WIDTH }
+  }
+
+  it("slides a panel that overflows sideways, keeping the aligned edge", async () => {
+    const placed = await place({ crossAxis: false, flipAlignment: false })
+    expect(placed.placement).toBe("bottom-start")
+    expect(placed.right).toBe(VIEWPORT - 8)
+  })
+
+  it("would swap the aligned edge on Floating UI's defaults", async () => {
+    const placed = await place()
+    expect(placed.placement).toBe("bottom-end")
+    // Lined up with the trigger instead, which leaves the panel 20px from the
+    // edge here and disagrees with the built-in maths by that much.
+    expect(placed.right).toBe(TRIGGER_RIGHT)
   })
 })
 

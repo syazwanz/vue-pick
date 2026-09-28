@@ -1215,8 +1215,9 @@ async function positionWithFloatingUi(
     await nextTick()
   }
   // Floating UI reads `-start`/`-end` against the panel's writing direction,
-  // and the panel lives in <body>, not beside the trigger. Work out the side
-  // from the trigger, then pick whichever placement lands there for the panel.
+  // and the panel is teleported away from the trigger, into the body or the
+  // scroll container. Work out the side from the trigger, then pick whichever
+  // placement lands there for the panel.
   const side = physicalAlign(trigger)
   const panelIsRtl = getComputedStyle(panel).direction === "rtl"
   const floatingPlacement =
@@ -1233,7 +1234,12 @@ async function positionWithFloatingUi(
         floatingUi.offset(
           (listboxOffset ?? (isSearchable.value ? 6 : 4)) as never,
         ),
-        floatingUi.flip(),
+        // Vertical flip only, and never a change of aligned edge: `align` is a
+        // promise about which edge the panel lines up with, and the built-in
+        // maths keeps it and slides the panel instead. Floating UI's defaults
+        // would answer a sideways overflow by jumping to the opposite edge, so
+        // the same props would lay out differently per engine.
+        floatingUi.flip({ crossAxis: false, flipAlignment: false } as never),
         floatingUi.shift({ padding: 8 } as never),
       ],
     } as never,

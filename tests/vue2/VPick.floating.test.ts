@@ -26,7 +26,7 @@ describe("VPick (Vue 2) — floatingUi", () => {
         }),
       ),
       offset: vi.fn((value?: number) => ({ name: "offset", value })),
-      flip: vi.fn(() => ({ name: "flip" })),
+      flip: vi.fn((options?: unknown) => ({ name: "flip", options })),
       shift: vi.fn((options?: { padding: number }) => ({
         name: "shift",
         options,
@@ -48,6 +48,10 @@ describe("VPick (Vue 2) — floatingUi", () => {
       document.body.querySelector<HTMLElement>(".vpick-positioner")!
     expect(lib.computePosition).toHaveBeenCalled()
     expect(lib.shift).toHaveBeenCalledWith({ padding: 8 })
+    expect(lib.flip).toHaveBeenCalledWith({
+      crossAxis: false,
+      flipAlignment: false,
+    })
     expect(positioner.style.transform).toBe("translate3d(12px, 34px, 0)")
     expect(positioner.style.position).toBe("fixed")
     expect(positioner.getAttribute("data-placement")).toBe("top")

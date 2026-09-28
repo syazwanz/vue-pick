@@ -53,6 +53,8 @@ import * as FloatingUI from "@floating-ui/dom"
 npm install @floating-ui/dom
 ```
 
+VPick works with `@floating-ui/dom` 1.x.
+
 ### Pass the library
 
 Import the whole library once and pass it to each VPick that should use it:
@@ -73,7 +75,9 @@ import * as FloatingUI from "@floating-ui/dom"
 - **`--vpick-listbox-offset`** becomes the `offset` middleware.
 - **Staying on screen** is Floating UI's `flip`, which opens the dropdown above
   when there is more room there, and `shift`, which keeps it 8px inside the
-  visible edges.
+  visible edges. Both are set up to leave `align` alone: a dropdown too wide for
+  the room beside its trigger slides back on screen rather than lining up with
+  the trigger's other edge, so the layout matches the built-in positioning.
 
 ## What changes
 

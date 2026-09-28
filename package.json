@@ -15,6 +15,7 @@
       "require": "./dist/index.cjs"
     },
     "./style.css": "./dist/style.css",
+    "./package.json": "./package.json",
     "./vue2": {
       "types": "./dist/vue2.d.ts",
       "import": "./dist/vue2.mjs",
@@ -68,7 +69,13 @@
     "docs:preview": "vitepress preview docs"
   },
   "peerDependencies": {
+    "@floating-ui/dom": "^1.0.0",
     "vue": "^2.7.0 || ^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@floating-ui/dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

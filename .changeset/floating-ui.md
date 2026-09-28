@@ -19,4 +19,5 @@ Floating UI only works out the coordinates, using its `offset`, `flip` and
 `shift` with `align` and `--vpick-listbox-offset`. VPick still decides where the
 dropdown lives (`strategy`, `teleportTo`, inside scroll containers and modals),
 when it repositions, and `hideWhenDetached`. Floating UI is not bundled: VPick
-uses the copy you pass.
+uses the copy you pass, and needs `@floating-ui/dom` 1.x. It is an optional peer
+dependency, so it is only installed when you add it.
