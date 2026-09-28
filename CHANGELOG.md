@@ -1,5 +1,49 @@
 # vue-pick
 
+## 0.28.0
+
+### Minor Changes
+
+- b5724ec: `align` lines the dropdown up with the trigger's `start` (default) or `end`
+  edge, following the writing direction. `--vpick-listbox-offset` sets the gap
+  between trigger and dropdown, in `px`, `rem` or `em`:
+
+  ```vue
+  <VPick
+    :options="options"
+    align="end"
+    style="--vpick-listbox-offset: 0.5rem"
+  />
+  ```
+
+- b5724ec: `floatingUi` lets Floating UI work out where the dropdown goes. Pass the library
+  itself:
+
+  ```vue
+  <script setup>
+  import * as FloatingUI from "@floating-ui/dom"
+  </script>
+
+  <template>
+    <VPick :options="options" :floating-ui="FloatingUI" />
+  </template>
+  ```
+
+  Floating UI only works out the coordinates, using its `offset`, `flip` and
+  `shift` with `align` and `--vpick-listbox-offset`. VPick still decides where the
+  dropdown lives (`strategy`, `teleportTo`, inside scroll containers and modals),
+  when it repositions, and `hideWhenDetached`. Floating UI is not bundled: VPick
+  uses the copy you pass, and needs `@floating-ui/dom` 1.x. It is an optional peer
+  dependency, so it is only installed when you add it.
+
+### Patch Changes
+
+- b5724ec: A dropdown wider than the space beside its trigger now moves back inside the
+  screen, with an 8px margin, instead of running past the edge. This mostly
+  affects triggers near the right edge with long option labels.
+- a4cffed: `vue-pick/package.json` can now be imported, so tools and scripts that read the
+  installed version no longer fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+
 ## 0.27.1
 
 ### Patch Changes
