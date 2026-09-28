@@ -1,5 +1,13 @@
 # vue-pick
 
+## 0.28.1
+
+### Patch Changes
+
+- 57dc1d6: In `multiple` tree mode, the placeholder under an empty branch (and the loading
+  and error rows for `loadChildren`) now lines up with the option labels. Its text
+  sat 2px left of the label column.
+
 ## 0.28.0
 
 ### Minor Changes
