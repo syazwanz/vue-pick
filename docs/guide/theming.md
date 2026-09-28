@@ -83,6 +83,7 @@ inherits from `--vpick-width` so a single override styles both.
 | `--vpick-listbox-ring`                | `rgba(0, 0, 0, 0.06)`                                            |
 | `--vpick-listbox-max-height`          | `16rem`                                                          |
 | `--vpick-listbox-z-index`             | `50`                                                             |
+| `--vpick-listbox-offset`              | `4px`, or `6px` with the search input                            |
 | `--vpick-option-hover-bg`             | `#f5f5f5`                                                        |
 | `--vpick-option-highlight-bg`         | `#f5f5f5`                                                        |
 | `--vpick-option-selected-color`       | `inherit`                                                        |

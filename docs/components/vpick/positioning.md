@@ -89,6 +89,46 @@ overflow the container than be clipped by it. When anchored, the panel is
 measured against the container, so it flips and shrinks to fit that box instead
 of the window.
 
+## Alignment and gap
+
+The panel lines up with the trigger's start edge and grows toward the end. For a
+control near the end of a toolbar, line it up with the end edge instead:
+
+```vue
+<VPick :options="options" align="end" />
+```
+
+`start` and `end` follow the writing direction, so in a right-to-left page
+`start` is the right edge.
+
+Whichever edge it lines up with, a panel wider than the space beside the trigger
+moves back inside the screen, keeping an 8px margin, rather than running off it.
+
+The gap between trigger and panel is `--vpick-listbox-offset`, in `px`, `rem` or
+`em`. It defaults to `4px`, or `6px` with the search input:
+
+```vue
+<VPick :options="options" style="--vpick-listbox-offset: 0.5rem" />
+```
+
+## Using Floating UI instead
+
+If the rest of your app positions its popovers with Floating UI, VPick can use
+it too. Pass the library, and VPick hands it the coordinate maths while still
+deciding where the dropdown lives and when it repositions:
+
+```vue
+<script setup>
+import * as FloatingUI from "@floating-ui/dom"
+</script>
+
+<template>
+  <VPick :options="options" :floating-ui="FloatingUI" />
+</template>
+```
+
+See the [Floating UI guide](/positioning-engines/floating-ui) for what changes.
+
 ## When the trigger scrolls away
 
 An open dropdown whose trigger has scrolled out of view is anchored to something

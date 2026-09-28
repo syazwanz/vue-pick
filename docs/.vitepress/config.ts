@@ -190,6 +190,12 @@ export default defineConfig({
           { text: "Your server", link: "/search-engines/server" },
         ],
       },
+      {
+        text: "Positioning engines",
+        items: [
+          { text: "Floating UI", link: "/positioning-engines/floating-ui" },
+        ],
+      },
     ],
     socialLinks: [
       { icon: "github", link: "https://github.com/syazwanz/vue-pick" },

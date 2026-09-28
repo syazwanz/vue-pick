@@ -18,6 +18,7 @@ import {
   type OptionItem,
   type OptionOrGroup,
   type FlatOption,
+  type FloatingUiLibrary,
   flattenOptions,
   generateId,
   normalizeOptions,
@@ -63,6 +64,8 @@ const props = withDefaults(
     groupOptionsKey?: string
     teleportTo?: string | HTMLElement
     strategy?: "auto" | "absolute" | "fixed"
+    align?: "start" | "end"
+    floatingUi?: FloatingUiLibrary
     hideWhenDetached?: boolean
     animate?: boolean
     bodyLock?: boolean
@@ -123,6 +126,8 @@ const props = withDefaults(
     groupOptionsKey: undefined,
     teleportTo: undefined,
     strategy: "auto",
+    align: "start",
+    floatingUi: undefined,
     hideWhenDetached: true,
     animate: true,
     bodyLock: undefined,
@@ -1121,8 +1126,49 @@ function readForwardedVars(): Record<string, string> {
 // and refresh only where a change is actually possible.
 const forwarded = ref<Record<string, string>>({})
 
+// The gap between trigger and panel. A custom property is only raw text to JS,
+// so the common length units are converted here. Unset, or in a unit this does
+// not know, keeps the built-in gap.
+let listboxOffset: number | null = null
+
+function lengthToPx(value: string, el: HTMLElement): number | null {
+  const match = value.trim().match(/^(-?\d*\.?\d+)(px|rem|em)?$/)
+  if (!match) return null
+  const n = parseFloat(match[1])
+  if (match[2] === "rem") {
+    return n * parseFloat(getComputedStyle(document.documentElement).fontSize)
+  }
+  if (match[2] === "em") return n * parseFloat(getComputedStyle(el).fontSize)
+  return n
+}
+
 function refreshForwardedVars() {
   forwarded.value = readForwardedVars()
+  const root = rootRef.value
+  listboxOffset = root
+    ? lengthToPx(
+        getComputedStyle(root).getPropertyValue("--vpick-listbox-offset"),
+        root,
+      )
+    : null
+}
+
+// `align` is written in logical terms, so it follows the writing direction.
+function physicalAlign(trigger: HTMLElement): "left" | "right" {
+  const rtl = getComputedStyle(trigger).direction === "rtl"
+  const end = props.align === "end"
+  return end !== rtl ? "right" : "left"
+}
+
+function viewportBounds() {
+  const height = typeof window !== "undefined" ? window.innerHeight : 0
+  // clientWidth leaves out a vertical scrollbar, which the panel must not sit
+  // under.
+  const width =
+    typeof document !== "undefined"
+      ? document.documentElement.clientWidth || window.innerWidth
+      : 0
+  return { top: 0, bottom: height, left: 0, right: width }
 }
 
 function explicitTeleportTarget(): HTMLElement | null {
@@ -1137,6 +1183,77 @@ function explicitTeleportTarget(): HTMLElement | null {
 
 function resolveTeleportTarget(): HTMLElement {
   return anchorEl.value ?? explicitTeleportTarget() ?? document.body
+}
+
+// Floating UI in place of the built-in maths, and only the maths. Where the
+// panel lives (the anchor chosen by `strategy`, or `teleportTo`), when it moves
+// (open, scroll, resize, the list changing size) and whether it hides while its
+// trigger is scrolled away all stay VPick's. Keeping the anchor matters: inside a
+// modal the panel lives in the modal's scroll container, so it stacks above the
+// modal rather than behind it. The panel is taken out of flow and given its
+// minimum width before it is measured, and a later call can finish first, so
+// only the newest result is applied.
+let floatingRequest = 0
+
+async function positionWithFloatingUi(
+  trigger: HTMLElement,
+  floatingUi: FloatingUiLibrary,
+) {
+  const panel = positionerRef.value
+  if (!panel) return
+  const request = ++floatingRequest
+  const triggerWidth = `${trigger.getBoundingClientRect().width}px`
+  const strategy = resolvedStrategy.value
+  if (positionerStyle.value.position !== strategy) {
+    positionerStyle.value = {
+      ...forwarded.value,
+      position: strategy,
+      top: "0px",
+      left: "0px",
+      "--vpick-trigger-width": triggerWidth,
+    }
+    await nextTick()
+  }
+  // Floating UI reads `-start`/`-end` against the panel's writing direction,
+  // and the panel is teleported away from the trigger, into the body or the
+  // scroll container. Work out the side from the trigger, then pick whichever
+  // placement lands there for the panel.
+  const side = physicalAlign(trigger)
+  const panelIsRtl = getComputedStyle(panel).direction === "rtl"
+  const floatingPlacement =
+    (side === "left") !== panelIsRtl ? "bottom-start" : "bottom-end"
+  // Cast to `never` to satisfy the deliberately open argument types on
+  // `FloatingUiLibrary`. The values are exactly what Floating UI expects.
+  const result = await floatingUi.computePosition(
+    trigger as never,
+    panel as never,
+    {
+      placement: floatingPlacement,
+      strategy,
+      middleware: [
+        floatingUi.offset(
+          (listboxOffset ?? (isSearchable.value ? 6 : 4)) as never,
+        ),
+        // Vertical flip only, and never a change of aligned edge: `align` is a
+        // promise about which edge the panel lines up with, and the built-in
+        // maths keeps it and slides the panel instead. Floating UI's defaults
+        // would answer a sideways overflow by jumping to the opposite edge, so
+        // the same props would lay out differently per engine.
+        floatingUi.flip({ crossAxis: false, flipAlignment: false } as never),
+        floatingUi.shift({ padding: 8 } as never),
+      ],
+    } as never,
+  )
+  if (request !== floatingRequest || !isOpen.value) return
+  placement.value = result.placement.startsWith("top") ? "top" : "bottom"
+  positionerStyle.value = {
+    ...forwarded.value,
+    position: result.strategy,
+    top: "0px",
+    left: "0px",
+    transform: `translate3d(${result.x}px, ${result.y}px, 0)`,
+    "--vpick-trigger-width": triggerWidth,
+  }
 }
 
 // --- Anchoring ---
@@ -1302,13 +1419,25 @@ function pageOrigin(): { top: number; left: number } {
   }
 }
 
-function measure(listboxHeight: number, rect: DOMRect) {
-  const offset = isSearchable.value ? 6 : 4
-  const vpHeight = typeof window !== "undefined" ? window.innerHeight : 0
+function measure(
+  listboxHeight: number,
+  listboxWidth: number,
+  rect: DOMRect,
+  trigger: HTMLElement,
+) {
+  const offset = listboxOffset ?? (isSearchable.value ? 6 : 4)
+  const align = physicalAlign(trigger)
   const anchor = resolvedStrategy.value === "absolute" ? anchorEl.value : null
 
   if (!anchor) {
-    const placed = computePosition(rect, listboxHeight, vpHeight, offset)
+    const placed = computePosition({
+      triggerRect: rect,
+      listboxHeight,
+      listboxWidth,
+      bounds: viewportBounds(),
+      offset,
+      align,
+    })
     // `absolute` with no anchor means the page itself is the scroller. Document
     // coordinates do not change while it scrolls, so the browser moves the
     // panel and JS never has to chase it. Flip and clamp stay viewport-based,
@@ -1327,16 +1456,23 @@ function measure(listboxHeight: number, rect: DOMRect) {
 
   const box = anchor.getBoundingClientRect()
   // Flip and clamp against the container, so the panel is sized to fit where it
-  // actually lives rather than to the window.
-  const placed = computePosition(
-    rect,
+  // actually lives rather than to the window. Sideways it only has to stay on
+  // screen: an explicit `teleportTo` target need not contain the trigger, and
+  // holding the panel inside one that does not would pull it away.
+  const screen = viewportBounds()
+  const placed = computePosition({
+    triggerRect: rect,
     listboxHeight,
-    vpHeight,
+    listboxWidth,
+    bounds: {
+      top: box.top,
+      bottom: box.bottom,
+      left: screen.left,
+      right: screen.right,
+    },
     offset,
-    8,
-    box.top,
-    box.bottom,
-  )
+    align,
+  })
   return {
     ...placed,
     top: placed.top - box.top + anchor.scrollTop,
@@ -1355,8 +1491,17 @@ async function updatePosition(skipSecondPass = false) {
   if (props.hideWhenDetached) {
     detached.value = isClippedOutOfView(rect, scrollAncestors)
   }
+  if (props.floatingUi) {
+    await positionWithFloatingUi(trigger, props.floatingUi)
+    return
+  }
   // First paint: use a sensible default height; next frame remeasures actual.
-  const initial = measure(listboxRef.value?.offsetHeight || 240, rect)
+  const initial = measure(
+    listboxRef.value?.offsetHeight || 240,
+    listboxRef.value?.offsetWidth || rect.width,
+    rect,
+    trigger,
+  )
   if (!initial) return
   placement.value = initial.placement
 
@@ -1375,7 +1520,12 @@ async function updatePosition(skipSecondPass = false) {
   await nextTick()
   const el = listboxRef.value
   if (!el) return
-  const measured = measure(el.offsetHeight, trigger.getBoundingClientRect())
+  const measured = measure(
+    el.offsetHeight,
+    el.offsetWidth,
+    trigger.getBoundingClientRect(),
+    trigger,
+  )
   if (!measured) return
   placement.value = measured.placement
   positionerStyle.value = {

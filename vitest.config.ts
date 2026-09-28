@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [vue() as any],
   test: {
     environment: "happy-dom",
-    exclude: ["tests/vue2/**", "node_modules/**", "ref.local/**"],
+    exclude: ["tests/vue2/**", "node_modules/**", "ref.local/**", "*.local/**"],
     setupFiles: ["tests/setup.ts"],
   },
 })

@@ -485,6 +485,26 @@ export const props: PropDoc[] = [
     more: "/components/vpick/positioning",
   },
   {
+    name: "floatingUi",
+    type: 'typeof import("@floating-ui/dom")',
+    default: "undefined",
+    group: "positioning",
+    components: ["VPick"],
+    description:
+      "Lets Floating UI work out the dropdown's coordinates. VPick still decides where the dropdown lives and when it moves. Pass the library itself.",
+    more: "/positioning-engines/floating-ui",
+  },
+  {
+    name: "align",
+    type: '"start" | "end"',
+    default: '"start"',
+    group: "positioning",
+    components: ["VPick"],
+    description:
+      "Which edge of the trigger the panel lines up with. Follows the writing direction.",
+    more: "/components/vpick/positioning#alignment-and-gap",
+  },
+  {
     name: "strategy",
     type: '"auto" | "absolute" | "fixed"',
     default: '"auto"',
