@@ -2741,6 +2741,7 @@ defineExpose({ focus: focusTrigger })
                       'vpick-option-empty--error',
                       {
                         'vpick-option-empty--multi': multiple && showLeafSpacer,
+                        'vpick-option-empty--checkbox': multiple,
                       },
                     ]"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
@@ -2759,6 +2760,7 @@ defineExpose({ focus: focusTrigger })
                       'vpick-option-empty--loading',
                       {
                         'vpick-option-empty--multi': multiple && showLeafSpacer,
+                        'vpick-option-empty--checkbox': multiple,
                       },
                     ]"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
@@ -2791,6 +2793,7 @@ defineExpose({ focus: focusTrigger })
                       'vpick-option-empty',
                       {
                         'vpick-option-empty--multi': multiple && showLeafSpacer,
+                        'vpick-option-empty--checkbox': multiple,
                       },
                     ]"
                     :style="{ '--vpick-option-depth': item.fo.depth }"
