@@ -2765,7 +2765,10 @@ defineExpose({ focus: focusTrigger })
                   :class="[
                     'vpick-option-empty',
                     'vpick-option-empty--error',
-                    { 'vpick-option-empty--multi': multiple && showLeafSpacer },
+                    {
+                      'vpick-option-empty--multi': multiple && showLeafSpacer,
+                      'vpick-option-empty--checkbox': multiple,
+                    },
                   ]"
                   :style="{ '--vpick-option-depth': item.fo.depth }"
                   @mousedown.prevent
@@ -2782,7 +2785,10 @@ defineExpose({ focus: focusTrigger })
                   :class="[
                     'vpick-option-empty',
                     'vpick-option-empty--loading',
-                    { 'vpick-option-empty--multi': multiple && showLeafSpacer },
+                    {
+                      'vpick-option-empty--multi': multiple && showLeafSpacer,
+                      'vpick-option-empty--checkbox': multiple,
+                    },
                   ]"
                   :style="{ '--vpick-option-depth': item.fo.depth }"
                 >
@@ -2813,7 +2819,10 @@ defineExpose({ focus: focusTrigger })
                   :key="item.fo.id + '-empty'"
                   :class="[
                     'vpick-option-empty',
-                    { 'vpick-option-empty--multi': multiple && showLeafSpacer },
+                    {
+                      'vpick-option-empty--multi': multiple && showLeafSpacer,
+                      'vpick-option-empty--checkbox': multiple,
+                    },
                   ]"
                   :style="{ '--vpick-option-depth': item.fo.depth }"
                 >

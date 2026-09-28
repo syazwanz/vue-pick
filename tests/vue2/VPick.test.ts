@@ -1966,6 +1966,35 @@ describe("VPick (Vue 2) — empty branches and new select options", () => {
     ).not.toContain("vpick-option-empty--multi")
   })
 
+  // In `multiple` the icon column stands in for a checkbox, bordered and so
+  // wider than 1rem, whether or not the leaves keep the spacer.
+  it("empty-branch placeholder sizes its icon column as a checkbox in multiple", async () => {
+    const openEmptyRow = async (extra: Record<string, unknown>) => {
+      const w = mount(VPick, {
+        propsData: {
+          options: [{ label: "Empty", value: "empty", children: [] }],
+          value: [],
+          multiple: true,
+          defaultExpandLevel: 1,
+          ...extra,
+        },
+      })
+      await w.find('[role="combobox"]').trigger("click")
+      await nextTick()
+      return w.find(".vpick-option-empty")
+    }
+
+    expect((await openEmptyRow({})).classes()).toContain(
+      "vpick-option-empty--checkbox",
+    )
+    expect(
+      (await openEmptyRow({ disableBranchNodes: true })).classes(),
+    ).toContain("vpick-option-empty--checkbox")
+    expect(
+      (await openEmptyRow({ multiple: false, value: null })).classes(),
+    ).not.toContain("vpick-option-empty--checkbox")
+  })
+
   // Options usually arrive from an API after mount. At that point every branch
   // is new, so defaultExpandLevel has to apply then, not only in setup.
   it("defaultExpandLevel applies to options that arrive after mount", async () => {

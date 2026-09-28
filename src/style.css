@@ -971,6 +971,12 @@ button.vpick-trigger--loading:disabled,
   color: var(--vpick-option-empty-icon-color, inherit);
 }
 
+/* In `multiple` the column stands in for a checkbox, whose border sits outside
+   its 1rem, so take the same border to match its width. */
+.vpick-option-empty--checkbox .vpick-option-empty-icon {
+  border: 1px solid transparent;
+}
+
 /* Lazy children. The loading row keeps the placeholder's inert styling; the
    error row is the one placeholder that takes a click, since clicking it
    retries. The spinner stands in for the chevron on a branch that is loading,
