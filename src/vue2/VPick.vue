@@ -1185,24 +1185,35 @@ function resolveTeleportTarget(): HTMLElement {
   return anchorEl.value ?? explicitTeleportTarget() ?? document.body
 }
 
-// Floating UI in place of the built-in maths, and only the maths. Where the
-// panel lives (the anchor chosen by `strategy`, or `teleportTo`), when it moves
-// (open, scroll, resize, the list changing size) and whether it hides while its
-// trigger is scrolled away all stay VPick's. Keeping the anchor matters: inside a
-// modal the panel lives in the modal's scroll container, so it stacks above the
-// modal rather than behind it. The panel is taken out of flow and given its
-// minimum width before it is measured, and a later call can finish first, so
-// only the newest result is applied.
+// Floating UI in place of VPick's positioning. Once `floatingUi` is passed,
+// Floating UI works out where the panel goes, `autoUpdate` decides when to work
+// it out again (scroll, resize, either element changing size, and the trigger
+// moving with neither), and `hide` decides when the panel hides. VPick only
+// renders the panel into its container, the anchor chosen by `strategy` or
+// `teleportTo`, which Floating UI cannot do: inside a modal that keeps the panel
+// in the modal's scroll container, above the modal rather than behind it. The
+// panel is taken out of flow and given its minimum width before it is measured,
+// and a later call can finish first, so only the newest result is applied.
 let floatingRequest = 0
+let cleanupAutoUpdate: (() => void) | null = null
+// The trigger's size at the last update. Theming can change along with it, so a
+// new size is when the forwarded variables are read again, not every scroll.
+let lastTriggerSize = ""
 
 async function positionWithFloatingUi(
   trigger: HTMLElement,
   floatingUi: FloatingUiLibrary,
 ) {
   const panel = positionerRef.value
-  if (!panel) return
+  if (!panel || !isOpen.value) return
   const request = ++floatingRequest
-  const triggerWidth = `${trigger.getBoundingClientRect().width}px`
+  const rect = trigger.getBoundingClientRect()
+  const size = `${rect.width}x${rect.height}`
+  if (size !== lastTriggerSize) {
+    if (lastTriggerSize) refreshForwardedVars()
+    lastTriggerSize = size
+  }
+  const triggerWidth = `${rect.width}px`
   const strategy = resolvedStrategy.value
   if (positionerStyle.value.position !== strategy) {
     positionerStyle.value = {
@@ -1222,30 +1233,26 @@ async function positionWithFloatingUi(
   const panelIsRtl = getComputedStyle(panel).direction === "rtl"
   const floatingPlacement =
     (side === "left") !== panelIsRtl ? "bottom-start" : "bottom-end"
+  // Floating UI's own `flip`, so with no room beside the trigger the panel may
+  // line up with its other edge. `hide` comes last, as Floating UI asks.
   // Cast to `never` to satisfy the deliberately open argument types on
   // `FloatingUiLibrary`. The values are exactly what Floating UI expects.
+  const middleware = [
+    floatingUi.offset((listboxOffset ?? (isSearchable.value ? 6 : 4)) as never),
+    floatingUi.flip(),
+    floatingUi.shift({ padding: 8 } as never),
+  ]
+  if (props.hideWhenDetached) middleware.push(floatingUi.hide())
   const result = await floatingUi.computePosition(
     trigger as never,
     panel as never,
-    {
-      placement: floatingPlacement,
-      strategy,
-      middleware: [
-        floatingUi.offset(
-          (listboxOffset ?? (isSearchable.value ? 6 : 4)) as never,
-        ),
-        // Vertical flip only, and never a change of aligned edge: `align` is a
-        // promise about which edge the panel lines up with, and the built-in
-        // maths keeps it and slides the panel instead. Floating UI's defaults
-        // would answer a sideways overflow by jumping to the opposite edge, so
-        // the same props would lay out differently per engine.
-        floatingUi.flip({ crossAxis: false, flipAlignment: false } as never),
-        floatingUi.shift({ padding: 8 } as never),
-      ],
-    } as never,
+    { placement: floatingPlacement, strategy, middleware } as never,
   )
   if (request !== floatingRequest || !isOpen.value) return
   placement.value = result.placement.startsWith("top") ? "top" : "bottom"
+  if (props.hideWhenDetached) {
+    detached.value = !!result.middlewareData?.hide?.referenceHidden
+  }
   positionerStyle.value = {
     ...forwarded.value,
     position: result.strategy,
@@ -1484,16 +1491,14 @@ function measure(
 async function updatePosition(skipSecondPass = false) {
   // In flow: the browser lays the panel out, nothing to compute.
   if (isInline.value) return
+  // Floating UI's `autoUpdate` owns the timing while it is in use.
+  if (props.floatingUi) return
   const trigger = triggerRef.value
   if (!trigger) return
   // One layout read per frame, shared by the detachment check and the maths.
   const rect = trigger.getBoundingClientRect()
   if (props.hideWhenDetached) {
     detached.value = isClippedOutOfView(rect, scrollAncestors)
-  }
-  if (props.floatingUi) {
-    await positionWithFloatingUi(trigger, props.floatingUi)
-    return
   }
   // First paint: use a sensible default height; next frame remeasures actual.
   const initial = measure(
@@ -1649,6 +1654,22 @@ function open() {
     refreshForwardedVars()
     // Re-home the node in case the resolved anchor differs from last time.
     mountPositioner()
+    // Floating UI takes over from here. `autoUpdate` runs the first update
+    // itself and every later one, so none of VPick's listeners are set up.
+    const floatingUi = props.floatingUi
+    if (floatingUi) {
+      const trigger = triggerRef.value
+      const panel = positionerRef.value
+      if (trigger && panel && !cleanupAutoUpdate) {
+        lastTriggerSize = ""
+        cleanupAutoUpdate = floatingUi.autoUpdate(
+          trigger as never,
+          panel as never,
+          () => void positionWithFloatingUi(trigger, floatingUi),
+        )
+      }
+      return
+    }
     updatePosition()
     if (triggerRef.value && !cleanupScroll) {
       scrollAncestors = scrollParents(triggerRef.value)
@@ -1681,6 +1702,10 @@ function close() {
   cancelReposition()
   detached.value = false
   scrollAncestors = []
+  if (cleanupAutoUpdate) {
+    cleanupAutoUpdate()
+    cleanupAutoUpdate = null
+  }
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null
@@ -2372,6 +2397,10 @@ onBeforeUnmount(() => {
   // An unmount while open never reaches onAfterLeave, so the container would
   // keep a `position: relative` nobody owns.
   releasePromotion()
+  if (cleanupAutoUpdate) {
+    cleanupAutoUpdate()
+    cleanupAutoUpdate = null
+  }
   if (cleanupScroll) {
     cleanupScroll()
     cleanupScroll = null

@@ -23,21 +23,51 @@ type Result = {
   y: number
   placement: string
   strategy: "absolute" | "fixed"
+  middlewareData?: { hide?: { referenceHidden?: boolean } }
 }
 
+// Stands in for the library. `autoUpdate` runs the first update straight away,
+// as the real one does, and keeps the callback so a test can fire later ones.
 function fakeLibrary(answer: () => Result | Promise<Result>) {
+  const stop = vi.fn()
+  let update: () => void = () => {}
   return {
+    stop,
+    runUpdate: () => update(),
     computePosition: vi.fn<
       [HTMLElement, HTMLElement, unknown?],
       Promise<Result>
     >(() => Promise.resolve(answer())),
+    autoUpdate: vi.fn(
+      (
+        _reference: HTMLElement,
+        _floating: HTMLElement,
+        onUpdate: () => void,
+      ) => {
+        update = onUpdate
+        onUpdate()
+        return stop
+      },
+    ),
     offset: vi.fn((value?: number) => ({ name: "offset", value })),
     flip: vi.fn((options?: unknown) => ({ name: "flip", options })),
     shift: vi.fn((options?: { padding: number }) => ({
       name: "shift",
       options,
     })),
+    hide: vi.fn((options?: unknown) => ({ name: "hide", options })),
   }
+}
+
+function at(x: number, y: number, extra: Partial<Result> = {}): Result {
+  return { x, y, placement: "bottom-start", strategy: "absolute", ...extra }
+}
+
+function middlewareNames(lib: ReturnType<typeof fakeLibrary>, call = 0) {
+  const options = lib.computePosition.mock.calls[call][2] as {
+    middleware: { name: string }[]
+  }
+  return options.middleware.map((m) => m.name)
 }
 
 async function openWith(
@@ -59,13 +89,8 @@ async function openWith(
 }
 
 describe("VPick — floatingUi", () => {
-  it("hands Floating UI the trigger, the panel and the middleware", async () => {
-    const lib = fakeLibrary(() => ({
-      x: 0,
-      y: 0,
-      placement: "bottom-start",
-      strategy: "absolute",
-    }))
+  it("hands Floating UI the trigger, the panel and its own middleware", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
     const { wrapper, positioner } = await openWith(lib)
 
     const [reference, floating, options] = lib.computePosition.mock.calls[0]
@@ -76,21 +101,25 @@ describe("VPick — floatingUi", () => {
       strategy: "absolute",
     })
     expect(lib.offset).toHaveBeenCalledWith(4)
-    expect(lib.flip).toHaveBeenCalledWith({
-      crossAxis: false,
-      flipAlignment: false,
-    })
+    expect(lib.flip).toHaveBeenCalledWith()
     expect(lib.shift).toHaveBeenCalledWith({ padding: 8 })
+    expect(lib.hide).toHaveBeenCalledWith()
+    expect(middlewareNames(lib)).toEqual(["offset", "flip", "shift", "hide"])
+    wrapper.unmount()
+  })
+
+  it("leaves hide out when hideWhenDetached is off", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
+    const { wrapper } = await openWith(lib, { hideWhenDetached: false })
+    expect(lib.hide).not.toHaveBeenCalled()
+    expect(middlewareNames(lib)).toEqual(["offset", "flip", "shift"])
     wrapper.unmount()
   })
 
   it("applies the position, strategy and side it returns", async () => {
-    const lib = fakeLibrary(() => ({
-      x: 12,
-      y: 34,
-      placement: "top-end",
-      strategy: "fixed",
-    }))
+    const lib = fakeLibrary(() =>
+      at(12, 34, { placement: "top-end", strategy: "fixed" }),
+    )
     const { wrapper, positioner } = await openWith(lib)
     expect(positioner.style.transform).toBe("translate3d(12px, 34px, 0)")
     expect(positioner.style.position).toBe("fixed")
@@ -99,12 +128,7 @@ describe("VPick — floatingUi", () => {
   })
 
   it("passes align and the gap variable through", async () => {
-    const lib = fakeLibrary(() => ({
-      x: 0,
-      y: 0,
-      placement: "bottom-end",
-      strategy: "absolute",
-    }))
+    const lib = fakeLibrary(() => at(0, 0, { placement: "bottom-end" }))
     const { wrapper } = await openWith(
       lib,
       { align: "end" },
@@ -118,12 +142,7 @@ describe("VPick — floatingUi", () => {
   })
 
   it("lines up with the trigger's start edge in a right-to-left page", async () => {
-    const lib = fakeLibrary(() => ({
-      x: 0,
-      y: 0,
-      placement: "bottom-end",
-      strategy: "absolute",
-    }))
+    const lib = fakeLibrary(() => at(0, 0, { placement: "bottom-end" }))
     const { wrapper } = await openWith(lib, {}, "direction: rtl")
     // The panel sits in a left-to-right <body>, so the right edge is "end" there.
     expect(lib.computePosition.mock.calls[0][2]).toMatchObject({
@@ -135,76 +154,149 @@ describe("VPick — floatingUi", () => {
   it("applies only the newest answer when an older one arrives late", async () => {
     let releaseFirst!: () => void
     const first = new Promise<Result>((resolve) => {
-      releaseFirst = () =>
-        resolve({ x: 1, y: 1, placement: "bottom", strategy: "absolute" })
+      releaseFirst = () => resolve(at(1, 1))
     })
     let calls = 0
-    const lib = fakeLibrary(() =>
-      ++calls === 1
-        ? first
-        : { x: 99, y: 99, placement: "bottom", strategy: "absolute" },
-    )
-    const wrapper = mount(VPick, {
-      props: { options: opts, floatingUi: lib, searchable: true },
-      attachTo: document.body,
-      global: { stubs: { Teleport: false } },
-    })
-    await wrapper.find("input").trigger("click")
-    await flushPromises()
-    // Typing changes the list length, which asks for a new position.
-    await wrapper.find("input").setValue("to")
+    const lib = fakeLibrary(() => (++calls === 1 ? first : at(99, 99)))
+    const { wrapper, positioner } = await openWith(lib)
+    lib.runUpdate()
     await flushPromises()
     releaseFirst()
     await flushPromises()
 
-    const positioner =
-      document.body.querySelector<HTMLElement>(".vpick-positioner")!
-    expect(calls).toBeGreaterThan(1)
+    expect(calls).toBe(2)
     expect(positioner.style.transform).toBe("translate3d(99px, 99px, 0)")
     wrapper.unmount()
   })
 
   it("is not used for an alwaysOpen list, which sits in the page", async () => {
-    const lib = fakeLibrary(() => ({
-      x: 5,
-      y: 5,
-      placement: "bottom",
-      strategy: "absolute",
-    }))
+    const lib = fakeLibrary(() => at(5, 5))
     const wrapper = mount(VPick, {
       props: { options: opts, floatingUi: lib, alwaysOpen: true },
       attachTo: document.body,
     })
     await flushPromises()
+    expect(lib.autoUpdate).not.toHaveBeenCalled()
     expect(lib.computePosition).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
-  it("works with the real library", async () => {
+  it("works with the real library, and closes cleanly", async () => {
     const { wrapper, positioner } = await openWith(realLibrary)
     expect(positioner.style.transform).toMatch(
       /^translate3d\(-?[\d.]+px, -?[\d.]+px, 0\)$/,
+    )
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await flushPromises()
+    expect(wrapper.find('[role="combobox"]').attributes("aria-expanded")).toBe(
+      "false",
     )
     wrapper.unmount()
   })
 })
 
-// The middleware VPick hands the real library, checked against the library
-// itself: a panel too wide for the room beside a trigger near the right edge
-// must slide back on screen, the way the built-in maths does, rather than jump
-// to the trigger's other edge and leave `align` unhonoured.
-describe("floatingUi middleware", () => {
+// Floating UI decides when the panel moves. VPick's own scroll and resize
+// listeners are never set up, so only `autoUpdate` asks for a new position.
+describe("VPick — floatingUi owns the timing", () => {
+  it("starts autoUpdate on open with the trigger, the panel and its defaults", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
+    const { wrapper, positioner } = await openWith(lib)
+    expect(lib.autoUpdate).toHaveBeenCalledTimes(1)
+    const args = lib.autoUpdate.mock.calls[0]
+    expect(args[0]).toBe(wrapper.find('[role="combobox"]').element)
+    expect(args[1]).toBe(positioner)
+    // No options object: every one of Floating UI's own triggers stays on.
+    expect(args).toHaveLength(3)
+    wrapper.unmount()
+  })
+
+  it("stops autoUpdate on close", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
+    const { wrapper } = await openWith(lib)
+    expect(lib.stop).not.toHaveBeenCalled()
+    await wrapper.find('[role="combobox"]').trigger("click")
+    await flushPromises()
+    expect(lib.stop).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+    expect(lib.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops autoUpdate when unmounted while open", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
+    const { wrapper } = await openWith(lib)
+    wrapper.unmount()
+    expect(lib.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it("runs none of VPick's own repositioning", async () => {
+    const lib = fakeLibrary(() => at(0, 0))
+    const { wrapper } = await openWith(lib, { searchable: true })
+    expect(lib.computePosition).toHaveBeenCalledTimes(1)
+
+    window.dispatchEvent(new Event("scroll"))
+    window.dispatchEvent(new Event("resize"))
+    // Filtering changes the list's length, which the built-in path follows.
+    await wrapper.find("input").setValue("to")
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await flushPromises()
+    expect(lib.computePosition).toHaveBeenCalledTimes(1)
+
+    lib.runUpdate()
+    await flushPromises()
+    expect(lib.computePosition).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+})
+
+describe("VPick — floatingUi hides with Floating UI's hide", () => {
+  it("hides the panel while Floating UI reports the trigger hidden", async () => {
+    let hidden = true
+    const lib = fakeLibrary(() =>
+      at(0, 0, { middlewareData: { hide: { referenceHidden: hidden } } }),
+    )
+    const { wrapper, positioner } = await openWith(lib)
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      true,
+    )
+
+    hidden = false
+    lib.runUpdate()
+    await flushPromises()
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+    wrapper.unmount()
+  })
+
+  it("stays shown with hideWhenDetached off, whatever the data says", async () => {
+    const lib = fakeLibrary(() =>
+      at(0, 0, { middlewareData: { hide: { referenceHidden: true } } }),
+    )
+    const { wrapper, positioner } = await openWith(lib, {
+      hideWhenDetached: false,
+    })
+    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
+      false,
+    )
+    wrapper.unmount()
+  })
+})
+
+// The documented consequence of handing `flip` to Floating UI, checked against
+// the library itself: with no room beside a trigger near the right edge, the
+// panel lines up with the trigger's other edge.
+describe("floatingUi flip", () => {
   const VIEWPORT = 1024
   const PANEL_WIDTH = 400
   const TRIGGER_RIGHT = VIEWPORT - 20
 
-  function panelOf(width: number, height: number) {
+  it("lines the panel up with the trigger's other edge when there is no room", async () => {
     const panel = document.createElement("div")
     document.body.appendChild(panel)
     // Floating UI measures a panel by its offset size, which happy-dom leaves
     // at zero, and reads the viewport from the root element's client size.
-    Object.defineProperty(panel, "offsetWidth", { value: width })
-    Object.defineProperty(panel, "offsetHeight", { value: height })
+    Object.defineProperty(panel, "offsetWidth", { value: PANEL_WIDTH })
+    Object.defineProperty(panel, "offsetHeight", { value: 200 })
     Object.defineProperty(document.documentElement, "clientWidth", {
       value: VIEWPORT,
       configurable: true,
@@ -213,67 +305,37 @@ describe("floatingUi middleware", () => {
       value: 768,
       configurable: true,
     })
-    return panel
-  }
-
-  const triggerNearRightEdge = {
-    getBoundingClientRect: () =>
-      ({
-        top: 100,
-        bottom: 136,
-        left: TRIGGER_RIGHT - 200,
-        right: TRIGGER_RIGHT,
-        width: 200,
-        height: 36,
-        x: TRIGGER_RIGHT - 200,
-        y: 100,
-      }) as DOMRect,
-  }
-
-  async function place(flipOptions?: Parameters<typeof FloatingUI.flip>[0]) {
-    const panel = panelOf(PANEL_WIDTH, 200)
-    const result = await FloatingUI.computePosition(
-      triggerNearRightEdge,
-      panel,
-      {
-        placement: "bottom-start",
-        strategy: "fixed",
-        middleware: [
-          FloatingUI.offset(4),
-          FloatingUI.flip(flipOptions),
-          FloatingUI.shift({ padding: 8 }),
-        ],
-      },
-    )
+    const trigger = {
+      getBoundingClientRect: () =>
+        ({
+          top: 100,
+          bottom: 136,
+          left: TRIGGER_RIGHT - 200,
+          right: TRIGGER_RIGHT,
+          width: 200,
+          height: 36,
+          x: TRIGGER_RIGHT - 200,
+          y: 100,
+        }) as DOMRect,
+    }
+    const placed = await FloatingUI.computePosition(trigger, panel, {
+      placement: "bottom-start",
+      strategy: "fixed",
+      middleware: [
+        FloatingUI.offset(4),
+        FloatingUI.flip(),
+        FloatingUI.shift({ padding: 8 }),
+      ],
+    })
     panel.remove()
-    return { ...result, right: result.x + PANEL_WIDTH }
-  }
-
-  it("slides a panel that overflows sideways, keeping the aligned edge", async () => {
-    const placed = await place({ crossAxis: false, flipAlignment: false })
-    expect(placed.placement).toBe("bottom-start")
-    expect(placed.right).toBe(VIEWPORT - 8)
-  })
-
-  it("would swap the aligned edge on Floating UI's defaults", async () => {
-    const placed = await place()
     expect(placed.placement).toBe("bottom-end")
-    // Lined up with the trigger instead, which leaves the panel 20px from the
-    // edge here and disagrees with the built-in maths by that much.
-    expect(placed.right).toBe(TRIGGER_RIGHT)
+    expect(placed.x + PANEL_WIDTH).toBe(TRIGGER_RIGHT)
   })
 })
 
+// Floating UI cannot move elements, so VPick still renders the panel into its
+// container, and the strategy follows from where the panel lives.
 describe("VPick — floatingUi keeps VPick's anchoring", () => {
-  function anyAnswer() {
-    return fakeLibrary(() => ({
-      x: 0,
-      y: 0,
-      placement: "bottom-start",
-      strategy: "absolute",
-    }))
-  }
-
   function rectAt(top: number): DOMRect {
     return {
       top,
@@ -301,7 +363,7 @@ describe("VPick — floatingUi keeps VPick's anchoring", () => {
   }
 
   it("passes the strategy VPick resolved", async () => {
-    const lib = anyAnswer()
+    const lib = fakeLibrary(() => at(0, 0))
     const { wrapper } = await openWith(lib, { strategy: "fixed" })
     expect(lib.computePosition.mock.calls[0][2]).toMatchObject({
       strategy: "fixed",
@@ -311,7 +373,7 @@ describe("VPick — floatingUi keeps VPick's anchoring", () => {
 
   it("places the panel inside a scroll container, as the built-in positioning does", async () => {
     const { container, host } = scrollContainer()
-    const lib = anyAnswer()
+    const lib = fakeLibrary(() => at(0, 0))
     const wrapper = mount(VPick, {
       props: { options: opts, floatingUi: lib },
       attachTo: host,
@@ -332,32 +394,30 @@ describe("VPick — floatingUi keeps VPick's anchoring", () => {
     container.remove()
   })
 
-  it("still hides the panel while its trigger is scrolled out of view", async () => {
+  it("does not run VPick's own check for a scrolled-away trigger", async () => {
     const { container, host } = scrollContainer()
-    const lib = anyAnswer()
+    const lib = fakeLibrary(() =>
+      at(0, 0, { middlewareData: { hide: { referenceHidden: false } } }),
+    )
     const wrapper = mount(VPick, {
       props: { options: opts, floatingUi: lib },
       attachTo: host,
       global: { stubs: { Teleport: false } },
     })
-    let top = 150
+    // Above the container's top edge: VPick's own check would call it hidden.
     ;(
       wrapper.find('[role="combobox"]').element as HTMLElement
-    ).getBoundingClientRect = () => rectAt(top)
+    ).getBoundingClientRect = () => rectAt(40)
     await wrapper.find('[role="combobox"]').trigger("click")
+    await flushPromises()
+    container.dispatchEvent(new Event("scroll"))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     await flushPromises()
 
     const positioner =
       container.querySelector<HTMLElement>(".vpick-positioner")!
     expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
       false,
-    )
-    top = 40
-    container.dispatchEvent(new Event("scroll"))
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    await flushPromises()
-    expect(positioner.classList.contains("vpick-positioner--detached")).toBe(
-      true,
     )
     wrapper.unmount()
     container.remove()

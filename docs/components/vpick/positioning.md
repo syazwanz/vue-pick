@@ -114,8 +114,8 @@ The gap between trigger and panel is `--vpick-listbox-offset`, in `px`, `rem` or
 ## Using Floating UI instead
 
 If the rest of your app positions its popovers with Floating UI, VPick can use
-it too. Pass the library, and VPick hands it the coordinate maths while still
-deciding where the dropdown lives and when it repositions:
+it too. Pass the library, and Floating UI places the dropdown, keeps it in place
+and hides it, while VPick renders it into the container it belongs to:
 
 ```vue
 <script setup>
@@ -146,6 +146,9 @@ This measures clipping, not overlap. A trigger covered by a fixed header is not
 clipped by anything, so the panel stays visible and paints over the header. Give
 the panel a lower `--vpick-listbox-z-index` than your header if you would rather
 it slid underneath.
+
+With `floatingUi`, Floating UI's `hide` makes this call instead. It also hides
+the panel while the trigger is cut off by a container with `overflow: hidden`.
 
 ## Scroll lock
 
