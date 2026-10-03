@@ -1,5 +1,22 @@
 # vue-pick
 
+## 0.30.0
+
+### Minor Changes
+
+- 8087aa7: New `optionAttrs` prop adds your own attributes to each option row, such as a
+  test id:
+
+  ```vue
+  <VPick
+    :options="options"
+    :option-attrs="(o) => ({ 'data-testid': o.value })"
+  />
+  ```
+
+  `class` and `style` merge with the row's own. Core attributes (`id`, `role`,
+  `tabindex`, `data-value`, `data-depth`, `aria-*`, `on*`) are ignored.
+
 ## 0.29.0
 
 ### Minor Changes
