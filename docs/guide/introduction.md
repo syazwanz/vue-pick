@@ -1,6 +1,6 @@
 ---
 title: Introduction
-description: Vue Pick is a lightweight, zero-dependency select component library for Vue 2.7 and Vue 3, with full keyboard navigation, ARIA support, and themeable CSS custom properties.
+description: Vue Pick is a zero-dependency select component library for Vue 2.7 and Vue 3, with keyboard navigation, ARIA support and themeable CSS variables.
 ---
 
 # Introduction

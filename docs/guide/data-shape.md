@@ -1,6 +1,6 @@
 ---
 title: Data Shape
-description: Use your existing data shape directly. VPick and VPickNative accept labelKey, valueKey, disabledKey, childrenKey, and groupOptionsKey to adapt to any object shape without transforming your data.
+description: Use your existing data as it is. labelKey, valueKey, disabledKey, childrenKey and groupOptionsKey read any object shape without transforming it.
 ---
 
 <script setup>
