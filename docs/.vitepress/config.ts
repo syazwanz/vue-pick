@@ -6,8 +6,8 @@ const year = new Date().getFullYear()
 const hostname = "https://vue-pick.js.org"
 const siteTitle = "Vue Pick"
 const siteDescription =
-  "Accessible select components for Vue 2.7 and Vue 3. Lightweight and zero-dependency, with a styled native-select wrapper and a fully custom dropdown featuring full keyboard navigation and ARIA support."
-const ogImage = `${hostname}/hero.webp`
+  "Accessible select, multiselect and tree select for Vue 2.7 and Vue 3. Zero dependencies, one API for both versions."
+const ogImage = `${hostname}/og.png`
 
 export default defineConfig({
   title: siteTitle,
@@ -38,7 +38,7 @@ export default defineConfig({
       {
         name: "keywords",
         content:
-          "vue pick, vue select, vue 3 select, vue 2 select, vue dropdown component, accessible select vue, vue combobox, vue 2.7 select, headless select vue, aria select vue, keyboard navigation select vue, typed vue select, zero dependency vue select",
+          "vue pick, vue select, vue 3 select, vue 2 select, vue dropdown component, accessible select vue, vue combobox, vue 2.7 select, aria select vue, keyboard navigation select vue, typed vue select, zero dependency vue select",
       },
     ],
     ["meta", { name: "author", content: "syazwanz" }],
@@ -55,6 +55,9 @@ export default defineConfig({
     ["meta", { property: "og:description", content: siteDescription }],
     ["meta", { property: "og:url", content: hostname }],
     ["meta", { property: "og:image", content: ogImage }],
+    ["meta", { property: "og:image:type", content: "image/png" }],
+    ["meta", { property: "og:image:width", content: "1200" }],
+    ["meta", { property: "og:image:height", content: "630" }],
     [
       "meta",
       {
@@ -108,13 +111,18 @@ export default defineConfig({
       pageData.description ||
       siteData.description
 
-    tags.push(["meta", { property: "og:title", content: pageTitle }])
+    // Shared links show this title out of context, so keep the site name on it.
+    const shareTitle = pageTitle.includes(siteTitle)
+      ? pageTitle
+      : `${pageTitle} | ${siteTitle}`
+
+    tags.push(["meta", { property: "og:title", content: shareTitle }])
     tags.push([
       "meta",
       { property: "og:description", content: pageDescription },
     ])
     tags.push(["meta", { property: "og:url", content: canonical }])
-    tags.push(["meta", { name: "twitter:title", content: pageTitle }])
+    tags.push(["meta", { name: "twitter:title", content: shareTitle }])
     tags.push([
       "meta",
       { name: "twitter:description", content: pageDescription },

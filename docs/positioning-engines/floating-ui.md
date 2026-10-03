@@ -1,6 +1,6 @@
 ---
 title: Floating UI
-description: Position the VPick dropdown with Floating UI. Pass the library and Floating UI places the dropdown, keeps it in place and hides it, the same as your other popovers.
+description: Position the VPick dropdown with Floating UI. Pass the library and it places, tracks and hides the dropdown like your other popovers.
 ---
 
 <script setup>
