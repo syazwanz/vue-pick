@@ -42,6 +42,11 @@ export default defineConfig({
       },
     ],
     ["meta", { name: "author", content: "syazwanz" }],
+    // Lets the search crawler index this domain.
+    [
+      "meta",
+      { name: "algolia-site-verification", content: "8093941FADF61DBD" },
+    ],
     // The green from the logo, not a near-miss from a utility palette.
     ["meta", { name: "theme-color", content: "#41b883" }],
     ["meta", { property: "og:type", content: "website" }],
