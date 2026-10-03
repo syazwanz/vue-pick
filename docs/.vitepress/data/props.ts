@@ -207,6 +207,16 @@ export const props: PropDoc[] = [
       "Animates the multiselect chips. `false` adds and removes them outright.",
     more: "/components/vpick/multiselect#chip-motion",
   },
+  {
+    name: "optionAttrs",
+    type: "(option) => object",
+    default: "undefined",
+    group: "appearance",
+    components: ["VPick"],
+    description:
+      "Extra attributes for each option row, such as test ids. Core attributes like `role` and `aria-*` cannot be overridden.",
+    more: "/components/vpick/tree-select#adding-your-own-attributes",
+  },
 
   // Search
   {
