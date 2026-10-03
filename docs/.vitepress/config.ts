@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress"
 import { fileURLToPath, URL } from "node:url"
 import pkg from "../../package.json" with { type: "json" }
+import llmstxt from "vitepress-plugin-llms"
 
 const year = new Date().getFullYear()
 const hostname = "https://vue-pick.js.org"
@@ -209,6 +210,13 @@ export default defineConfig({
           { text: "Floating UI", link: "/positioning-engines/floating-ui" },
         ],
       },
+      {
+        text: "Migration",
+        items: [
+          { text: "From vue-select", link: "/migration/vue-select" },
+          { text: "From vue-treeselect", link: "/migration/vue-treeselect" },
+        ],
+      },
     ],
     socialLinks: [
       { icon: "github", link: "https://github.com/syazwanz/vue-pick" },
@@ -231,6 +239,12 @@ export default defineConfig({
     },
   },
   vite: {
+    // Publishes /llms.txt and /llms-full.txt, plain-text copies of these docs
+    // that AI coding tools can read in one request. The plugin is typed
+    // against Vite 6 while VitePress 1.x runs Vite 5; it works on both, only
+    // the declarations disagree.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    plugins: [llmstxt() as any],
     resolve: {
       alias: {
         "vue-pick": fileURLToPath(
