@@ -106,6 +106,8 @@ const props = withDefaults(
     searchErrorText?: string
     searchPromptText?: string
     optionAttrs?: OptionAttrsFn
+    compactChips?: boolean
+    loadOnSelect?: boolean
   }>(),
   {
     modelValue: undefined,
@@ -164,6 +166,8 @@ const props = withDefaults(
     searchErrorText: "Could not search. Click to retry",
     searchPromptText: "Type to search",
     optionAttrs: undefined,
+    compactChips: true,
+    loadOnSelect: true,
   },
 )
 
@@ -948,6 +952,7 @@ function isSelected(value: OptionItem["value"]): boolean {
 // Ordered list of selected option objects for rendering chips.
 // In cascade mode, display in BRANCH_PRIORITY format (most compact) so
 // selecting a parent shows one chip, not one chip per leaf.
+// `compactChips: false` shows one chip per value entry instead.
 //
 // Not with `disableBranchNodes`. Compaction reads the selected set, not what
 // was clicked, so picking every leaf of a branch by hand collapses those chips
@@ -956,7 +961,8 @@ function isSelected(value: OptionItem["value"]): boolean {
 // cannot choose, while `modelValue` still holds the individual leaves.
 const selectedOptions = computed(() => {
   if (!props.multiple) return []
-  const compact = isCascadeMode.value && !props.disableBranchNodes
+  const compact =
+    props.compactChips && isCascadeMode.value && !props.disableBranchNodes
   const displayValues = compact
     ? [
         ...compactToBranchPriority(effectiveLeafSet.value, normalized.value),
@@ -2036,7 +2042,13 @@ function selectOption(flatOption: FlatOption) {
       const wasChecked = isCascadeChecked(flatOption)
       // Unticking needs nothing loaded: whatever is selected under the branch,
       // loaded or not, is removed along with it.
-      if (!wasChecked && collectUnloaded(flatOption.option).length) {
+      // `loadOnSelect: false` skips that wait: an unloaded branch is ticked as
+      // its own value, and replaced by its children when they load.
+      if (
+        !wasChecked &&
+        props.loadOnSelect &&
+        collectUnloaded(flatOption.option).length
+      ) {
         void tickAfterLoad(flatOption)
         return
       }
