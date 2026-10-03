@@ -14,6 +14,8 @@ import {
   type OptionOrGroup,
   type FlatOption,
   type FloatingUiLibrary,
+  type OptionAttrsFn,
+  type ResolvedOptionAttrs,
   flattenOptions,
   generateId,
   normalizeOptions,
@@ -34,6 +36,7 @@ import {
   setupResizeObserver,
   isOptionGroup,
   isUnloaded,
+  resolveOptionAttrs,
 } from "../core"
 
 defineOptions({ name: "VPick" })
@@ -102,6 +105,7 @@ const props = withDefaults(
     searchingText?: string
     searchErrorText?: string
     searchPromptText?: string
+    optionAttrs?: OptionAttrsFn
   }>(),
   {
     modelValue: undefined,
@@ -159,6 +163,7 @@ const props = withDefaults(
     searchingText: "Searching...",
     searchErrorText: "Could not search. Click to retry",
     searchPromptText: "Type to search",
+    optionAttrs: undefined,
   },
 )
 
@@ -900,7 +905,7 @@ const filteredFlat = computed<FlatOption[]>(() => {
 interface Section {
   label?: string
   labelId?: string
-  items: { fo: FlatOption; flatIdx: number }[]
+  items: { fo: FlatOption; flatIdx: number; custom: ResolvedOptionAttrs }[]
 }
 
 const sections = computed<Section[]>(() => {
@@ -918,7 +923,12 @@ const sections = computed<Section[]>(() => {
       }
       result.push(current)
     }
-    current.items.push({ fo, flatIdx })
+    // Placeholder rows are not options, so the hook never sees them.
+    const custom = resolveOptionAttrs(
+      fo.isEmptyMessage ? undefined : props.optionAttrs,
+      fo.option,
+    )
+    current.items.push({ fo, flatIdx, custom })
   })
   return result
 })
@@ -2839,18 +2849,21 @@ defineExpose({ focus: focusTrigger })
                   </div>
                   <div
                     v-else
+                    v-bind="item.custom.attrs"
                     :id="item.fo.id"
                     role="option"
                     :data-value="dataValueOf(item.fo.option.value)"
                     :data-depth="isTreeMode ? item.fo.depth : undefined"
-                    :style="
+                    :style="[
                       isTreeMode && item.fo.depth > 0
                         ? {
                             '--vpick-option-depth': item.fo.depth,
                           }
-                        : undefined
-                    "
+                        : undefined,
+                      item.custom.style,
+                    ]"
                     :class="[
+                      item.custom.class,
                       'vpick-option',
                       {
                         'vpick-option--tree': isTreeMode,

@@ -259,6 +259,19 @@ as `data-value`. It is set for string, number and boolean values:
 }
 ```
 
+### Adding your own attributes
+
+`optionAttrs` adds your own attributes to each option row. It receives the
+option and returns an object, for example a test id:
+
+```vue
+<VPick :options="options" :option-attrs="(o) => ({ 'data-testid': o.value })" />
+```
+
+`class` and `style` are merged with the row's own. Attributes Vue Pick relies
+on are ignored: `id`, `role`, `tabindex`, `data-value`, `data-depth`, any
+`aria-*` and any `on*` handler.
+
 These rules have to be global. `.vpick-option` and the rest belong to Vue Pick
 and carry its scope, not yours, so a `<style scoped>` rule cannot reach them,
 and a global rule restyles every VPick on the page. To change one instance, set

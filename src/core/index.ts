@@ -54,3 +54,5 @@ export {
 } from "./containingBlock"
 export { isClippedOutOfView } from "./visibility"
 export { setupResizeObserver } from "./resizeObserver"
+export { resolveOptionAttrs, NO_OPTION_ATTRS } from "./optionAttrs"
+export type { OptionAttrsFn, ResolvedOptionAttrs } from "./optionAttrs"
