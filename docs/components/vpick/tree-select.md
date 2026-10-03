@@ -118,6 +118,14 @@ Controls what ends up in `v-model` while `cascade` is active:
 All four round-trip: feed an emitted value straight back in and the rendered
 selection is unchanged.
 
+### Chips
+
+Chips are compact by default: a fully selected branch shows one chip instead of
+one per descendant, whatever `valueConsistsOf` emits. Set `compactChips: false`
+to show one chip per value entry instead, in `sortValueBy` order. With
+`ALL_WITH_INDETERMINATE` that includes partially selected branches. Removing a
+branch's chip unticks everything under it.
+
 ## Searching a tree
 
 Combine with `searchable` to filter. Matching nodes auto-expand their ancestor
@@ -214,7 +222,9 @@ Open a branch to load it. Laptops is itself loaded on demand, one level down.
 - **Ticking an unloaded branch.** In `multiple` mode with `cascade`, its children
   load first, and the tick lands once they have, following `valueConsistsOf` as
   usual. Anything nested inside that is also unloaded loads too. If a load fails,
-  the selection is left as it was.
+  the selection is left as it was. With `loadOnSelect: false`, nothing loads:
+  the branch is ticked as its own value, and is replaced by its children when
+  it is opened later, as described below.
 - **Values that have not loaded yet.** A saved value can name options under a
   branch nobody has opened. Those values are kept, submitted with the form, and
   shown as chips carrying the raw value until their branch loads.

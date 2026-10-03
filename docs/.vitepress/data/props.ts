@@ -434,6 +434,16 @@ export const props: PropDoc[] = [
     more: "/components/vpick/tree-select#valueconsistsof",
   },
   {
+    name: "compactChips",
+    type: "boolean",
+    default: "true",
+    group: "tree",
+    components: ["VPick"],
+    description:
+      "With `cascade`, merges chips into the topmost fully selected branch. `false` shows one chip per value entry.",
+    more: "/components/vpick/tree-select#chips",
+  },
+  {
     name: "flattenSearchResults",
     type: "boolean",
     default: "false",
@@ -461,6 +471,16 @@ export const props: PropDoc[] = [
     components: ["VPick"],
     description:
       "Fetches a branch's children when it first opens. Mark those branches with `children: null`.",
+    more: "/components/vpick/tree-select#loading-children-on-demand",
+  },
+  {
+    name: "loadOnSelect",
+    type: "boolean",
+    default: "true",
+    group: "tree",
+    components: ["VPick"],
+    description:
+      "Ticking an unloaded branch loads its children first. `false` ticks the branch as its own value with no request.",
     more: "/components/vpick/tree-select#loading-children-on-demand",
   },
   {
