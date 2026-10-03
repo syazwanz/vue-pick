@@ -897,13 +897,13 @@
 
   New VPick props: `cascade` (default `true`, set to `false` for independent selection) and `valueConsistsOf` (`"LEAF_PRIORITY"` | `"ALL"` | `"BRANCH_PRIORITY"` | `"ALL_WITH_INDETERMINATE"`, default `"LEAF_PRIORITY"`).
 
-  Chips always display in compact (branch-priority) format — selecting all of Electronics shows a single "Electronics" chip rather than one chip per leaf.
+  Chips always display in compact (branch-priority) format: selecting all of Electronics shows a single "Electronics" chip rather than one chip per leaf.
 
 ## 0.8.0
 
 ### Minor Changes
 
-- 3ccf3e5: Add tree select to VPick. Pass options with a `children` array and tree mode activates automatically — no extra prop needed. Clicking the chevron expands or collapses a branch; clicking the row selects the node.
+- 3ccf3e5: Add tree select to VPick. Pass options with a `children` array and tree mode activates automatically, with no extra prop needed. Clicking the chevron expands or collapses a branch; clicking the row selects the node.
 
   New VPick props: `childrenKey` (default `"children"`), `defaultExpandLevel`, `disableBranchNodes`.
 
@@ -916,7 +916,7 @@
 - 60ad553: Add multiple selection to VPick.
 
   **New prop:**
-  - `multiple` — allows selecting more than one option. `v-model` becomes an array, selected values render as removable chips, and the dropdown stays open after each pick. Pressing `Backspace` while the search input is empty removes the last chip. The hidden native `<select multiple>` participates in form submission with all selected values.
+  - `multiple`: allows selecting more than one option. `v-model` becomes an array, selected values render as removable chips, and the dropdown stays open after each pick. Pressing `Backspace` while the search input is empty removes the last chip. The hidden native `<select multiple>` participates in form submission with all selected values.
 
   `multiple` always renders the searchable trigger so chips and the input share one row. Combine with `clearable` to expose a single button that empties the array.
 
@@ -927,13 +927,13 @@
 - f94265a: Add searchable and clearable modes to VPick.
 
   **New props:**
-  - `searchable` — renders an input trigger with type-ahead filtering
-  - `clearable` — shows a clear button when a value is selected
-  - `filter` — custom filter function for searchable mode
-  - `noResultsText` — text shown when no options match the search query
+  - `searchable`: renders an input trigger with type-ahead filtering
+  - `clearable`: shows a clear button when a value is selected
+  - `filter`: custom filter function for searchable mode
+  - `noResultsText`: text shown when no options match the search query
 
   **New slots:** `#clear`, `#empty`
-  **New event:** `search` — emitted on every keystroke in searchable mode
+  **New event:** `search`: emitted on every keystroke in searchable mode
 
   **Fixes:**
   - Fix dropdown flashing to bottom-right on close in Vue 3 (Teleport `:disabled` race)
