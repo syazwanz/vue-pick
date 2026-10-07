@@ -146,6 +146,14 @@ export default defineConfig({
         activeMatch: "/components/vpick/",
       },
       {
+        text: "Migrate",
+        activeMatch: "/migration/",
+        items: [
+          { text: "From vue-select", link: "/migration/vue-select" },
+          { text: "From vue-treeselect", link: "/migration/vue-treeselect" },
+        ],
+      },
+      {
         text: `v${pkg.version}`,
         items: [
           {

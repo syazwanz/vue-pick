@@ -234,3 +234,20 @@ See [Slots](/components/vpick/slots).
 
 The `vs__*` classes do not exist in VPick, so CSS that targets them needs
 rewriting. Most of it becomes a CSS variable. See [Theming](/guide/theming).
+
+To keep your existing rules, put the old names back with `classes`:
+
+```vue
+<VPick
+  :classes="{
+    trigger: 'vs__dropdown-toggle',
+    chip: 'vs__selected',
+    listbox: 'vs__dropdown-menu',
+    option: 'vs__dropdown-option',
+  }"
+/>
+```
+
+State classes like `vs__dropdown-option--highlight` become attributes, such as
+`.vs__dropdown-option[data-highlighted]`. See
+[Your own class names](/guide/theming#your-own-class-names).

@@ -153,14 +153,25 @@
   border-color: var(--vp-c-divider) !important;
 }
 
+/* The blur sits on a layer behind the nav, not on the nav itself. A
+   backdrop-filter makes its element the containing block for fixed
+   children, which squashed the mobile menu screen to zero height. */
 .VPNav {
-  backdrop-filter: blur(8px);
-  background-color: rgba(255, 255, 255, 0.85) !important;
+  background-color: transparent !important;
   border-bottom: 1px solid var(--vp-c-divider) !important;
 }
 
-.dark .VPNav {
-  background-color: rgba(9, 9, 11, 0.85) !important;
+.VPNav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.dark .VPNav::before {
+  background-color: rgba(9, 9, 11, 0.85);
 }
 
 .VPNavBar {
@@ -343,6 +354,15 @@
 
   .DocSearch-Button .DocSearch-Button-Keys {
     margin-left: 0 !important;
+  }
+}
+
+/* Between tablet and laptop the nav links and the search box do not both fit,
+   so the search box shrinks to its icon, as it does on phones. */
+@media (min-width: 768px) and (max-width: 959px) {
+  .DocSearch-Button .DocSearch-Button-Placeholder,
+  .DocSearch-Button .DocSearch-Button-Keys {
+    display: none !important;
   }
 }
 

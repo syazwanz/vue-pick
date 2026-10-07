@@ -236,6 +236,23 @@ needs rewriting. Most of it becomes a CSS variable. See
 [Theming](/guide/theming) and
 [Styling branch and leaf rows](/components/vpick/tree-select#styling-branch-and-leaf-rows).
 
+To keep your existing rules, put the old names back with `classes`:
+
+```vue
+<VPick
+  :classes="{
+    trigger: 'vue-treeselect__control',
+    chip: 'vue-treeselect__multi-value-item',
+    listbox: 'vue-treeselect__menu',
+    option: 'vue-treeselect__option',
+  }"
+/>
+```
+
+State classes like `vue-treeselect__option--highlight` become attributes, such
+as `.vue-treeselect__option[data-highlighted]`. See
+[Your own class names](/guide/theming#your-own-class-names).
+
 Tests or CSS that select an option by `data-id` can keep working with
 `optionAttrs`:
 

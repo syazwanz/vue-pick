@@ -217,6 +217,16 @@ export const props: PropDoc[] = [
       "Extra attributes for each option row, such as test ids. Core attributes like `role` and `aria-*` cannot be overridden.",
     more: "/components/vpick/tree-select#adding-your-own-attributes",
   },
+  {
+    name: "classes",
+    type: "object",
+    default: "{}",
+    group: "appearance",
+    components: ["VPick"],
+    description:
+      "Extra classes for each part, such as `trigger`, `chip` or `option`. `chip` and `option` also take `(option) => string`.",
+    more: "/guide/theming#your-own-class-names",
+  },
 
   // Search
   {
