@@ -357,6 +357,15 @@
   }
 }
 
+/* Between tablet and laptop the nav links and the search box do not both fit,
+   so the search box shrinks to its icon, as it does on phones. */
+@media (min-width: 768px) and (max-width: 959px) {
+  .DocSearch-Button .DocSearch-Button-Placeholder,
+  .DocSearch-Button .DocSearch-Button-Keys {
+    display: none !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .DocSearch-Button .DocSearch-Button-Placeholder {
     width: 10rem;
