@@ -5,5 +5,6 @@ export type {
   OptionGroup,
   OptionOrGroup,
   FlatOption,
+  VPickClasses,
 } from "../core"
 export { isOptionGroup, flattenOptions, generateId } from "../core"

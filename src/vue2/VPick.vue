@@ -21,6 +21,7 @@ import {
   type FloatingUiLibrary,
   type OptionAttrsFn,
   type ResolvedOptionAttrs,
+  type VPickClasses,
   flattenOptions,
   generateId,
   normalizeOptions,
@@ -42,6 +43,7 @@ import {
   isOptionGroup,
   isUnloaded,
   resolveOptionAttrs,
+  resolvePartClass,
 } from "../core"
 
 const props = withDefaults(
@@ -109,6 +111,7 @@ const props = withDefaults(
     searchErrorText?: string
     searchPromptText?: string
     optionAttrs?: OptionAttrsFn
+    classes?: VPickClasses
     compactChips?: boolean
     loadOnSelect?: boolean
   }>(),
@@ -169,6 +172,7 @@ const props = withDefaults(
     searchErrorText: "Could not search. Click to retry",
     searchPromptText: "Type to search",
     optionAttrs: undefined,
+    classes: () => ({}),
     compactChips: true,
     loadOnSelect: true,
   },
@@ -2459,11 +2463,13 @@ defineExpose({ focus: focusTrigger })
       ref="triggerRef"
       type="button"
       role="combobox"
+      :data-state="isOpen ? 'open' : 'closed'"
       :class="[
         'vpick-trigger',
         { 'vpick-trigger--open': isOpen },
         { 'vpick-trigger--error': error },
         { 'vpick-trigger--loading': loading },
+        classes.trigger,
       ]"
       :aria-expanded="isOpen ? 'true' : 'false'"
       :aria-haspopup="'listbox'"
@@ -2516,7 +2522,7 @@ defineExpose({ focus: focusTrigger })
       </span>
       <span
         v-else-if="canClear"
-        class="vpick-clear"
+        :class="['vpick-clear', classes.clear]"
         role="button"
         tabindex="-1"
         aria-label="Clear selection"
@@ -2564,6 +2570,7 @@ defineExpose({ focus: focusTrigger })
     <div
       v-else
       ref="triggerRef"
+      :data-state="isOpen ? 'open' : 'closed'"
       :class="[
         'vpick-trigger',
         'vpick-trigger--search',
@@ -2572,6 +2579,7 @@ defineExpose({ focus: focusTrigger })
         { 'vpick-trigger--error': error },
         { 'vpick-trigger--loading': loading },
         { 'vpick-trigger--disabled': disabled || loading },
+        classes.trigger,
       ]"
       @click="onSearchTriggerClick"
     >
@@ -2591,21 +2599,22 @@ defineExpose({ focus: focusTrigger })
           'vpick-chips',
           { 'vpick-chips--empty': !selectedOptions.length },
           { 'vpick-chips--static': !animate },
+          classes.chips,
         ]"
       >
         <span
           v-for="fo in selectedOptions"
           :key="String(fo.option.value)"
-          class="vpick-chip"
+          :class="['vpick-chip', resolvePartClass(classes.chip, fo.option)]"
         >
-          <span class="vpick-chip-label"
+          <span :class="['vpick-chip-label', classes.chipLabel]"
             ><slot name="value-label" :option="fo.option">{{
               fo.option.label
             }}</slot></span
           >
           <button
             type="button"
-            class="vpick-chip-remove"
+            :class="['vpick-chip-remove', classes.chipRemove]"
             tabindex="-1"
             :disabled="disabled || loading"
             :aria-label="`Remove ${fo.option.label}`"
@@ -2635,7 +2644,7 @@ defineExpose({ focus: focusTrigger })
           ref="inputRef"
           type="text"
           role="combobox"
-          class="vpick-trigger-input"
+          :class="['vpick-trigger-input', classes.input]"
           autocomplete="off"
           spellcheck="false"
           aria-autocomplete="list"
@@ -2702,7 +2711,7 @@ defineExpose({ focus: focusTrigger })
       <button
         v-else-if="canClear"
         type="button"
-        class="vpick-clear"
+        :class="['vpick-clear', classes.clear]"
         tabindex="-1"
         aria-label="Clear selection"
         @mousedown.prevent
@@ -2773,6 +2782,7 @@ defineExpose({ focus: focusTrigger })
         :class="[
           'vpick-positioner',
           { 'vpick-positioner--detached': detached },
+          classes.positioner,
         ]"
         :style="positionerStyle"
         :data-placement="placement"
@@ -2782,7 +2792,7 @@ defineExpose({ focus: focusTrigger })
           :id="listboxId"
           ref="listboxRef"
           role="listbox"
-          class="vpick-listbox"
+          :class="['vpick-listbox', classes.listbox]"
           :aria-multiselectable="multiple ? 'true' : undefined"
           :aria-busy="asyncSearching ? 'true' : undefined"
         >
@@ -2895,6 +2905,9 @@ defineExpose({ focus: focusTrigger })
                   role="option"
                   :data-value="dataValueOf(item.fo.option.value)"
                   :data-depth="isTreeMode ? item.fo.depth : undefined"
+                  :data-highlighted="
+                    item.flatIdx === highlightedIndex ? '' : undefined
+                  "
                   :style="[
                     isTreeMode && item.fo.depth > 0
                       ? { '--vpick-option-depth': item.fo.depth }
@@ -2917,6 +2930,7 @@ defineExpose({ focus: focusTrigger })
                       'vpick-option--disabled':
                         item.fo.option.disabled || item.fo.groupDisabled,
                     },
+                    resolvePartClass(classes.option, item.fo.option),
                   ]"
                   :aria-selected="
                     (
@@ -2955,6 +2969,7 @@ defineExpose({ focus: focusTrigger })
                     :class="[
                       'vpick-option-expand',
                       { 'vpick-option-expand--expanded': item.fo.isExpanded },
+                      classes.optionExpand,
                     ]"
                     tabindex="-1"
                     aria-hidden="true"
@@ -3008,7 +3023,15 @@ defineExpose({ focus: focusTrigger })
                         'vpick-option-checkbox--indeterminate':
                           isCascadeIndeterminate(item.fo),
                       },
+                      classes.optionCheckbox,
                     ]"
+                    :data-state="
+                      isCascadeChecked(item.fo)
+                        ? 'checked'
+                        : isCascadeIndeterminate(item.fo)
+                          ? 'indeterminate'
+                          : 'unchecked'
+                    "
                     aria-hidden="true"
                   >
                     <svg
@@ -3040,7 +3063,7 @@ defineExpose({ focus: focusTrigger })
                       <path d="M5 12h14" />
                     </svg>
                   </span>
-                  <span class="vpick-option-label"
+                  <span :class="['vpick-option-label', classes.optionLabel]"
                     ><slot
                       name="option-label"
                       :option="item.fo.option"
@@ -3052,7 +3075,7 @@ defineExpose({ focus: focusTrigger })
                   >
                   <span
                     v-if="!multiple"
-                    class="vpick-option-check"
+                    :class="['vpick-option-check', classes.optionCheck]"
                     aria-hidden="true"
                   >
                     <svg

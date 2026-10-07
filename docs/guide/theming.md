@@ -231,6 +231,52 @@ To switch the motion off entirely, use the `animate` prop rather than a zero
 duration. A duration of zero still runs the transition, just with no time to run
 it in, which leaves the chips mid-reflow for a frame.
 
+## Your own class names
+
+`classes` adds your own class to each part, next to the built-in one. It is
+handy when VPick sits inside your own wrapper component and you want pages to
+target your names instead of `.vpick-*`. The classes are part of each render,
+so they stay through re-renders and also land on the teleported panel.
+
+```vue
+<VPick
+  :options="options"
+  multiple
+  :classes="{
+    trigger: 'my-select__trigger',
+    chip: 'my-select__chip',
+    listbox: 'my-select__list',
+    option: 'my-select__option',
+  }"
+/>
+```
+
+The parts are `trigger`, `input`, `chips`, `chip`, `chipLabel`, `chipRemove`,
+`clear`, `positioner`, `listbox`, `option`, `optionLabel`, `optionExpand`,
+`optionCheckbox` and `optionCheck`. For the root, use a plain `class`.
+
+`chip` and `option` also take a function. It receives the option and returns a
+class, so one chip or row can be styled on its own:
+
+```vue
+<VPick :classes="{ chip: (o) => (o.value === 'all' ? 'is-hidden' : '') }" />
+```
+
+There are no state classes on your names. Use the attributes VPick already sets:
+
+| State              | Selector                                                     |
+| ------------------ | ------------------------------------------------------------ |
+| Open               | `.my-select__trigger[data-state="open"]`                     |
+| Highlighted option | `.my-select__option[data-highlighted]`                       |
+| Selected option    | `.my-select__option[aria-selected="true"]`                   |
+| Disabled option    | `.my-select__option[aria-disabled="true"]`                   |
+| Expanded branch    | `.my-select__option[aria-expanded="true"]`                   |
+| Checkbox state     | `[data-state="checked"]`, `"indeterminate"` or `"unchecked"` |
+
+The scoped CSS rule from the start of this page still applies: the panel is
+teleported, so a `<style scoped>` rule cannot reach `listbox` or `option`. Put
+those rules in a global stylesheet.
+
 ## Inside another container
 
 Dropping a control into a popover, card or panel brings up three things worth
