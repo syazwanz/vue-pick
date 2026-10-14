@@ -492,8 +492,6 @@ button.vpick-trigger--loading:disabled,
 
 .vpick-group {
   padding: 0.25rem;
-  scroll-margin-top: 0.25rem;
-  scroll-margin-bottom: 0.25rem;
 }
 
 /* Option */
@@ -654,8 +652,10 @@ button.vpick-trigger--loading:disabled,
   flex-wrap: wrap;
   gap: 0.25rem;
   padding: 0.25rem;
-  /* reserve space on the right for icons so chips don't overlap */
-  padding-right: 1.75rem;
+  /* Reserve space on the right for the icon so chips don't run under it. The
+     clear button is 24px wide and sits 6px in, and 2.25rem leaves the same
+     6px between it and the chips, so its hover background never covers one. */
+  padding-right: 2.25rem;
 }
 
 /* The left inset is split between the trigger's own padding and the input's,
