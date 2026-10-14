@@ -1220,6 +1220,10 @@ let cleanupAutoUpdate: (() => void) | null = null
 // new size is when the forwarded variables are read again, not every scroll.
 let lastTriggerSize = ""
 
+// Set on open so the first Floating UI placement re-scrolls to the highlight,
+// for the same reason the built-in path does after `updatePosition`.
+let scrollOnPlace = false
+
 async function positionWithFloatingUi(
   trigger: HTMLElement,
   floatingUi: FloatingUiLibrary,
@@ -1280,6 +1284,11 @@ async function positionWithFloatingUi(
     left: "0px",
     transform: `translate3d(${result.x}px, ${result.y}px, 0)`,
     "--vpick-trigger-width": triggerWidth,
+  }
+  if (scrollOnPlace) {
+    scrollOnPlace = false
+    await nextTick()
+    scrollHighlightedIntoView()
   }
 }
 
@@ -1682,6 +1691,7 @@ function open() {
       const panel = positionerRef.value
       if (trigger && panel && !cleanupAutoUpdate) {
         lastTriggerSize = ""
+        scrollOnPlace = true
         cleanupAutoUpdate = floatingUi.autoUpdate(
           trigger as never,
           panel as never,
@@ -1690,7 +1700,10 @@ function open() {
       }
       return
     }
-    updatePosition()
+    // The highlight is first scrolled to before the panel is placed, while it
+    // is still page-wide and its labels sit on one line. Once it narrows they
+    // wrap and the content grows, so scroll again after the placement lands.
+    void updatePosition().then(() => nextTick(scrollHighlightedIntoView))
     if (triggerRef.value && !cleanupScroll) {
       scrollAncestors = scrollParents(triggerRef.value)
       cleanupScroll = setupScrollListeners(triggerRef.value, onReposition)
@@ -2190,8 +2203,21 @@ function scrollHighlightedIntoView() {
   // scroll to the max.
   const lbRect = lb.getBoundingClientRect()
   const elRect = el.getBoundingClientRect()
-  const relTop = elRect.top - lbRect.top + lb.scrollTop
-  const relBottom = relTop + elRect.height
+  // The open animation scales the list, and rects come back scaled with it.
+  // Dividing by the scale keeps the maths in the list's own pixels, so a deep
+  // option is not left short when the list opens mid-animation.
+  const scale =
+    lbRect.height && lb.offsetHeight ? lbRect.height / lb.offsetHeight : 1
+  // Setting scrollTop by hand skips `scroll-margin`, so the group's padding is
+  // added here instead. Without it the row lands flush against the edge and
+  // its rounded highlight is clipped.
+  const group = el.closest<HTMLElement>(".vpick-group")
+  const groupStyle = group ? getComputedStyle(group) : null
+  const padTop = parseFloat(groupStyle?.paddingTop ?? "") || 0
+  const padBottom = parseFloat(groupStyle?.paddingBottom ?? "") || 0
+  const relTop = (elRect.top - lbRect.top) / scale + lb.scrollTop - padTop
+  const relBottom =
+    (elRect.bottom - lbRect.top) / scale + lb.scrollTop + padBottom
   const viewTop = lb.scrollTop
   const viewBottom = viewTop + lb.clientHeight
   if (relTop < viewTop) lb.scrollTop = relTop
