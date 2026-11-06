@@ -95,6 +95,21 @@ describe("VPick — fetchOptions with loadChildren", () => {
     wrapper.unmount()
   })
 
+  it("opens and loads unloaded result branches with loadOnSearch", async () => {
+    const { wrapper, loadChildren } = mountBoth({ loadOnSearch: true })
+    await search(wrapper, "o")
+    expect(loadChildren).toHaveBeenCalledTimes(2)
+    expect(rows(wrapper)).toEqual([
+      "Electronics",
+      "Phones",
+      "Laptops",
+      "Books",
+      "Fiction",
+      "History",
+    ])
+    wrapper.unmount()
+  })
+
   it("loads a result branch once it is opened", async () => {
     const { wrapper, loadChildren } = mountBoth()
     await search(wrapper, "o")

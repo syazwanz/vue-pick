@@ -472,3 +472,70 @@ describe("VPick — loadChildren: options replaced", () => {
     expect(wrapper.find(".vpick-option-empty--loading").exists()).toBe(false)
   })
 })
+
+describe("VPick — loadChildren: searching", () => {
+  function mountSearchable(props: Record<string, unknown> = {}) {
+    return mountTree({ searchable: true, ...props })
+  }
+
+  async function type(wrapper: Wrapper, query: string) {
+    await wrapper.find("input").setValue(query)
+    await flushPromises()
+  }
+
+  it("loads nothing on a keystroke when no branch is loaded", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({ loadChildren })
+    await openList(wrapper)
+    await type(wrapper, "o")
+
+    expect(loadChildren).not.toHaveBeenCalled()
+    expect(labels(wrapper)).toEqual(["Electronics", "Books"])
+    expect(wrapper.find(".vpick-option-empty--loading").exists()).toBe(false)
+  })
+
+  it("still opens a loaded branch and shows its matches", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({ loadChildren })
+    await openList(wrapper)
+    await expand(wrapper, "Books")
+    await flushPromises()
+    await expand(wrapper, "Books")
+    expect(labels(wrapper)).not.toContain("History")
+
+    await type(wrapper, "hist")
+
+    expect(loadChildren).toHaveBeenCalledTimes(1)
+    expect(labels(wrapper)).toEqual(["Books", "History"])
+  })
+
+  it("loads a branch opened by hand during a search", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({ loadChildren })
+    await openList(wrapper)
+    await type(wrapper, "o")
+    await expand(wrapper, "Books")
+    await flushPromises()
+
+    expect(loadChildren).toHaveBeenCalledTimes(1)
+    expect(loadChildren.mock.calls[0][0]).toMatchObject({ value: "books" })
+    expect(labels(wrapper)).toContain("History")
+  })
+
+  it("opens and loads every matching branch with loadOnSearch", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({ loadChildren, loadOnSearch: true })
+    await openList(wrapper)
+    await type(wrapper, "o")
+
+    expect(loadChildren).toHaveBeenCalledTimes(2)
+    expect(labels(wrapper)).toEqual([
+      "Electronics",
+      "Phones",
+      "Laptops",
+      "Books",
+      "Fiction",
+      "History",
+    ])
+  })
+})

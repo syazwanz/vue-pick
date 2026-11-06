@@ -49,4 +49,30 @@ describe("VPick (Vue 2) — fetchOptions with loadChildren", () => {
     expect(loadChildren).toHaveBeenCalledTimes(1)
     expect(labels()).toEqual(["Books", "Fiction"])
   })
+
+  it("opens and loads unloaded result branches with loadOnSearch", async () => {
+    const loadChildren = vi.fn(() =>
+      Promise.resolve([{ label: "Fiction", value: "fiction" }]),
+    )
+    const wrapper = mount(VPick, {
+      propsData: {
+        options: [],
+        fetchOptions: () =>
+          Promise.resolve([
+            { label: "Books", value: "books", children: null },
+          ] as Node[]),
+        loadChildren,
+        loadOnSearch: true,
+      },
+    })
+    await wrapper.find("input").setValue("b")
+    await vi.advanceTimersByTimeAsync(300)
+    await flush()
+    await flush()
+    const labels = wrapper
+      .findAll('[role="option"]')
+      .wrappers.map((r) => r.find(".vpick-option-label").text())
+    expect(loadChildren).toHaveBeenCalledTimes(1)
+    expect(labels).toEqual(["Books", "Fiction"])
+  })
 })

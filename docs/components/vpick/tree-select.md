@@ -210,11 +210,18 @@ Open a branch to load it. Laptops is itself loaded on demand, one level down.
 </Preview>
 
 - **When it loads.** When the branch is opened in an open list, whether by the
-  chevron, the arrow keys, `defaultExpandLevel`, or search. A control that is
-  never opened sends no requests. Each branch is requested once, and the result
-  is kept for as long as you pass the same option objects. With
-  [`fetchOptions`](/components/vpick/search#searching-a-server), unloaded
-  branches in the results stay closed until someone opens them.
+  chevron, the arrow keys, or `defaultExpandLevel`. A control that is never
+  opened sends no requests. Each branch is requested once, and the result is
+  kept for as long as you pass the same option objects. Search does not open
+  unloaded branches: they match by their own label and stay closed until
+  someone opens them, with or without
+  [`fetchOptions`](/components/vpick/search#searching-a-server).
+- **Loading during a search.** `loadOnSearch` lets a search open and load the
+  unloaded branches it matches, so their children show up under them. Use it
+  with care: every keystroke can send one request per matching branch, and a
+  short query matches many. With `fetchOptions` every unloaded branch in the
+  results is opened, so each one is requested on every search. Leave it off for
+  large trees.
 - **While it loads.** The branch shows a spinner and a
   [`loadingChildrenText`](#props) row. If the promise rejects, the row shows
   `loadChildrenErrorText` instead. Clicking it, or closing and reopening the
