@@ -503,6 +503,16 @@ export const props: PropDoc[] = [
     more: "/components/vpick/tree-select#loading-children-on-demand",
   },
   {
+    name: "loadOnSearch",
+    type: "boolean",
+    default: "false",
+    group: "tree",
+    components: ["VPick"],
+    description:
+      "Lets a search open and load unloaded branches that match. Off, they stay closed and match by their own label.",
+    more: "/components/vpick/tree-select#loading-children-on-demand",
+  },
+  {
     name: "loadChildrenErrorText",
     type: "string",
     default: '"Could not load. Click to retry"',

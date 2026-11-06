@@ -102,6 +102,7 @@ const props = withDefaults(
     loadChildren?: (option: unknown) => Promise<readonly unknown[]>
     loadingChildrenText?: string
     loadChildrenErrorText?: string
+    loadOnSearch?: boolean
     fetchOptions?: (
       query: string,
       context: { signal?: AbortSignal },
@@ -166,6 +167,7 @@ const props = withDefaults(
     loadChildren: undefined,
     loadingChildrenText: "Loading...",
     loadChildrenErrorText: "Could not load. Click to retry",
+    loadOnSearch: false,
     fetchOptions: undefined,
     searchDebounce: 300,
     searchingText: "Searching...",
@@ -590,9 +592,14 @@ function autoExpandForSearch(q: string) {
   for (const v of ancestorValues) next.add(v)
   // A branch matching on its own label opens, along with everything inside it.
   // The user named the branch, so the subtree it brings has to be rendered
-  // rather than left behind a collapsed row with nothing under it.
+  // rather than left behind a collapsed row with nothing under it. Not a
+  // branch whose children are still to be fetched with `loadChildren`, unless
+  // `loadOnSearch` says so: one letter matches most labels, and opening every
+  // such branch would send a request for each on the first keystroke. Those
+  // match by their own label and stay shut until opened by hand.
   for (const fo of flatAll.value) {
     if (!fo.isBranch || !matchesQuery(fo, q)) continue
+    if (fo.isUnloaded && !props.loadOnSearch) continue
     next.add(fo.option.value)
     for (const v of collectSubtreeValues(fo.option)) next.add(v)
   }
@@ -1962,16 +1969,17 @@ async function runAsyncSearch(query: string) {
 
 // Results can be trees, and a match hidden inside a collapsed branch looks like
 // no match at all, so every branch in them opens. Not a branch whose children
-// are still to be fetched with `loadChildren`: opening it would send a request
-// for every such branch on every search. Those stay shut until opened by hand.
+// are still to be fetched with `loadChildren`, unless `loadOnSearch` says so:
+// opening it would send a request for every such branch on every search. Those
+// stay shut until opened by hand.
 // Expansion from before the search is restored when the query clears.
 function openAsyncResults() {
   if (!isTreeMode.value) return
   const next = new Set(expandedSet.value)
   for (const fo of flattenOptions(normalized.value, instanceId.value, "all")) {
-    if (fo.isBranch && !fo.isUnloaded && !fo.isEmptyMessage) {
-      next.add(fo.option.value)
-    }
+    if (!fo.isBranch || fo.isEmptyMessage) continue
+    if (fo.isUnloaded && !props.loadOnSearch) continue
+    next.add(fo.option.value)
   }
   expandedSet.value = next
 }
