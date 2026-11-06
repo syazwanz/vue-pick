@@ -3,6 +3,8 @@ import {
   ref,
   computed,
   onMounted,
+  onBeforeUpdate,
+  onUpdated,
   onBeforeUnmount,
   watch,
   nextTick,
@@ -39,6 +41,7 @@ import {
   isUnloaded,
   resolveOptionAttrs,
   resolvePartClass,
+  createHiddenMoveGuard,
 } from "../core"
 
 defineOptions({ name: "VPick" })
@@ -2421,6 +2424,20 @@ function onClickOutside(e: MouseEvent) {
 // cannot be cut off. The guard only reads `e.target`, which is the same element
 // in either phase, so nothing about which clicks count as outside changes.
 const CLICK_OUTSIDE_OPTS = true
+
+// A chip hidden by a `classes.chip` class (`display: none`) that an update makes
+// visible would otherwise slide in from the viewport corner, since the group
+// records its old position as 0,0. See core/hiddenMove.ts.
+const hiddenMoveGuard = createHiddenMoveGuard("vpick-chip-move")
+onBeforeUpdate(() => {
+  // With `animate: false` the move class declares no transition and the group
+  // never moves anything, so there is nothing to read.
+  if (!props.animate) return
+  hiddenMoveGuard.before(
+    triggerRef.value?.querySelectorAll<HTMLElement>(".vpick-chip") ?? [],
+  )
+})
+onUpdated(() => hiddenMoveGuard.after())
 
 onMounted(() => {
   document.addEventListener("mousedown", onClickOutside, CLICK_OUTSIDE_OPTS)
