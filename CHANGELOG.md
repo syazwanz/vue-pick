@@ -1,5 +1,14 @@
 # vue-pick
 
+## 0.33.1
+
+### Patch Changes
+
+- 36dd854: Fix large trees getting slow when the options come from reactive data, most of all in Vue 2. Ticking a leaf, typing in the search, selecting everything, or opening a branch could each block the page for a second or more on a tree with hundreds of rows. The tree is now built once per change to the options instead of on every read, and selected values are looked up by key instead of by scanning every row. Edits made in place to the options still update the list.
+- 36dd854: Fix search still loading unloaded branches that sit inside a loaded branch whose label matches the query. Those branches now stay closed too, still listed under it, unless `loadOnSearch` is `true`.
+
+  Fix `flattenSearchResults` showing a "Loading..." row under each matching unloaded branch that never finished, since nothing loaded it.
+
 ## 0.33.0
 
 ### Minor Changes
