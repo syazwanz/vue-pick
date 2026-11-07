@@ -68,14 +68,15 @@ function inlineMarkdown(src: string): string {
 
 <template>
   <div class="props">
-    <div
-      v-for="prop in list"
-      :id="`prop-${prop.name}`"
-      :key="prop.name"
-      class="prop"
-    >
+    <div v-for="prop in list" :key="prop.name" class="prop">
       <div class="prop__head">
-        <code class="prop__name">{{ prop.name }}</code>
+        <!--
+          A heading so the docs search crawler indexes the name and links
+          straight to it. The outline only lists h2, so this stays out of it.
+        -->
+        <h3 :id="`prop-${prop.name}`" class="prop__title">
+          <code class="prop__name">{{ prop.name }}</code>
+        </h3>
         <code class="prop__type">{{ prop.type }}</code>
         <span v-if="prop.default === 'required'" class="prop__required">
           required
@@ -108,6 +109,14 @@ function inlineMarkdown(src: string): string {
 .prop {
   padding: 0.875rem 0;
   border-bottom: 1px solid var(--vp-c-divider);
+}
+
+/* Undo the prose heading styles so the name stays a small code chip. */
+.prop__title {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
   scroll-margin-top: var(--vp-nav-height);
 }
 
