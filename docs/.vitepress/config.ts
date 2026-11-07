@@ -100,8 +100,9 @@ export default defineConfig({
     const relativePath = pageData.relativePath
       .replace(/(^|\/)index\.md$/, "$1")
       .replace(/\.md$/, "")
-    const canonical =
-      `${hostname}/${relativePath}`.replace(/\/$/, "") || hostname
+    // Folder pages keep their trailing slash: without it the host redirects,
+    // and crawlers drop a page whose canonical URL redirects.
+    const canonical = relativePath ? `${hostname}/${relativePath}` : hostname
 
     tags.push(["link", { rel: "canonical", href: canonical }])
 
