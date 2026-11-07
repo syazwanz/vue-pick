@@ -360,27 +360,40 @@ const optionSource = computed<readonly unknown[]>(() =>
     : props.options,
 )
 
-const normalized = computed(() =>
-  normalizeOptions(
-    optionSource.value,
-    {
-      label: props.labelKey,
-      value: props.valueKey,
-      disabled: props.disabledKey,
-      children: props.childrenKey,
-      groupOptions: props.groupOptionsKey,
-    },
-    props.loadChildren
-      ? {
-          resolve: (item) => {
-            void loadedVersion.value
-            return item && typeof item === "object"
-              ? loadedChildren.get(toRaw(item) as object)
-              : undefined
-          },
-        }
-      : undefined,
-  ),
+// The tree everything else works from. It is built in a watcher rather than a
+// computed on purpose: a computed would hand every reader a dependency on
+// every option property it touched, and in Vue 2 each read of a computed walks
+// all of its dependencies again. A row reading a tree-wide value would then
+// pay for the whole tree, hundreds of times per render. The watcher owns the
+// option dependencies instead, so readers depend on this one ref. Edits made
+// in place to the options still rebuild it, since the build reads them.
+const normalized = shallowRef<OptionOrGroup[]>([])
+watch(
+  () =>
+    normalizeOptions(
+      optionSource.value,
+      {
+        label: props.labelKey,
+        value: props.valueKey,
+        disabled: props.disabledKey,
+        children: props.childrenKey,
+        groupOptions: props.groupOptionsKey,
+      },
+      props.loadChildren
+        ? {
+            resolve: (item) => {
+              void loadedVersion.value
+              return item && typeof item === "object"
+                ? loadedChildren.get(toRaw(item) as object)
+                : undefined
+            },
+          }
+        : undefined,
+    ),
+  (tree) => {
+    normalized.value = tree
+  },
+  { immediate: true },
 )
 
 // --- Tree support ---
@@ -502,7 +515,7 @@ function toggleExpand(value: OptionItem["value"]) {
   if (next.has(value)) {
     next.delete(value)
     // Collapsing is how a failed load is dismissed, so opening it again retries.
-    const branch = flatAll.value.find((f) => f.option.value === value)
+    const branch = flatAllByValue.value.get(value)
     if (branch) clearFailed(branch.option)
   } else {
     next.add(value)
@@ -520,7 +533,7 @@ const nestedLabels = computed(() => {
     const parts = [fo.option.label]
     let pv = fo.parentValue
     while (pv !== undefined) {
-      const parent = all.find((f) => f.option.value === pv)
+      const parent = flatAllByValue.value.get(pv)
       if (!parent) break
       parts.unshift(parent.option.label)
       pv = parent.parentValue
@@ -551,6 +564,10 @@ function collectAncestors(
   predicate: (fo: FlatOption) => boolean,
 ): Set<OptionItem["value"]> {
   const allFlat = flattenOptions(normalized.value, instanceId.value, "all")
+  const byValue = new Map<OptionItem["value"], FlatOption>()
+  for (const fo of allFlat) {
+    if (!byValue.has(fo.option.value)) byValue.set(fo.option.value, fo)
+  }
   const out = new Set<OptionItem["value"]>()
   for (const fo of allFlat) {
     // A placeholder row carries its branch's option with the branch as its
@@ -561,7 +578,7 @@ function collectAncestors(
     let parentVal = fo.parentValue
     while (parentVal !== undefined) {
       out.add(parentVal)
-      parentVal = allFlat.find((f) => f.option.value === parentVal)?.parentValue
+      parentVal = byValue.get(parentVal)?.parentValue
     }
   }
   return out
@@ -594,14 +611,24 @@ function autoExpandForSearch(q: string) {
   // The user named the branch, so the subtree it brings has to be rendered
   // rather than left behind a collapsed row with nothing under it. Not a
   // branch whose children are still to be fetched with `loadChildren`, unless
-  // `loadOnSearch` says so: one letter matches most labels, and opening every
-  // such branch would send a request for each on the first keystroke. Those
-  // match by their own label and stay shut until opened by hand.
+  // `loadOnSearch` says so, whether it matched or sits inside one that did:
+  // one letter matches most labels, and opening every such branch would send
+  // a request for each on the first keystroke. Those stay shut, still listed,
+  // until opened by hand.
+  const unloaded = props.loadOnSearch
+    ? null
+    : new Set(
+        flatAll.value
+          .filter((fo) => fo.isUnloaded)
+          .map((fo) => fo.option.value),
+      )
   for (const fo of flatAll.value) {
     if (!fo.isBranch || !matchesQuery(fo, q)) continue
-    if (fo.isUnloaded && !props.loadOnSearch) continue
+    if (unloaded?.has(fo.option.value)) continue
     next.add(fo.option.value)
-    for (const v of collectSubtreeValues(fo.option)) next.add(v)
+    for (const v of collectSubtreeValues(fo.option)) {
+      if (!unloaded?.has(v)) next.add(v)
+    }
   }
   expandedSet.value = next
 }
@@ -682,7 +709,7 @@ const effectiveLeafSet = computed<ReadonlySet<OptionItem["value"]>>(() => {
   const partialBranches = props.valueConsistsOf === "ALL_WITH_INDETERMINATE"
   const set = new Set<OptionItem["value"]>()
   for (const v of arr) {
-    const fo = flatAll.value.find((f) => f.option.value === v)
+    const fo = flatAllByValue.value.get(v)
     // A value the tree does not contain, typically one under a branch that has
     // not loaded yet. It is carried as-is so the next emit does not drop it.
     if (!fo) {
@@ -794,16 +821,18 @@ function collectEmitValues(
 // Is this option's checkbox in the checked state (cascade-aware)?
 function isCascadeChecked(fo: FlatOption): boolean {
   if (!isCascadeMode.value) return isSelected(fo.option.value)
-  if (!fo.hasChildren) return effectiveLeafSet.value.has(fo.option.value)
+  const selected = effectiveLeafSet.value
+  if (!fo.hasChildren) return selected.has(fo.option.value)
   const leaves = getLeafDescendants(fo.option)
-  return leaves.length > 0 && leaves.every((v) => effectiveLeafSet.value.has(v))
+  return leaves.length > 0 && leaves.every((v) => selected.has(v))
 }
 
 // Is this branch in an indeterminate state (some but not all leaves selected)?
 function isCascadeIndeterminate(fo: FlatOption): boolean {
   if (!isCascadeMode.value || !fo.hasChildren) return false
+  const selected = effectiveLeafSet.value
   const leaves = getLeafDescendants(fo.option)
-  const n = leaves.filter((v) => effectiveLeafSet.value.has(v)).length
+  const n = leaves.filter((v) => selected.has(v)).length
   return n > 0 && n < leaves.length
 }
 
@@ -829,6 +858,16 @@ const flatAll = computed<FlatOption[]>(() =>
     : flat.value,
 )
 
+// Row by value. The lookups below run once per selected value, and a
+// selection can hold thousands, so a scan per value does not scale.
+const flatAllByValue = computed(() => {
+  const map = new Map<OptionItem["value"], FlatOption>()
+  for (const fo of flatAll.value) {
+    if (!map.has(fo.option.value)) map.set(fo.option.value, fo)
+  }
+  return map
+})
+
 const knownValues = computed(
   () => new Set(flatAll.value.map((fo) => fo.option.value)),
 )
@@ -849,7 +888,7 @@ watch(
 
 function findOption(value: OptionItem["value"]): OptionItem | undefined {
   return (
-    flatAll.value.find((f) => f.option.value === value)?.option ??
+    flatAllByValue.value.get(value)?.option ??
     (props.fetchOptions ? seenOptions.get(value) : undefined)
   )
 }
@@ -887,7 +926,9 @@ const filteredFlat = computed<FlatOption[]>(() => {
       // options in the same sequence.
       return flattenOptions(normalized.value, instanceId.value, "all")
         .filter((fo) => {
-          if (fo.isEmptyMessage) return matches(fo)
+          // An unloaded branch is not opened here, so nothing would ever
+          // load it: its placeholder would sit on "Loading..." for good.
+          if (fo.isEmptyMessage) return !fo.isUnloaded && matches(fo)
           return matches(fo) || insideSelfMatch.has(fo.option.value)
         })
         .map((fo) => ({ ...fo, depth: 0, isExpanded: false }))
@@ -989,7 +1030,7 @@ const selectedOptions = computed(() => {
   return sortValues(displayValues)
     .map(
       (v, i) =>
-        flatAll.value.find((f) => f.option.value === v) ??
+        flatAllByValue.value.get(v) ??
         rememberedChip(v, i) ??
         unknownChip(v, i),
     )
@@ -1855,12 +1896,14 @@ function collectUnloaded(option: OptionItem): OptionItem[] {
 // branches of its own, so this repeats until nothing under it is pending.
 async function loadSubtree(value: OptionItem["value"]): Promise<boolean> {
   for (;;) {
-    const fo = flatAll.value.find((f) => f.option.value === value)
+    const fo = flatAllByValue.value.get(value)
     if (!fo) return false
     const pending = collectUnloaded(fo.option)
     if (!pending.length) return true
     const results = await Promise.all(pending.map(loadBranch))
     if (results.includes(false)) return false
+    // The loaded children reach the tree at the next flush.
+    await nextTick()
   }
 }
 
@@ -1888,7 +1931,7 @@ function reconcileLoaded() {
   let changed = false
   for (const value of values) {
     if (!inModel.has(value)) continue
-    const fo = flatAll.value.find((f) => f.option.value === value)
+    const fo = flatAllByValue.value.get(value)
     if (!fo?.hasChildren) continue
     if (collectSubtreeValues(fo.option).some((v) => inModel.has(v))) continue
     leafSet.delete(value)
@@ -1953,6 +1996,9 @@ async function runAsyncSearch(query: string) {
     const next = new Map(asyncResults.value)
     next.set(query, Array.isArray(results) ? results : [])
     asyncResults.value = next
+    // The tree is rebuilt at the next flush, and the opener reads it.
+    await nextTick()
+    if (id !== asyncRequestId) return
     openAsyncResults()
   } catch (err) {
     if (id !== asyncRequestId || isAbortError(err)) return
@@ -2049,7 +2095,7 @@ async function tickAfterLoad(flatOption: FlatOption) {
   } finally {
     pendingTicks.delete(value)
   }
-  const fresh = flatAll.value.find((f) => f.option.value === value)
+  const fresh = flatAllByValue.value.get(value)
   if (fresh) selectOption(fresh)
 }
 
