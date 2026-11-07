@@ -196,6 +196,45 @@ describe("VPick (Vue 2) — loadChildren: searching", () => {
     await flush()
   }
 
+  // A loaded branch whose children are all still to be fetched.
+  function underLoadedRoot(): Node[] {
+    return [{ label: "All categories", value: "all", children: categories() }]
+  }
+
+  it("leaves unloaded branches inside a matching loaded branch closed", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({
+      loadChildren,
+      options: underLoadedRoot(),
+    })
+    await openList(wrapper)
+    await type(wrapper, "categ")
+    await flush()
+
+    expect(loadChildren).not.toHaveBeenCalled()
+    expect(labels(wrapper)).toEqual([
+      "All categories",
+      "Electronics",
+      "Books",
+      "Gift card",
+    ])
+  })
+
+  it("loads unloaded branches inside a matching loaded branch with loadOnSearch", async () => {
+    const loadChildren = resolver()
+    const wrapper = mountSearchable({
+      loadChildren,
+      loadOnSearch: true,
+      options: underLoadedRoot(),
+    })
+    await openList(wrapper)
+    await type(wrapper, "categ")
+    await flush()
+
+    expect(loadChildren).toHaveBeenCalledTimes(2)
+    expect(labels(wrapper)).toContain("History")
+  })
+
   it("loads nothing on a keystroke when no branch is loaded", async () => {
     const loadChildren = resolver()
     const wrapper = mountSearchable({ loadChildren })
@@ -252,4 +291,110 @@ describe("VPick (Vue 2) — loadChildren: searching", () => {
       "History",
     ])
   })
+})
+
+// The rule: a search never calls `loadChildren` unless `loadOnSearch` is on.
+// Checked across tree shapes rather than one, since each shape reaches the
+// open set by a different path: a branch that matches, a branch inside one
+// that matches, a branch inside a group, and a mix of loaded and unloaded.
+describe("VPick (Vue 2) — loadChildren: search never loads", () => {
+  const shapes: Record<string, () => unknown[]> = {
+    "unloaded branches at the top": () => categories(),
+    "unloaded branches inside a loaded root": () => [
+      { label: "All categories", value: "all", children: categories() },
+    ],
+    "unloaded branches two levels down": () => [
+      {
+        label: "Store",
+        value: "store",
+        children: [
+          {
+            label: "Departments",
+            value: "departments",
+            children: categories(),
+          },
+        ],
+      },
+    ],
+    "unloaded branches inside a group": () => [
+      { label: "Catalogue", options: categories() },
+    ],
+    "loaded and unloaded side by side": () => [
+      {
+        label: "Shelf",
+        value: "shelf",
+        children: [
+          { label: "Atlas", value: "atlas" },
+          { label: "Electronics", value: "electronics", children: null },
+        ],
+      },
+      { label: "Books", value: "books", children: null },
+    ],
+  }
+
+  // Letters in order, gaps allowed: a filter that matches far more than a
+  // plain substring does, so most branches match most queries.
+  function fuzzy(option: { label: string }, query: string) {
+    const q = query.toLowerCase()
+    let i = 0
+    for (const ch of option.label.toLowerCase()) if (ch === q[i]) i++
+    return i === q.length
+  }
+
+  const filters: Record<string, Record<string, unknown>> = {
+    "default filter": {},
+    "fuzzy filter": { filter: fuzzy },
+  }
+  const layouts: Record<string, Record<string, unknown>> = {
+    nested: {},
+    flattened: { flattenSearchResults: true },
+  }
+
+  // Typed one after another into the same list, ending with a clear.
+  const queries = [
+    "a",
+    "al",
+    "all",
+    "c",
+    "categ",
+    "e",
+    "o",
+    "s",
+    "t",
+    "store",
+    "shelf",
+    "dept",
+    "x",
+    "",
+  ]
+
+  for (const [shape, options] of Object.entries(shapes)) {
+    for (const [filterName, filterProps] of Object.entries(filters)) {
+      for (const [layout, layoutProps] of Object.entries(layouts)) {
+        it(`${shape}, ${filterName}, ${layout}`, async () => {
+          const loadChildren = resolver()
+          const wrapper = mountTree({
+            searchable: true,
+            loadChildren,
+            options: options(),
+            ...filterProps,
+            ...layoutProps,
+          })
+          await openList(wrapper)
+          for (const query of queries) {
+            await wrapper.find("input").setValue(query)
+            await flush()
+            expect(
+              loadChildren,
+              `after typing "${query}"`,
+            ).not.toHaveBeenCalled()
+            expect(
+              wrapper.find(".vpick-option-empty--loading").exists(),
+              `loading row after typing "${query}"`,
+            ).toBe(false)
+          }
+        })
+      }
+    }
+  }
 })
